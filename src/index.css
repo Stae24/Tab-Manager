@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gx-red: #ff1b1b;
+  --color-gx-dark: #0e0e0e;
+  --color-gx-accent: #7f22fe;
+  --color-gx-gray: #1c1c1c;
+  --color-gx-cyan: #00d4ff;
+  --color-gx-green: #00ff88;
+}
+
+:root {
+  --ui-scale: 1;
+}
+
+body {
+  @apply bg-gx-dark text-white overflow-hidden fixed inset-0;
+  font-size: calc(1rem * var(--ui-scale));
+  touch-action: none;
+}
+
+/* Prevent any horizontal overflow at the root */
+#root {
+  @apply h-screen w-screen overflow-hidden;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+  -webkit-user-drag: none;
+}
+
+
+/* Custom scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Glow animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Slow spin animation for loading states */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(to right, #7f22fe, #ef4444);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Search mode transition */
+.search-mode-enter {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

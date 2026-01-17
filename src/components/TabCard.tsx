@@ -1,0 +1,196 @@
+import React, { useState } from 'react';
+import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2 } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '../utils/cn';
+import { discardTab, ungroupTab, closeTab } from '../utils/chromeApi';
+import { parseNumericId } from '../store/useStore';
+
+interface TabCardProps {
+  tab: {
+    id: number | string;
+    title: string;
+    favicon: string;
+    active: boolean;
+    discarded: boolean;
+    url?: string;
+  };
+  onClick?: () => void;
+  onClose?: () => void;
+  onSave?: () => void;
+  onRestore?: () => void;
+  isOverlay?: boolean;
+  disabled?: boolean;
+  isVault?: boolean;
+  isLoading?: boolean;
+}
+
+export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave, onRestore, isOverlay, disabled, isVault, isLoading }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: tab.id,
+    data: { type: 'tab', tab },
+    disabled,
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging && !isOverlay ? 0.2 : 1, // Make original very faint or 0
+    zIndex: isOverlay ? 9999 : undefined,
+  };
+
+  return (
+    <div className="relative" ref={setNodeRef} style={style}>
+      <div
+        {...listeners}
+        {...attributes}
+        className={cn(
+          'group relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all cursor-grab active:cursor-grabbing touch-none',
+          'bg-gx-gray border border-white/5',
+          tab.active && 'bg-gx-accent/10 border-gx-accent/40 shadow-[0_0_15px_rgba(127,34,254,0.15)]',
+          tab.discarded && 'opacity-60 grayscale-[0.3]',
+          isOverlay && 'shadow-2xl scale-105 border-gx-accent opacity-100 ring-2 ring-gx-accent/50 z-[9999] bg-gx-dark/90',
+          !isOverlay && 'hover:border-gx-accent/30 hover:bg-gx-gray/80',
+          isLoading && !isOverlay && 'border-gx-cyan/50 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse-glow cursor-not-allowed opacity-90'
+        )}
+        onClick={(e) => {
+          if (isDragging || isOverlay) return;
+          onClick?.();
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (isOverlay) return;
+          setShowMenu(!showMenu);
+        }}
+      >
+        {/* Glow background for active/drag state */}
+        {isOverlay && (
+          <div className="absolute inset-0 bg-gradient-to-r from-gx-accent/10 via-transparent to-gx-red/10 rounded-lg animate-pulse-glow" />
+        )}
+
+        {/* Loading state - absorption animation */}
+        {isLoading && !isOverlay && (
+          <>
+            <div className="absolute inset-0 bg-gx-cyan/5 rounded-lg animate-pulse-glow" />
+            <div className="absolute inset-0 flex items-center justify-center z-20">
+              <Loader2 className="w-4 h-4 text-gx-cyan animate-spin" />
+            </div>
+          </>
+        )}
+
+        {tab.favicon && <img src={tab.favicon} alt="" className="w-4 h-4 pointer-events-none relative z-10" />}
+        <span className="flex-1 text-xs font-medium truncate pointer-events-none relative z-10">{tab.title}</span>
+        {tab.discarded && <Snowflake size={10} className="text-blue-400 relative z-10 mr-1" />}
+
+        {/* Action Buttons - visible on hover */}
+        {!isOverlay && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity relative z-20">
+            {!isVault && onSave && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSave();
+                }}
+                className="p-1 rounded hover:bg-gx-cyan/20 text-gray-500 hover:text-gx-cyan transition-all group/save"
+                title="Save to Vault"
+              >
+                <Save size={12} className="group-hover/save:scale-110 transition-transform" />
+              </button>
+            )}
+            {isVault && onRestore && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRestore();
+                }}
+                className="p-1 rounded hover:bg-gx-green/20 text-gray-500 hover:text-gx-green transition-all group/restore"
+                title="Open in Window"
+              >
+                <ExternalLink size={12} className="group-hover/restore:scale-110 transition-transform" />
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onClose) onClose();
+                else {
+                    const numericId = parseNumericId(tab.id);
+                    if (numericId !== -1) closeTab(numericId);
+                }
+              }}
+              className="p-1 rounded hover:bg-gx-red/20 text-gray-500 hover:text-gx-red transition-all group/close"
+              title={isVault ? "Delete from Vault" : "Close Tab"}
+            >
+              <X size={12} className="group-hover/close:scale-110 transition-transform" />
+            </button>
+          </div>
+        )}
+        
+        {/* Active tab indicator */}
+        {tab.active && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-3 bg-gx-accent rounded-r-full shadow-[0_0_8px_#7f22fe] z-20" />
+        )}
+      </div>
+
+      {showMenu && !isOverlay && (
+        <div className="absolute top-full left-0 mt-1 w-36 bg-gx-gray border border-gx-accent/20 rounded shadow-xl z-[1000] p-1 flex flex-col gap-1">
+          {!isVault && onSave && (
+            <button onClick={() => { onSave(); setShowMenu(false); }} className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded">
+              <Save size={10} /> SAVE TO VAULT
+            </button>
+          )}
+          {!isVault && (
+            <>
+              <button 
+                onClick={() => { 
+                    const numericId = parseNumericId(tab.id);
+                    if (numericId !== -1) discardTab(numericId); 
+                    setShowMenu(false); 
+                }} 
+                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
+              >
+                <Snowflake size={10} /> FREEZE
+              </button>
+              <button 
+                onClick={() => { 
+                    const numericId = parseNumericId(tab.id);
+                    if (numericId !== -1) ungroupTab(numericId); 
+                    setShowMenu(false); 
+                }} 
+                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
+              >
+                <LogOut size={10} /> UNGROUP
+              </button>
+            </>
+          )}
+          {isVault && onRestore && (
+            <button onClick={() => { onRestore(); setShowMenu(false); }} className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-green/20 hover:text-gx-green rounded">
+              <ExternalLink size={10} /> OPEN IN WINDOW
+            </button>
+          )}
+          <button 
+            onClick={() => { 
+                if (onClose) onClose();
+                else {
+                    const numericId = parseNumericId(tab.id);
+                    if (numericId !== -1) closeTab(numericId);
+                }
+                setShowMenu(false); 
+            }} 
+            className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-red/20 text-gx-red rounded"
+          >
+            <Trash2 size={10} /> {isVault ? 'DELETE' : 'CLOSE'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};

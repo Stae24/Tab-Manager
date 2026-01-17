@@ -1,0 +1,235 @@
+import React, { useState } from 'react';
+import { ChevronDown, ChevronRight, Trash2, Save, LogOut, ExternalLink } from 'lucide-react';
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { TabCard } from './TabCard';
+import { cn, getIslandBorderColor } from '../utils/cn';
+import { Island as IslandType, Tab } from '../types';
+import { ungroupTab, updateTabGroupCollapse } from '../utils/chromeApi';
+import { useStore, parseNumericId } from '../store/useStore';
+
+interface IslandProps {
+  island: IslandType;
+  onTabClick?: (tab: Tab) => void;
+  onToggleCollapse?: () => void;
+  onDelete?: () => void;
+  onSave?: () => void;
+  onNonDestructiveSave?: () => void;
+  onRestore?: () => void;
+  onRename?: (title: string) => void;
+  onTabSave?: (tab: Tab) => void;
+  onTabRestore?: (tab: Tab) => void;
+  onTabClose?: (id: string | number) => void;
+  isOverlay?: boolean;
+  disabled?: boolean;
+  isVault?: boolean;
+}
+
+export const Island: React.FC<IslandProps> = ({
+  island,
+  onTabClick,
+  onDelete,
+  onSave,
+  onNonDestructiveSave,
+  onRestore,
+  onRename,
+  onToggleCollapse,
+  onTabSave,
+  onTabRestore,
+  onTabClose,
+  isOverlay,
+  disabled,
+  isVault,
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const setIsRenaming = useStore(state => state.setIsRenaming);
+  const [editTitle, setEditTitle] = useState(island.title);
+
+  const borderColor = getIslandBorderColor(island.color);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: island.id,
+    data: { type: 'island', island },
+    disabled: disabled || isEditing, // Disable DnD when editing
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging && !isOverlay ? 0.2 : 1,
+    zIndex: isOverlay ? 9999 : undefined,
+  };
+
+  const handleRename = () => {
+    if (editTitle !== island.title) {
+      onRename?.(editTitle.trim());
+    }
+    setIsEditing(false);
+    setIsRenaming(false);
+  };
+
+  const handleToggleCollapse = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isOverlay) return;
+    
+    if (onToggleCollapse) {
+        onToggleCollapse();
+    } else {
+        const numericId = parseNumericId(island.id);
+        if (numericId > 0) {
+            updateTabGroupCollapse(numericId, !island.collapsed);
+        }
+    }
+  };
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "relative group transition-all duration-300",
+        isOverlay && "z-[9999] scale-105"
+      )}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className={cn(
+          "relative flex items-center gap-2 px-3 py-2 bg-gx-gray/80 border-t-2 border-x-2 border-transparent cursor-grab active:cursor-grabbing",
+          island.collapsed && "rounded-b-lg border-b-2 shadow-lg",
+          isOverlay && "shadow-2xl ring-2 ring-gx-accent/50 bg-gx-dark rounded-lg border-b-2"
+        )}
+        style={{ 
+          borderTopColor: borderColor, 
+          borderLeftColor: borderColor, 
+          borderRightColor: borderColor,
+          borderBottomColor: (island.collapsed || isOverlay) ? borderColor : 'transparent'
+        }}
+      >
+        <button 
+          onClick={handleToggleCollapse} 
+          className="p-1 hover:bg-white/10 rounded pointer-events-auto relative z-10"
+        >
+          {island.collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {isEditing ? (
+            <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onBlur={handleRename}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRename();
+                    if (e.key === 'Escape') {
+                        setEditTitle(island.title);
+                        setIsEditing(false);
+                        setIsRenaming(false);
+                    }
+                }}
+                autoFocus
+                placeholder="Untitled Group"
+                className="flex-1 text-sm font-bold bg-black/50 text-white border-none outline-none rounded px-1 relative z-20"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+            />
+        ) : (
+            <span 
+                className="flex-1 text-sm font-bold truncate relative z-10 cursor-text"
+                 onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (!isOverlay && onRename) {
+                        setEditTitle(island.title);
+                        setIsEditing(true);
+                        setIsRenaming(true);
+                    }
+                }}
+                title="Double-click to rename"
+            >
+                {island.title || "Untitled Group"}
+            </span>
+        )}
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto relative z-10">
+          {!isVault && !isOverlay && (
+            <button onClick={(e) => { 
+                e.stopPropagation(); 
+                const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+                if (ids.length > 0) ungroupTab(ids); 
+            }} title="Ungroup All">
+              <LogOut size={14} className="text-gray-400 hover:text-white" />
+            </button>
+          )}
+           {!isVault && onNonDestructiveSave && (
+             <button onClick={(e) => { e.stopPropagation(); onNonDestructiveSave(); }} title="Save to Vault (Keep Live)">
+               <Save size={14} className="text-gray-400 hover:text-gx-cyan" />
+             </button>
+           )}
+           {isVault && onRestore && (
+            <button onClick={(e) => { e.stopPropagation(); onRestore(); }} title="Open in Current Window">
+              <ExternalLink size={14} className="text-gray-400 hover:text-gx-green" />
+            </button>
+          )}
+          {onDelete && (
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} title={isVault ? "Delete from Vault" : "Delete"}>
+              <Trash2 size={14} className="text-gray-400 hover:text-gx-red" />
+            </button>
+          )}
+        </div>
+        
+        {/* Active/Overlay background effect */}
+        {isOverlay && (
+          <div className="absolute inset-0 bg-gradient-to-r from-gx-accent/10 via-transparent to-gx-red/10 rounded-lg animate-pulse-glow" />
+        )}
+      </div>
+
+      {!island.collapsed && !isOverlay && (
+        <div 
+          className="p-2 bg-gx-dark/30 rounded-b-lg border-x-2 border-b-2 border-transparent shadow-inner min-h-[40px]"
+          style={{ borderColor: `${borderColor}33`, borderBottomColor: borderColor }}
+        >
+          <div className="space-y-1">
+            <SortableContext items={(island.tabs || []).map(t => t.id)} strategy={verticalListSortingStrategy}>
+              {(island.tabs || []).map((tab) => (
+                <TabCard
+                  key={tab.id}
+                  tab={tab}
+                  onClick={() => onTabClick?.(tab)}
+                  disabled={disabled}
+                  isVault={isVault}
+                  onSave={onTabSave ? () => onTabSave(tab) : undefined}
+                  onRestore={onTabRestore ? () => onTabRestore(tab) : undefined}
+                  onClose={onTabClose ? () => onTabClose(tab.id) : undefined}
+                />
+              ))}
+            </SortableContext>
+          </div>
+        </div>
+      )}
+
+      {/* When in overlay, show tabs but without context */}
+      {isOverlay && !island.collapsed && (
+        <div className="p-2 bg-gx-dark/30 rounded-b-lg border-x-2 border-b-2 border-transparent" style={{ borderColor: `${borderColor}33` }}>
+          <div className="space-y-1">
+            {(island.tabs || []).map((tab) => (
+              <TabCard
+                key={tab.id}
+                tab={tab}
+                isOverlay
+                isVault={isVault}
+                onSave={onTabSave ? () => onTabSave(tab) : undefined}
+                onRestore={onTabRestore ? () => onTabRestore(tab) : undefined}
+                onClose={onTabClose ? () => onTabClose(tab.id) : undefined}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
