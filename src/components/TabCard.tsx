@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2, Link, Volume2, VolumeX, Copy, CopyPlus } from 'lucide-react';
+import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2, Link, Volume2, VolumeX, Copy, CopyPlus, Speaker } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '../utils/cn';
 import { discardTab, ungroupTab, closeTab, copyTabUrl, muteTab, unmuteTab, pinTab, unpinTab, duplicateTab } from '../utils/chromeApi';
-import { parseNumericId } from '../store/useStore';
+import { parseNumericId, useStore } from '../store/useStore';
 
 interface TabCardProps {
   tab: {
@@ -16,6 +16,7 @@ interface TabCardProps {
     url?: string;
     muted?: boolean;
     pinned?: boolean;
+    audible?: boolean;
   };
   onClick?: () => void;
   onClose?: () => void;
@@ -31,6 +32,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const tabDensity = useStore(state => state.tabDensity);
   const {
     attributes,
     listeners,
@@ -43,6 +45,14 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
     data: { type: 'tab', tab },
     disabled,
   });
+
+  // Density classes mapping
+  const densityClasses = {
+    minified: 'py-0 px-1',
+    compact: 'py-1 px-2 text-[9px]',
+    normal: 'py-2 px-3 text-xs',
+    spacious: 'py-3 px-4 text-sm',
+  };
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -74,7 +84,8 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
         {...listeners}
         {...attributes}
         className={cn(
-          'group relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all cursor-grab active:cursor-grabbing touch-none',
+          `group relative flex items-center gap-2 rounded-lg transition-all cursor-grab active:cursor-grabbing touch-none`,
+          densityClasses[tabDensity],
           'bg-gx-gray border border-white/5',
           tab.active && 'bg-gx-accent/10 border-gx-accent/40 shadow-[0_0_15px_rgba(127,34,254,0.15)]',
           tab.discarded && 'opacity-60 grayscale-[0.3]',
@@ -110,21 +121,26 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
 
         {tab.favicon && <img src={tab.favicon} alt="" className="w-4 h-4 pointer-events-none relative z-10" />}
         <span className="flex-1 text-xs font-medium truncate pointer-events-none relative z-10">{tab.title}</span>
-        {tab.discarded && <Snowflake size={10} className="text-blue-400 relative z-10 mr-1" />}
+        {tab.discarded && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
+        {tab.muted ? (
+          <VolumeX size={14} className="text-orange-400 relative z-10 mr-1" />
+        ) : tab.audible ? (
+          <Speaker size={14} className="text-green-400 relative z-10 mr-1 animate-pulse" />
+        ) : null}
 
         {/* Action Buttons - visible on hover */}
         {!isOverlay && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity relative z-20">
+          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity relative z-20">
             {!isVault && onSave && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onSave();
                 }}
-                className="p-1 rounded hover:bg-gx-cyan/20 text-gray-500 hover:text-gx-cyan transition-all group/save"
+                className="p-1.5 rounded-lg hover:bg-gx-cyan/20 text-gray-500 hover:text-gx-cyan transition-all group/save"
                 title="Save to Vault"
               >
-                <Save size={12} className="group-hover/save:scale-110 transition-transform" />
+                <Save size={16} className="group-hover/save:scale-110 transition-transform" />
               </button>
             )}
             {isVault && onRestore && (
@@ -133,10 +149,10 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
                   e.stopPropagation();
                   onRestore();
                 }}
-                className="p-1 rounded hover:bg-gx-green/20 text-gray-500 hover:text-gx-green transition-all group/restore"
+                className="p-1.5 rounded-lg hover:bg-gx-green/20 text-gray-500 hover:text-gx-green transition-all group/restore"
                 title="Open in Window"
               >
-                <ExternalLink size={12} className="group-hover/restore:scale-110 transition-transform" />
+                <ExternalLink size={16} className="group-hover/restore:scale-110 transition-transform" />
               </button>
             )}
             <button
@@ -148,10 +164,10 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
                     if (numericId !== -1) closeTab(numericId);
                 }
               }}
-              className="p-1 rounded hover:bg-gx-red/20 text-gray-500 hover:text-gx-red transition-all group/close"
+              className="p-1.5 rounded-lg hover:bg-gx-red/20 text-gray-500 hover:text-gx-red transition-all group/close"
               title={isVault ? "Delete from Vault" : "Close Tab"}
             >
-              <X size={12} className="group-hover/close:scale-110 transition-transform" />
+              <X size={16} className="group-hover/close:scale-110 transition-transform" />
             </button>
           </div>
         )}
