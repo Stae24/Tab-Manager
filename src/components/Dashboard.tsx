@@ -58,7 +58,7 @@ const LivePanel: React.FC<{
   });
 
   const { setNodeRef: setBottomRef, isOver: isBottomOver } = useDroppable({
-    id: 'vault-bottom',
+    id: 'live-bottom',
   });
 
   const [showSortDropdown, setShowSortDropdown] = useState(false);

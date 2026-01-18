@@ -19,6 +19,7 @@ interface TabState {
   showVault: boolean;
   pendingRefresh: boolean;
   isRenaming: boolean;
+  isRefreshing: boolean; // Guard against recursive refresh calls
 
   refreshTabs: () => Promise<void>;
   setIsUpdating: (val: boolean) => void;
@@ -105,6 +106,7 @@ export const useStore = create<TabState>((set, get) => ({
   showVault: true,
   pendingRefresh: false,
   isRenaming: false,
+  isRefreshing: false,
 
   setIsUpdating: (isUpdating) => set({ isUpdating }),
   setIsRenaming: (isRenaming) => set({ isRenaming }),
@@ -131,7 +133,7 @@ export const useStore = create<TabState>((set, get) => ({
     // Target check: Initialize to source location, then refine based on overId
     let targetIsLive = activeInLive;
 
-    if (overId === 'live-panel-dropzone' || overId === 'live-panel-bottom') targetIsLive = true;
+    if (overId === 'live-panel-dropzone' || overId === 'live-bottom') targetIsLive = true;
     else if (overId === 'vault-dropzone' || overId === 'vault-bottom') targetIsLive = false;
     else if (over) {
       // Check where the 'over' item actually resides
@@ -157,7 +159,7 @@ export const useStore = create<TabState>((set, get) => ({
     const isActiveGroup = active.item && 'tabs' in active.item;
 
     // If dropped on the panel dropzone
-    if (['live-panel-dropzone', 'vault-dropzone', 'live-panel-bottom', 'vault-bottom'].includes(String(overId))) {
+    if (['live-panel-dropzone', 'live-bottom', 'vault-dropzone', 'vault-bottom'].includes(String(overId))) {
       targetIndex = activeInLive ? islands.length : vault.length;
     }
     // If dropped on a gap between items (live-gap-X or vault-gap-X)
@@ -286,33 +288,14 @@ export const useStore = create<TabState>((set, get) => ({
 
   refreshTabs: async () => {
     const state = get();
-    
-    // Instead of returning, queue the refresh if we are currently updating (e.g. dragging)
-    if (state.isUpdating) {
-      if (!state.pendingRefresh) {
-        set({ pendingRefresh: true });
-        // Poll for completion of the update lock
-        const checkInterval = setInterval(() => {
-          const currentState = get();
-          if (!currentState.isUpdating && currentState.pendingRefresh) {
-            clearInterval(checkInterval);
-            set({ pendingRefresh: false });
-            currentState.refreshTabs();
-          }
-        }, 100);
-        
-        // Safety timeout to prevent permanent lock
-        setTimeout(() => {
-          const currentState = get();
-          if (currentState.pendingRefresh) {
-            clearInterval(checkInterval);
-            set({ pendingRefresh: false });
-          }
-        }, 5000);
-      }
-      return;
-    }
-    
+
+    // Guard against overlapping refreshes during drag operations
+    if (state.isUpdating) return;
+
+    // Guard against recursive refresh calls from useTabSync
+    if ((useStore as any).getState().isRefreshing) return;
+    (useStore as any).setState({ isRefreshing: true });
+
     const [chromeTabs, chromeGroups] = await Promise.all([
       chrome.tabs.query({ currentWindow: true }),
       chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT })
@@ -362,7 +345,7 @@ export const useStore = create<TabState>((set, get) => ({
       }
     });
     
-    set({ tabs, groups: chromeGroups, islands: entities });
+    set({ tabs, groups: chromeGroups, islands: entities, isRefreshing: false });
   },
 
   setUiScale: (uiScale) => {

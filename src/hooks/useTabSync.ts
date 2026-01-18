@@ -3,6 +3,8 @@ import { useStore } from '../store/useStore';
 
 export const useTabSync = () => {
   const refreshTimeout = useRef<any>(null);
+  const pendingRefresh = useRef(false);
+  const isRefreshing = useRef(false);
 
   useEffect(() => {
     // Initial fetch
@@ -11,14 +13,22 @@ export const useTabSync = () => {
     // Listen for updates from background script
     const listener = (message: any) => {
       if (message.type === 'REFRESH_TABS') {
+        // Guard against recursive refresh calls
+        if (isRefreshing.current) return;
+
         const { isUpdating, refreshTabs } = useStore.getState();
+
         if (isUpdating) {
-          // If we are currently performing a manual update (like DND),
-          // debounce the background refresh to prevent race conditions.
+          // If already pending a refresh, don't schedule another
+          if (pendingRefresh.current) return;
+
+          // Mark that we have a pending refresh and debounce
+          pendingRefresh.current = true;
           if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
           refreshTimeout.current = setTimeout(() => {
+            pendingRefresh.current = false;
             refreshTabs();
-          }, 500);
+          }, 200);
         } else {
           refreshTabs();
         }
