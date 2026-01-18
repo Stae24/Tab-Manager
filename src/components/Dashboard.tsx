@@ -361,6 +361,12 @@ const LivePanel: React.FC<{
               })}
             </SortableContext>
 
+            {/* Invisible Drop Zone for Appending */}
+            <div
+              ref={setBottomRef}
+              className="h-24 w-full"
+            />
+
             <div
               ref={setCreateRef}
               id="new-island-dropzone"
@@ -399,19 +405,6 @@ const LivePanel: React.FC<{
             </div>
           </>
         )}
-
-        {/* Bottom Drop Zone / Spacer for Appending */}
-        <div
-          ref={setBottomRef}
-          className={cn(
-            "h-24 w-full rounded-xl border-2 border-dashed border-transparent transition-all flex items-center justify-center shrink-0",
-            isBottomOver ? "border-gx-accent/30 bg-gx-accent/5" : "hover:border-gx-gray/30"
-          )}
-        >
-          <span className={cn("text-xs font-bold uppercase tracking-widest text-gx-gray opacity-0 transition-opacity", isBottomOver && "opacity-100")}>
-            Drop to Append
-          </span>
-        </div>
       </div>
     </div>
   );
