@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GripVertical, Plus, FolderOpen, Save, Loader2, ChevronUp, ChevronDown, Search, ChevronDown as SortDown, X, ChevronUp as SortUp, Trash2 } from 'lucide-react';
-import { 
-  DndContext, 
-  closestCorners, 
-  KeyboardSensor, 
-  PointerSensor, 
-  useSensor, 
-  useSensors, 
-  DragOverlay, 
-  useDroppable, 
-  DragStartEvent, 
-  DragEndEvent, 
+import {
+  DndContext,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  useDroppable,
+  useDndContext,
+  DragStartEvent,
+  DragEndEvent,
   DragOverEvent,
   UniqueIdentifier,
   MeasuringStrategy,
@@ -28,6 +29,41 @@ import { useStore, parseNumericId } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { closeTab, moveIsland, createIsland } from '../utils/chromeApi';
 import { Island as IslandType, Tab as TabType } from '../types/index';
+
+// Proximity tracking hook for droppable gaps
+const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) => {
+  const { setNodeRef, isOver } = useDroppable({ id: gapId });
+  const gapRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!active || !gapRef.current || isDraggingGroup) {
+      setExpanded(false);
+      return;
+    }
+
+    // Track pointer movement for proximity detection
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!gapRef.current) return;
+
+      const gapRect = gapRef.current.getBoundingClientRect();
+      const gapCenterY = gapRect.top + gapRect.height / 2;
+      const pointerY = e.clientY;
+      const distance = Math.abs(pointerY - gapCenterY);
+
+      // Expand when within 80px proximity
+      setExpanded(distance < 80);
+    };
+
+    document.addEventListener('pointermove', handlePointerMove);
+
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove);
+    };
+  }, [active, isDraggingGroup]);
+
+  return { setNodeRef, gapRef, isOver, expanded };
+};
 
 const LivePanel: React.FC<{
   dividerPosition: number,
@@ -66,16 +102,21 @@ const LivePanel: React.FC<{
 
   // Droppable gap component for between items
   const DroppableGap: React.FC<{ index: number; isLast?: boolean }> = ({ index, isLast }) => {
-    const { setNodeRef, isOver } = useDroppable({
-      id: `live-gap-${index}`,
-    });
+    const { active } = useDndContext();
+    const { setNodeRef, gapRef, isOver, expanded } = useProximityGap(`live-gap-${index}`, active, isDraggingGroup);
 
     return (
       <div
-        ref={setNodeRef}
+        ref={(node) => {
+          setNodeRef(node);
+          gapRef.current = node;
+        }}
         className={cn(
-          "h-2 w-full transition-all duration-150 rounded",
-          isOver && !isDraggingGroup && "h-4 bg-gx-accent/30 shadow-[0_0_10px_rgba(127,34,254,0.4)]"
+          "w-full rounded transition-all duration-200 ease-out",
+          // Default state: nearly invisible
+          !expanded && "h-px min-h-[1px]",
+          // Expanded state: comfortable drop target
+          expanded && "h-8 min-h-[32px]"
         )}
       />
     );
@@ -309,7 +350,7 @@ const LivePanel: React.FC<{
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 scroll-smooth overscroll-none scrollbar-hide">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none scrollbar-hide">
         {searchQuery ? (
           // Search Mode: Show filtered tabs in flat list
           <div className="space-y-2 search-mode-enter">
@@ -451,16 +492,21 @@ const VaultPanel: React.FC<{
 
   // Droppable gap component for between two islands
   const DroppableGap: React.FC<{ index: number }> = ({ index }) => {
-    const { setNodeRef, isOver } = useDroppable({
-      id: `vault-gap-${index}`,
-    });
+    const { active } = useDndContext();
+    const { setNodeRef, gapRef, isOver, expanded } = useProximityGap(`vault-gap-${index}`, active, false);
 
     return (
       <div
-        ref={setNodeRef}
+        ref={(node) => {
+          setNodeRef(node);
+          gapRef.current = node;
+        }}
         className={cn(
-          "h-2 w-full transition-all duration-150 rounded",
-          isOver && "h-4 bg-gx-accent/30 shadow-[0_0_10px_rgba(127,34,254,0.4)]"
+          "w-full rounded transition-all duration-200 ease-out",
+          // Default state: nearly invisible
+          !expanded && "h-px min-h-[1px]",
+          // Expanded state: comfortable drop target
+          expanded && "h-8 min-h-[32px]"
         )}
       />
     );
@@ -489,7 +535,7 @@ const VaultPanel: React.FC<{
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 scroll-smooth overscroll-none">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none">
         <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
           {(vault || []).map((item, index) => {
             const isCurrentIsland = 'tabs' in item;

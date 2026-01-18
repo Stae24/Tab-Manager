@@ -111,180 +111,183 @@ export const useStore = create<TabState>((set, get) => ({
   setIsUpdating: (isUpdating) => set({ isUpdating }),
   setIsRenaming: (isRenaming) => set({ isRenaming }),
 
-  moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => {
-    const { islands, vault } = get();
-    if (activeId === overId) return;
+  moveItemOptimistically: (() => {
+    let pendingId: UniqueIdentifier | null = null;
+    let pendingOverId: UniqueIdentifier | null = null;
+    let updateScheduled = false;
 
-    const active = findItemInList(islands, activeId) || findItemInList(vault, activeId);
-    const over = findItemInList(islands, overId) || findItemInList(vault, overId);
+    return (activeId: UniqueIdentifier, overId: UniqueIdentifier) => {
+      // Debounce rapid drag-over events to prevent excessive state updates
+      // which can cause React error #185 (too many re-renders)
+      pendingId = activeId;
+      pendingOverId = overId;
 
-    // If active item not found, we can't proceed.
-    // This usually means the item was deleted or the ID doesn't match.
-    if (!active) {
-        // Safety fallback: If we are in the middle of a drag, maybe the store updated?
-        // We can't recover easily here. Returning prevents corruption.
-        return;
-    }
+      if (updateScheduled) return;
+      updateScheduled = true;
 
-    // Detect Source and Target Panels
-    // Source check: Is the active item inside the Live panel?
-    const activeInLive = islands.some(i => i && (i.id == activeId || (i as any).tabs?.some((t: any) => t && t.id == activeId)));
-    
-    // Target check: Initialize to source location, then refine based on overId
-    let targetIsLive = activeInLive;
-
-    if (overId === 'live-panel-dropzone' || overId === 'live-bottom') targetIsLive = true;
-    else if (overId === 'vault-dropzone' || overId === 'vault-bottom') targetIsLive = false;
-    else if (over) {
-      // Check where the 'over' item actually resides
-      const overInIslands = islands.some(i => i && (i.id == overId || (i as any).tabs?.some((t: any) => t && t.id == overId)));
-      const overInVault = vault.some(v => v && (v.id == overId || (v as any).tabs?.some((t: any) => t && t.id == overId)));
-
-      if (overInIslands) targetIsLive = true;
-      else if (overInVault) targetIsLive = false;
-      // If 'over' item is not found in either list (shouldn't happen), keep current panel
-    }
-
-    // BLOCK cross-panel optimistic movement to prevent state corruption during drag
-    // If source panel != target panel, do not update UI state
-    // This ensures internal moves (Vault->Vault, Live->Live) are always processed
-    if (activeInLive !== targetIsLive) return;
-
-    // Determine target index and container
-    let targetContainerId: UniqueIdentifier = 'root';
-    let targetIndex = -1;
-    
-    // Check if we are dragging a Group (Island)
-    // Islands in Vault always have a 'tabs' array.
-    const isActiveGroup = active.item && 'tabs' in active.item;
-
-    // If dropped on the panel dropzone
-    if (['live-panel-dropzone', 'live-bottom', 'vault-dropzone', 'vault-bottom'].includes(String(overId))) {
-      targetIndex = activeInLive ? islands.length : vault.length;
-    }
-    // If dropped on a gap between items (live-gap-X or vault-gap-X)
-    else if (String(overId).startsWith('live-gap-') || String(overId).startsWith('vault-gap-')) {
-      const isLiveGap = String(overId).startsWith('live-gap-');
-      const gapIndex = parseInt(String(overId).split('-')[2], 10);
-      targetIndex = isNaN(gapIndex) ? (activeInLive ? islands.length : vault.length) : gapIndex;
-      targetContainerId = 'root';
-    }
-    // If dropped on an item
-    else if (over) {
-      targetContainerId = over.containerId;
-      targetIndex = over.index;
-
-      // Handle nesting: Dragging a tab over a group header
-      // If dropped on group header, target the group itself
-      if (over.item && 'tabs' in over.item && !isActiveGroup) {
-        if (active.containerId === over.item.id) {
-            // ALREADY INSIDE this group. Dropping on header means move OUT to root.
-            targetContainerId = 'root';
-            targetIndex = over.index;
-        } else {
-            // OUTSIDE this group. Dropping on header means move INSIDE.
-            targetContainerId = over.item.id;
-            // If collapsed, target the end of the group
-            // If expanded, target the beginning (index 0)
-            targetIndex = over.item.collapsed ? (over.item.tabs as any[]).length : 0;
+      // Use requestAnimationFrame for smooth updates aligned with browser paint cycle
+      requestAnimationFrame(() => {
+        // Skip if pending IDs were cleared
+        if (pendingId === null || pendingOverId === null) {
+          updateScheduled = false;
+          return;
         }
-      }
-      
-      // CRITICAL FIX: Prevent Groups from being nested inside other groups.
-      // If we are dragging a Group (Island) and targeting a nested container (not root),
-      // we must redirect the drop to the Root level, adjacent to the parent group.
-      if (isActiveGroup && targetContainerId !== 'root') {
-          const currentRoot = activeInLive ? islands : vault;
-          // Find the parent group of the item we are hovering over
-          const parentGroupIndex = currentRoot.findIndex(i => String(i.id) === String(targetContainerId));
-          
-          if (parentGroupIndex !== -1) {
+
+        const { islands, vault } = get();
+        // Safe cast since we already checked for null above
+        const activeId = pendingId as UniqueIdentifier;
+        const overId = pendingOverId as UniqueIdentifier;
+
+        // Reset scheduled flag for next update
+        updateScheduled = false;
+        pendingId = null;
+        pendingOverId = null;
+
+        if (activeId === overId) return;
+
+        const active = findItemInList(islands, activeId) || findItemInList(vault, activeId);
+        const over = findItemInList(islands, overId) || findItemInList(vault, overId);
+
+        // If active item not found, we can't proceed.
+        // This usually means the item was deleted or the ID doesn't match.
+        if (!active) {
+            return;
+        }
+
+        // Detect Source and Target Panels
+        // Source check: Is the active item inside the Live panel?
+        const activeInLive = islands.some(i => i && (i.id == activeId || (i as any).tabs?.some((t: any) => t && t.id == activeId)));
+
+        // Target check: Initialize to source location, then refine based on overId
+        let targetIsLive = activeInLive;
+
+        if (overId === 'live-panel-dropzone' || overId === 'live-bottom') targetIsLive = true;
+        else if (overId === 'vault-dropzone' || overId === 'vault-bottom') targetIsLive = false;
+        else if (over) {
+          // Check where the 'over' item actually resides
+          const overInIslands = islands.some(i => i && (i.id == overId || (i as any).tabs?.some((t: any) => t && t.id == overId)));
+          const overInVault = vault.some(v => v && (v.id == overId || (v as any).tabs?.some((t: any) => t && t.id == overId)));
+
+          if (overInIslands) targetIsLive = true;
+          else if (overInVault) targetIsLive = false;
+        }
+
+        // BLOCK cross-panel optimistic movement to prevent state corruption during drag
+        // If source panel != target panel, do not update UI state
+        if (activeInLive !== targetIsLive) return;
+
+        // Determine target index and container
+        let targetContainerId: UniqueIdentifier = 'root';
+        let targetIndex = -1;
+
+        // Check if we are dragging a Group (Island)
+        const isActiveGroup = active.item && 'tabs' in active.item;
+
+        // If dropped on the panel dropzone
+        if (['live-panel-dropzone', 'live-bottom', 'vault-dropzone', 'vault-bottom'].includes(String(overId))) {
+          targetIndex = activeInLive ? islands.length : vault.length;
+        }
+        // If dropped on a gap between items
+        else if (String(overId).startsWith('live-gap-') || String(overId).startsWith('vault-gap-')) {
+          const isLiveGap = String(overId).startsWith('live-gap-');
+          const gapIndex = parseInt(String(overId).split('-')[2], 10);
+          targetIndex = isNaN(gapIndex) ? (activeInLive ? islands.length : vault.length) : gapIndex;
+          targetContainerId = 'root';
+        }
+        // If dropped on an item
+        else if (over) {
+          targetContainerId = over.containerId;
+          targetIndex = over.index;
+
+          // Handle nesting: Dragging a tab over a group header
+          if (over.item && 'tabs' in over.item && !isActiveGroup) {
+            if (active.containerId === over.item.id) {
               targetContainerId = 'root';
-              targetIndex = parentGroupIndex;
-          } else {
-              // Safety fallback: if we can't find the parent, abort to prevent corruption
-              return;
+              targetIndex = over.index;
+            } else {
+              targetContainerId = over.item.id;
+              targetIndex = over.item.collapsed ? (over.item.tabs as any[]).length : 0;
+            }
           }
-      }
-      
-      // FIX: When moving from OUTSIDE a group TO INSIDE a group and dropping on the LAST tab,
-      // dnd-kit gives us the index of that tab. To insert at the end, we need index + 1.
-      // Otherwise the new tab goes into the 2nd to last position instead of the last.
-      if (active.containerId !== targetContainerId && over.item && !('tabs' in over.item)) {
-          const targetGroup = (activeInLive ? islands : vault).find(i => String(i.id) === String(targetContainerId));
-          if (targetGroup && 'tabs' in targetGroup && targetGroup.tabs && targetIndex === targetGroup.tabs.length - 1) {
-              targetIndex = targetIndex + 1;
+
+          // Prevent Groups from being nested inside other groups
+          if (isActiveGroup && targetContainerId !== 'root') {
+              const currentRoot = activeInLive ? islands : vault;
+              const parentGroupIndex = currentRoot.findIndex(i => String(i.id) === String(targetContainerId));
+
+              if (parentGroupIndex !== -1) {
+                  targetContainerId = 'root';
+                  targetIndex = parentGroupIndex;
+              } else {
+                  return;
+              }
           }
-      }
-    }
 
-    // Validation
-    if (targetIndex === -1) return;
-    if (active.containerId === targetContainerId && active.index === targetIndex) return;
-
-    // Deep clone affected groups for immutable state updates
-    const cloneWithDeepGroups = (list: any[]) => list.map(item => 
-      item && 'tabs' in item ? { ...item, tabs: [...item.tabs] } : item
-    );
-    
-    const newIslands = activeInLive ? cloneWithDeepGroups(islands) : [...islands];
-    const newVault = activeInLive ? [...vault] : cloneWithDeepGroups(vault);
-    const rootList = activeInLive ? newIslands : newVault;
-
-    const getTargetList = (root: any[], cId: UniqueIdentifier) => {
-      if (cId === 'root') return root;
-      const cIdStr = String(cId);
-      // Strict equality check
-      const group = root.find(i => i && String(i.id) === cIdStr);
-      if (group && Array.isArray(group.tabs)) return group.tabs;
-      // Fallback: maybe the item was flattened?
-      return null;
-    };
-
-    let sourceArr = getTargetList(rootList, active.containerId);
-    let targetArr = getTargetList(rootList, targetContainerId);
-
-    // Fallback safety: If sourceArr is null but we have valid active info, try to recover context
-    if (!sourceArr && active.item) {
-        // If we can't find the specific list, assume it's the root list if we are dragging a group
-        // or if we can't find the parent, we can't proceed safely.
-        return; 
-    }
-    if (!sourceArr || !targetArr) return;
-
-    // CRITICAL: Verify item exists at active.index in sourceArr
-    const sourceItem = sourceArr[active.index];
-    
-    // If index is wrong or item ID doesn't match, find the correct index
-    if (!sourceItem || String(sourceItem.id) !== String(activeId)) {
-        const correctIndex = sourceArr.findIndex((item: any) => String(item.id) === String(activeId));
-        if (correctIndex === -1) {
-            // Item completely missing from source array.
-            // This causes the ghost to disappear. Return early to prevent corruption.
-            return; 
+          // When moving from OUTSIDE a group TO INSIDE a group and dropping on the LAST tab
+          if (active.containerId !== targetContainerId && over.item && !('tabs' in over.item)) {
+              const targetGroup = (activeInLive ? islands : vault).find(i => String(i.id) === String(targetContainerId));
+              if (targetGroup && 'tabs' in targetGroup && targetGroup.tabs && targetIndex === targetGroup.tabs.length - 1) {
+                  targetIndex = targetIndex + 1;
+              }
+          }
         }
-        active.index = correctIndex;
-    }
 
-    // Perform the move: Remove from source, Insert into target
-    const [movedItem] = sourceArr.splice(active.index, 1);
-    
-    if (!movedItem) return; // Extraction failed
+        // Validation
+        if (targetIndex === -1) return;
+        if (active.containerId === targetContainerId && active.index === targetIndex) return;
 
-    // Clamp target index to valid bounds (ensure it's a number)
-    const safeTargetIndex = Math.max(0, Math.min(Number(targetIndex), targetArr.length));
-    
-    // Insert at target position
-    targetArr.splice(safeTargetIndex, 0, movedItem);
+        // Deep clone affected groups for immutable state updates
+        const cloneWithDeepGroups = (list: any[]) => list.map(item =>
+          item && 'tabs' in item ? { ...item, tabs: [...item.tabs] } : item
+        );
 
-    if (activeInLive) {
-        set({ islands: newIslands });
-    } else {
-        // Force new array reference to ensure update
-        const finalVault = [...newVault];
-        set({ vault: finalVault });
-    }
-  },
+        const newIslands = activeInLive ? cloneWithDeepGroups(islands) : [...islands];
+        const newVault = activeInLive ? [...vault] : cloneWithDeepGroups(vault);
+        const rootList = activeInLive ? newIslands : newVault;
+
+        const getTargetList = (root: any[], cId: UniqueIdentifier) => {
+          if (cId === 'root') return root;
+          const cIdStr = String(cId);
+          const group = root.find(i => i && String(i.id) === cIdStr);
+          if (group && Array.isArray(group.tabs)) return group.tabs;
+          return null;
+        };
+
+        let sourceArr = getTargetList(rootList, active.containerId);
+        let targetArr = getTargetList(rootList, targetContainerId);
+
+        if (!sourceArr && active.item) {
+            return;
+        }
+        if (!sourceArr || !targetArr) return;
+
+        const sourceItem = sourceArr[active.index];
+
+        if (!sourceItem || String(sourceItem.id) !== String(activeId)) {
+            const correctIndex = sourceArr.findIndex((item: any) => String(item.id) === String(activeId));
+            if (correctIndex === -1) {
+                return;
+            }
+            active.index = correctIndex;
+        }
+
+        const [movedItem] = sourceArr.splice(active.index, 1);
+
+        if (!movedItem) return;
+
+        const safeTargetIndex = Math.max(0, Math.min(Number(targetIndex), targetArr.length));
+
+        targetArr.splice(safeTargetIndex, 0, movedItem);
+
+        if (activeInLive) {
+            set({ islands: newIslands });
+        } else {
+            const finalVault = [...newVault];
+            set({ vault: finalVault });
+        }
+      });
+    };
+  })(),
 
   refreshTabs: async () => {
     const state = get();
