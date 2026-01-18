@@ -8,7 +8,8 @@ export const Sidebar: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
-  const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const settingsAreaRef = useRef<HTMLDivElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUiScale(parseFloat(e.target.value));
@@ -20,7 +21,9 @@ export const Sidebar: React.FC = () => {
       if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
         setShowExportDropdown(false);
       }
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
+      const isInSettingsArea = settingsAreaRef.current?.contains(event.target as Node);
+      const isInSettingsButton = settingsButtonRef.current?.contains(event.target as Node);
+      if (!isInSettingsArea && !isInSettingsButton) {
         setShowSettings(false);
       }
     };
@@ -112,7 +115,11 @@ export const Sidebar: React.FC = () => {
           </div>
         </div>
         <button 
-          onClick={() => setShowSettings(!showSettings)}
+          ref={settingsButtonRef}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowSettings(!showSettings);
+          }}
           className={cn(
             "p-2 rounded-lg transition-all border",
             showSettings
@@ -202,7 +209,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Settings Dropdown */}
       {showSettings && (
-        <div ref={settingsMenuRef} className="absolute top-full left-0 mt-2 w-full z-50">
+        <div ref={settingsAreaRef} className="absolute top-full left-0 mt-2 w-full z-50">
           <div className="w-full bg-gx-dark border border-gx-gray rounded-xl shadow-xl overflow-hidden">
             <div className="w-full h-0.5 bg-gradient-to-r from-gx-accent via-gx-red to-gx-accent" />
             <div className="p-4">
