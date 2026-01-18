@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Trash2, Save, LogOut, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, ChevronRight, Trash2, Save, LogOut, ExternalLink, Edit3, X, Snowflake, Copy } from 'lucide-react';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TabCard } from './TabCard';
 import { cn, getIslandBorderColor } from '../utils/cn';
 import { Island as IslandType, Tab } from '../types';
-import { ungroupTab, updateTabGroupCollapse } from '../utils/chromeApi';
+import { ungroupTab, updateTabGroupCollapse, discardTabs, duplicateIsland } from '../utils/chromeApi';
 import { useStore, parseNumericId } from '../store/useStore';
 
 interface IslandProps {
@@ -44,6 +44,9 @@ export const Island: React.FC<IslandProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const setIsRenaming = useStore(state => state.setIsRenaming);
   const [editTitle, setEditTitle] = useState(island.title);
+  const [showMenu, setShowMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const borderColor = getIslandBorderColor(island.color);
 
@@ -89,6 +92,52 @@ export const Island: React.FC<IslandProps> = ({
     }
   };
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+
+  // Start renaming from context menu
+  const handleRenameFromMenu = () => {
+    setShowMenu(false);
+    setEditTitle(island.title);
+    setIsEditing(true);
+    setIsRenaming(true);
+  };
+
+  // Ungroup all tabs
+  const handleUngroupAll = () => {
+    setShowMenu(false);
+    const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+    if (ids.length > 0) ungroupTab(ids);
+  };
+
+  // Freeze all tabs
+  const handleFreezeAll = () => {
+    setShowMenu(false);
+    const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+    if (ids.length > 0) discardTabs(ids);
+  };
+
+  // Duplicate group
+  const handleDuplicate = () => {
+    setShowMenu(false);
+    const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+    if (ids.length > 0) duplicateIsland(ids);
+  };
+
   return (
     <div 
       ref={setNodeRef}
@@ -111,6 +160,12 @@ export const Island: React.FC<IslandProps> = ({
           borderLeftColor: borderColor, 
           borderRightColor: borderColor,
           borderBottomColor: (island.collapsed || isOverlay) ? borderColor : 'transparent'
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (isOverlay) return;
+          setMenuPosition({ x: e.clientX, y: e.clientY });
+          setShowMenu(true);
         }}
       >
         <button 
@@ -187,6 +242,68 @@ export const Island: React.FC<IslandProps> = ({
           <div className="absolute inset-0 bg-gradient-to-r from-gx-accent/10 via-transparent to-gx-red/10 rounded-lg animate-pulse-glow" />
         )}
       </div>
+
+      {/* Context Menu */}
+      {showMenu && !isOverlay && (
+        <div
+          ref={menuRef}
+          className="fixed w-36 bg-gx-gray border border-gx-accent/20 rounded shadow-xl z-[1000] p-1 flex flex-col gap-1"
+          style={{ left: menuPosition?.x ?? 0, top: menuPosition?.y ?? 0 }}
+        >
+          <button
+            onClick={handleRenameFromMenu}
+            className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+          >
+            <Edit3 size={10} /> RENAME
+          </button>
+          <button
+            onClick={handleDuplicate}
+            className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+          >
+            <Copy size={10} /> DUPLICATE GROUP
+          </button>
+          {!isVault && (
+            <>
+              <button
+                onClick={handleUngroupAll}
+                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
+              >
+                <LogOut size={10} /> UNGROUP ALL
+              </button>
+              <button
+                onClick={handleFreezeAll}
+                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+              >
+                <Snowflake size={10} /> FREEZE ALL
+              </button>
+            </>
+          )}
+          {!isVault && onNonDestructiveSave && (
+            <button
+              onClick={() => { setShowMenu(false); onNonDestructiveSave(); }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+            >
+              <Save size={10} /> SAVE TO VAULT
+            </button>
+          )}
+          {isVault && onRestore && (
+            <button
+              onClick={() => { setShowMenu(false); onRestore(); }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-green/20 hover:text-gx-green rounded"
+            >
+              <ExternalLink size={10} /> OPEN IN WINDOW
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={() => { setShowMenu(false); onDelete(); }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-red/20 text-gx-red rounded"
+            >
+              <Trash2 size={10} /> {isVault ? 'DELETE' : 'DELETE GROUP'}
+            </button>
+          )}
+        </div>
+      )}
 
       {!island.collapsed && !isOverlay && (
         <div 

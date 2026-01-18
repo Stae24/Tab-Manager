@@ -115,6 +115,65 @@ export const discardTab = async (tabId: number) => {
   return chrome.tabs.discard(tabId);
 };
 
+export const discardTabs = async (tabIds: number[]) => {
+  return Promise.all(tabIds.map(id => chrome.tabs.discard(id)));
+};
+
 export const closeTab = async (tabId: number) => {
   return chrome.tabs.remove(tabId);
+};
+
+export const copyTabUrl = async (tabId: number) => {
+  const tab = await chrome.tabs.get(tabId);
+  if (tab.url) {
+    await navigator.clipboard.writeText(tab.url);
+  }
+};
+
+export const muteTab = async (tabId: number) => {
+  return chrome.tabs.update(tabId, { muted: true });
+};
+
+export const unmuteTab = async (tabId: number) => {
+  return chrome.tabs.update(tabId, { muted: false });
+};
+
+export const pinTab = async (tabId: number) => {
+  return chrome.tabs.update(tabId, { pinned: true });
+};
+
+export const unpinTab = async (tabId: number) => {
+  return chrome.tabs.update(tabId, { pinned: false });
+};
+
+export const duplicateTab = async (tabId: number) => {
+  return chrome.tabs.duplicate(tabId);
+};
+
+export const duplicateIsland = async (tabIds: number[], windowId?: number) => {
+  // Get all tab URLs first
+  const tabs = await Promise.all(tabIds.map(id => chrome.tabs.get(id).catch(() => null)));
+  const validTabs = tabs.filter((t): t is chrome.tabs.Tab => t !== null && t.url !== undefined);
+
+  // Create new tabs in the current window
+  const newTabPromises = validTabs.map(tab =>
+    chrome.tabs.create({
+      windowId: tab.windowId,
+      url: tab.url,
+      active: tab.active,
+      index: tab.index + 1
+    })
+  );
+
+  const newTabs = await Promise.all(newTabPromises);
+  const newTabIds = newTabs.map(t => t.id).filter((id): id is number => id !== undefined);
+
+  // Group the new tabs
+  if (newTabIds.length > 0) {
+    const groupId = await chrome.tabs.group({ tabIds: newTabIds as [number, ...number[]] });
+    // Update the group with a copy indicator
+    await updateTabGroup(groupId, { title: 'Copy' });
+  }
+
+  return newTabIds;
 };

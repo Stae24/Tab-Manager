@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2, Link, Volume2, VolumeX, Copy, CopyPlus } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '../utils/cn';
-import { discardTab, ungroupTab, closeTab } from '../utils/chromeApi';
+import { discardTab, ungroupTab, closeTab, copyTabUrl, muteTab, unmuteTab, pinTab, unpinTab, duplicateTab } from '../utils/chromeApi';
 import { parseNumericId } from '../store/useStore';
 
 interface TabCardProps {
@@ -14,6 +14,8 @@ interface TabCardProps {
     active: boolean;
     discarded: boolean;
     url?: string;
+    muted?: boolean;
+    pinned?: boolean;
   };
   onClick?: () => void;
   onClose?: () => void;
@@ -27,6 +29,8 @@ interface TabCardProps {
 
 export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave, onRestore, isOverlay, disabled, isVault, isLoading }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const {
     attributes,
     listeners,
@@ -46,6 +50,23 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
     opacity: isDragging && !isOverlay ? 0.2 : 1, // Make original very faint or 0
     zIndex: isOverlay ? 9999 : undefined,
   };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
 
   return (
     <div className="relative" ref={setNodeRef} style={style}>
@@ -68,7 +89,8 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
         onContextMenu={(e) => {
           e.preventDefault();
           if (isOverlay) return;
-          setShowMenu(!showMenu);
+          setMenuPosition({ x: e.clientX, y: e.clientY });
+          setShowMenu(true);
         }}
       >
         {/* Glow background for active/drag state */}
@@ -133,7 +155,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
             </button>
           </div>
         )}
-        
+
         {/* Active tab indicator */}
         {tab.active && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-3 bg-gx-accent rounded-r-full shadow-[0_0_8px_#7f22fe] z-20" />
@@ -141,7 +163,11 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
       </div>
 
       {showMenu && !isOverlay && (
-        <div className="absolute top-full left-0 mt-1 w-36 bg-gx-gray border border-gx-accent/20 rounded shadow-xl z-[1000] p-1 flex flex-col gap-1">
+        <div
+          ref={menuRef}
+          className="fixed w-36 bg-gx-gray border border-gx-accent/20 rounded shadow-xl z-[1000] p-1 flex flex-col gap-1"
+          style={{ left: menuPosition?.x ?? 0, top: menuPosition?.y ?? 0 }}
+        >
           {!isVault && onSave && (
             <button onClick={() => { onSave(); setShowMenu(false); }} className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded">
               <Save size={10} /> SAVE TO VAULT
@@ -149,25 +175,71 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
           )}
           {!isVault && (
             <>
-              <button 
-                onClick={() => { 
-                    const numericId = parseNumericId(tab.id);
-                    if (numericId !== -1) discardTab(numericId); 
-                    setShowMenu(false); 
-                }} 
+              <button
+                onClick={() => {
+                  const numericId = parseNumericId(tab.id);
+                  if (numericId !== -1) discardTab(numericId);
+                  setShowMenu(false);
+                }}
                 className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
               >
                 <Snowflake size={10} /> FREEZE
               </button>
-              <button 
-                onClick={() => { 
-                    const numericId = parseNumericId(tab.id);
-                    if (numericId !== -1) ungroupTab(numericId); 
-                    setShowMenu(false); 
-                }} 
+              <button
+                onClick={() => {
+                  const numericId = parseNumericId(tab.id);
+                  if (numericId !== -1) ungroupTab(numericId);
+                  setShowMenu(false);
+                }}
                 className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
               >
                 <LogOut size={10} /> UNGROUP
+              </button>
+              <button
+                onClick={() => {
+                  const numericId = parseNumericId(tab.id);
+                  if (numericId !== -1) {
+                    if (tab.pinned) unpinTab(numericId);
+                    else pinTab(numericId);
+                  }
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+              >
+                <Link size={10} /> {tab.pinned ? 'UNPIN' : 'PIN'}
+              </button>
+              <button
+                onClick={() => {
+                  const numericId = parseNumericId(tab.id);
+                  if (numericId !== -1) {
+                    if (tab.muted) unmuteTab(numericId);
+                    else muteTab(numericId);
+                  }
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+              >
+                {tab.muted ? <Volume2 size={10} /> : <VolumeX size={10} />} {tab.muted ? 'UNMUTE' : 'MUTE'}
+              </button>
+              <button
+                onClick={() => {
+                  const numericId = parseNumericId(tab.id);
+                  if (numericId !== -1) duplicateTab(numericId);
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+              >
+                <CopyPlus size={10} /> DUPLICATE
+              </button>
+              <button
+                onClick={() => {
+                  const numericId = parseNumericId(tab.id);
+                  if (numericId !== -1) copyTabUrl(numericId);
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+              >
+                <Copy size={10} /> COPY URL
               </button>
             </>
           )}
@@ -176,15 +248,15 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
               <ExternalLink size={10} /> OPEN IN WINDOW
             </button>
           )}
-          <button 
-            onClick={() => { 
-                if (onClose) onClose();
-                else {
-                    const numericId = parseNumericId(tab.id);
-                    if (numericId !== -1) closeTab(numericId);
-                }
-                setShowMenu(false); 
-            }} 
+          <button
+            onClick={() => {
+              if (onClose) onClose();
+              else {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== -1) closeTab(numericId);
+              }
+              setShowMenu(false);
+            }}
             className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-red/20 text-gx-red rounded"
           >
             <Trash2 size={10} /> {isVault ? 'DELETE' : 'CLOSE'}
