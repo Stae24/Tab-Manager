@@ -168,8 +168,8 @@ export const Island: React.FC<IslandProps> = ({
           setShowMenu(true);
         }}
       >
-        <button 
-          onClick={handleToggleCollapse} 
+        <button
+          onClick={handleToggleCollapse}
           className="p-1 hover:bg-white/10 rounded pointer-events-auto relative z-10"
         >
           {island.collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
@@ -226,15 +226,15 @@ export const Island: React.FC<IslandProps> = ({
              </button>
            )}
            {isVault && onRestore && (
-            <button onClick={(e) => { e.stopPropagation(); onRestore(); }} title="Open in Current Window">
-              <ExternalLink size={14} className="text-gray-400 hover:text-gx-green" />
-            </button>
-          )}
-          {onDelete && (
-            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} title={isVault ? "Delete from Vault" : "Delete"}>
-              <Trash2 size={14} className="text-gray-400 hover:text-gx-red" />
-            </button>
-          )}
+             <button onClick={(e) => { e.stopPropagation(); onRestore(); }} title="Open in Current Window">
+               <ExternalLink size={14} className="text-gray-400 hover:text-gx-green" />
+             </button>
+           )}
+           {onDelete && (
+             <button onClick={(e) => { e.stopPropagation(); onDelete(); }} title={isVault ? "Delete from Vault" : "Delete"}>
+               <Trash2 size={14} className="text-gray-400 hover:text-gx-red" />
+             </button>
+           )}
         </div>
         
         {/* Active/Overlay background effect */}

@@ -20,6 +20,7 @@ interface TabState {
   pendingRefresh: boolean;
   isRenaming: boolean;
   isRefreshing: boolean; // Guard against recursive refresh calls
+  tabDensity: 'minified' | 'compact' | 'normal' | 'spacious';
 
   refreshTabs: () => Promise<void>;
   setIsUpdating: (val: boolean) => void;
@@ -29,6 +30,7 @@ interface TabState {
   toggleTheme: () => void;
   setDividerPosition: (pos: number) => void;
   setShowVault: (show: boolean) => void;
+  setTabDensity: (density: 'minified' | 'compact' | 'normal' | 'spacious') => void;
   addToVault: (item: Island | Tab) => Promise<void>;
   saveToVault: (item: Island | Tab) => Promise<void>;
   restoreToLive: (item: VaultItem) => Promise<void>;
@@ -107,9 +109,14 @@ export const useStore = create<TabState>((set, get) => ({
   pendingRefresh: false,
   isRenaming: false,
   isRefreshing: false,
+  tabDensity: 'normal',
 
   setIsUpdating: (isUpdating) => set({ isUpdating }),
   setIsRenaming: (isRenaming) => set({ isRenaming }),
+  setTabDensity: (tabDensity) => {
+    set({ tabDensity });
+    syncSettings({ tabDensity });
+  },
 
   moveItemOptimistically: (() => {
     let pendingId: UniqueIdentifier | null = null;
@@ -322,7 +329,8 @@ export const useStore = create<TabState>((set, get) => ({
       index: t.index,
       groupId: t.groupId,
       muted: t.mutedInfo?.muted ?? false,
-      pinned: t.pinned
+      pinned: t.pinned,
+      audible: t.audible ?? false
     }));
 
     const groupMap = new Map<number, Island>();
@@ -672,7 +680,7 @@ export const useStore = create<TabState>((set, get) => ({
 // Cross-Window Sync Initialization
 const init = async () => {
   const [sync, local] = await Promise.all([
-    chrome.storage.sync.get(['uiScale', 'theme', 'dividerPosition', 'showVault']),
+    chrome.storage.sync.get(['uiScale', 'theme', 'dividerPosition', 'showVault', 'tabDensity']),
     chrome.storage.local.get(['vault'])
   ]);
 
@@ -681,6 +689,7 @@ const init = async () => {
   if (sync.theme) state.setTheme(sync.theme as 'dark' | 'light');
   if (sync.dividerPosition) state.setDividerPosition(Number(sync.dividerPosition));
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
+  if (sync.tabDensity) state.setTabDensity(sync.tabDensity as 'minified' | 'compact' | 'normal' | 'spacious');
   if (local.vault) useStore.setState({ vault: local.vault as VaultItem[] });
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -695,6 +704,7 @@ const init = async () => {
        if (changes.uiScale) state.setUiScale(Number(changes.uiScale.newValue));
        if (changes.theme) state.setTheme(changes.theme.newValue as 'dark' | 'light');
        if (changes.showVault) state.setShowVault(Boolean(changes.showVault.newValue));
+       if (changes.tabDensity) state.setTabDensity(changes.tabDensity.newValue as 'minified' | 'compact' | 'normal' | 'spacious');
     }
   });
 };
