@@ -58,11 +58,28 @@ const LivePanel: React.FC<{
   });
 
   const { setNodeRef: setBottomRef, isOver: isBottomOver } = useDroppable({
-    id: 'live-panel-bottom',
+    id: 'vault-bottom',
   });
 
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
+
+  // Droppable gap component for between items
+  const DroppableGap: React.FC<{ index: number; isLast?: boolean }> = ({ index, isLast }) => {
+    const { setNodeRef, isOver } = useDroppable({
+      id: `live-gap-${index}`,
+    });
+
+    return (
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "h-2 w-full transition-all duration-150 rounded",
+          isOver && !isDraggingGroup && "h-4 bg-gx-accent/30 shadow-[0_0_10px_rgba(127,34,254,0.4)]"
+        )}
+      />
+    );
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -328,36 +345,40 @@ const LivePanel: React.FC<{
           // Normal Mode: Show islands and standalone tabs
           <>
             <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-              {(islands || []).map((item: any) => {
-                if (item && 'tabs' in item) {
-                  return (
-                    <Island
-                      key={item.id}
-                      island={item}
-                      onTabClick={(tab) => handleTabClick(tab.id)}
-                      onNonDestructiveSave={() => saveToVault(item)}
-                      onSave={() => addToVault(item)}
-                      onDelete={() => item.tabs.forEach((t: any) => closeTab(t.id))}
-                      onRename={(title) => onRenameGroup(item.id, title)}
-                      onToggleCollapse={() => onToggleCollapse(item.id)}
-                      onTabSave={(tab) => saveToVault(tab)}
-                      onTabClose={(id) => closeTab(id as number)}
-                      disabled={!!searchQuery}
-                    />
-                  );
-                } else {
-                  return (
-                    <TabCard
-                      key={item.id}
-                      tab={item}
-                      onClick={() => handleTabClick(item.id)}
-                      onSave={() => saveToVault(item)}
-                      onClose={() => closeTab(item.id)}
-                      disabled={!!searchQuery}
-                      isLoading={isCreatingIsland && creatingTabId === item.id}
-                    />
-                  );
-                }
+              {(islands || []).map((item: any, index: number) => {
+                const isCurrentIsland = item && 'tabs' in item;
+                const prevItem = islands?.[index - 1];
+                const isPrevIsland = prevItem && 'tabs' in prevItem;
+                const showGap = isCurrentIsland && isPrevIsland;
+
+                return (
+                  <React.Fragment key={item.id}>
+                    {showGap && <DroppableGap index={index} />}
+                    {isCurrentIsland ? (
+                      <Island
+                        island={item}
+                        onTabClick={(tab) => handleTabClick(tab.id)}
+                        onNonDestructiveSave={() => saveToVault(item)}
+                        onSave={() => addToVault(item)}
+                        onDelete={() => item.tabs.forEach((t: any) => closeTab(t.id))}
+                        onRename={(title) => onRenameGroup(item.id, title)}
+                        onToggleCollapse={() => onToggleCollapse(item.id)}
+                        onTabSave={(tab) => saveToVault(tab)}
+                        onTabClose={(id) => closeTab(id as number)}
+                        disabled={!!searchQuery}
+                      />
+                    ) : (
+                      <TabCard
+                        tab={item}
+                        onClick={() => handleTabClick(item.id)}
+                        onSave={() => saveToVault(item)}
+                        onClose={() => closeTab(item.id)}
+                        disabled={!!searchQuery}
+                        isLoading={isCreatingIsland && creatingTabId === item.id}
+                      />
+                    )}
+                  </React.Fragment>
+                );
               })}
             </SortableContext>
 
@@ -428,6 +449,23 @@ const VaultPanel: React.FC<{
     id: 'vault-bottom',
   });
 
+  // Droppable gap component for between two islands
+  const DroppableGap: React.FC<{ index: number }> = ({ index }) => {
+    const { setNodeRef, isOver } = useDroppable({
+      id: `vault-gap-${index}`,
+    });
+
+    return (
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "h-2 w-full transition-all duration-150 rounded",
+          isOver && "h-4 bg-gx-accent/30 shadow-[0_0_10px_rgba(127,34,254,0.4)]"
+        )}
+      />
+    );
+  };
+
   return (
     <div 
       ref={setNodeRef}
@@ -453,32 +491,36 @@ const VaultPanel: React.FC<{
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 scroll-smooth overscroll-none">
         <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-          {(vault || []).map((item) => {
-            if ('tabs' in item) {
-              return (
-                <Island
-                  key={item.savedAt || item.id}
-                  island={item}
-                  isVault={true}
-                  onRestore={() => restoreToLive(item)}
-                  onDelete={() => removeFromVault(item.id)}
-                  onRename={(title) => onRenameGroup(item.id, title)}
-                  onToggleCollapse={() => onToggleCollapse(item.id)}
-                  onTabRestore={(tab) => restoreToLive(tab)}
-                  onTabClose={(id) => removeFromVault(id)}
-                />
-              );
-            } else {
-              return (
-                <TabCard
-                  key={item.savedAt || item.id}
-                  tab={item}
-                  isVault={true}
-                  onRestore={() => restoreToLive(item)}
-                  onClose={() => removeFromVault(item.id)}
-                />
-              );
-            }
+          {(vault || []).map((item, index) => {
+            const isCurrentIsland = 'tabs' in item;
+            const prevItem = vault?.[index - 1];
+            const isPrevIsland = prevItem && 'tabs' in prevItem;
+            const showGap = isCurrentIsland && isPrevIsland;
+
+            return (
+              <React.Fragment key={item.savedAt || item.id}>
+                {showGap && <DroppableGap index={index} />}
+                {'tabs' in item ? (
+                  <Island
+                    island={item}
+                    isVault={true}
+                    onRestore={() => restoreToLive(item)}
+                    onDelete={() => removeFromVault(item.id)}
+                    onRename={(title) => onRenameGroup(item.id, title)}
+                    onToggleCollapse={() => onToggleCollapse(item.id)}
+                    onTabRestore={(tab) => restoreToLive(tab)}
+                    onTabClose={(id) => removeFromVault(id)}
+                  />
+                ) : (
+                  <TabCard
+                    tab={item}
+                    isVault={true}
+                    onRestore={() => restoreToLive(item)}
+                    onClose={() => removeFromVault(item.id)}
+                  />
+                )}
+              </React.Fragment>
+            );
           })}
         </SortableContext>
         

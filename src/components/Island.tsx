@@ -193,7 +193,7 @@ export const Island: React.FC<IslandProps> = ({
           className="p-2 bg-gx-dark/30 rounded-b-lg border-x-2 border-b-2 border-transparent shadow-inner min-h-[40px]"
           style={{ borderColor: `${borderColor}33`, borderBottomColor: borderColor }}
         >
-          <div className="space-y-1">
+          <div className="space-y-1 relative">
             <SortableContext items={(island.tabs || []).map(t => t.id)} strategy={verticalListSortingStrategy}>
               {(island.tabs || []).map((tab) => (
                 <TabCard

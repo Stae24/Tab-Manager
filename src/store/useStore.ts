@@ -159,7 +159,14 @@ export const useStore = create<TabState>((set, get) => ({
     // If dropped on the panel dropzone
     if (['live-panel-dropzone', 'vault-dropzone', 'live-panel-bottom', 'vault-bottom'].includes(String(overId))) {
       targetIndex = activeInLive ? islands.length : vault.length;
-    } 
+    }
+    // If dropped on a gap between items (live-gap-X or vault-gap-X)
+    else if (String(overId).startsWith('live-gap-') || String(overId).startsWith('vault-gap-')) {
+      const isLiveGap = String(overId).startsWith('live-gap-');
+      const gapIndex = parseInt(String(overId).split('-')[2], 10);
+      targetIndex = isNaN(gapIndex) ? (activeInLive ? islands.length : vault.length) : gapIndex;
+      targetContainerId = 'root';
+    }
     // If dropped on an item
     else if (over) {
       targetContainerId = over.containerId;
