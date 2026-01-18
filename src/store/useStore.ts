@@ -36,7 +36,7 @@ interface TabState {
   createVaultGroup: () => Promise<void>;
   toggleVaultGroupCollapse: (id: UniversalId) => Promise<void>;
   toggleLiveGroupCollapse: (id: UniversalId) => Promise<void>;
-  moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
+  moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier, edge?: 'top' | 'bottom') => void;
   deleteDuplicateTabs: () => Promise<void>;
 }
 
@@ -72,13 +72,13 @@ export const parseNumericId = (id: UniqueIdentifier): number => {
 // Tactical Item Discovery
 const findItemInList = (list: any[], id: UniqueIdentifier) => {
   const idStr = String(id);
-  
+
   // Check root level first
   const rootIndex = list.findIndex(i => i && String(i.id) == idStr);
   if (rootIndex !== -1) {
     return { item: list[rootIndex], containerId: 'root', index: rootIndex };
   }
-  
+
   // Check nested levels (tabs inside groups)
   for (const entry of list) {
     if (entry && (entry as any).tabs && Array.isArray((entry as any).tabs)) {
@@ -90,6 +90,34 @@ const findItemInList = (list: any[], id: UniqueIdentifier) => {
     }
   }
   return null;
+};
+
+// Helper to find the absolute visual position in the flattened list (considering expanded groups)
+const findGlobalIndex = (list: any[], id: UniqueIdentifier): number => {
+  const idStr = String(id);
+  let globalIndex = 0;
+
+  for (const item of list) {
+    if (!item) continue;
+
+    // Check if this is the target item at root level
+    if (String(item.id) === idStr) {
+      return globalIndex;
+    }
+    globalIndex++;
+
+    // If this is an expanded group, check its tabs
+    if ('tabs' in item && Array.isArray(item.tabs) && !item.collapsed) {
+      for (const tab of item.tabs) {
+        if (tab && String(tab.id) === idStr) {
+          return globalIndex;
+        }
+        globalIndex++;
+      }
+    }
+  }
+
+  return -1; // Item not found
 };
 
 export const useStore = create<TabState>((set, get) => ({
@@ -109,7 +137,7 @@ export const useStore = create<TabState>((set, get) => ({
   setIsUpdating: (isUpdating) => set({ isUpdating }),
   setIsRenaming: (isRenaming) => set({ isRenaming }),
 
-  moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => {
+  moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier, edge?: 'top' | 'bottom') => {
     const { islands, vault } = get();
     if (activeId === overId) return;
 
@@ -156,14 +184,33 @@ export const useStore = create<TabState>((set, get) => ({
     // Islands in Vault always have a 'tabs' array.
     const isActiveGroup = active.item && 'tabs' in active.item;
 
-    // If dropped on the panel dropzone
-    if (['live-panel-dropzone', 'vault-dropzone', 'live-panel-bottom', 'vault-bottom'].includes(String(overId))) {
+    // If dropped on the specific append zones
+    if (['live-panel-bottom', 'vault-bottom'].includes(String(overId))) {
       targetIndex = activeInLive ? islands.length : vault.length;
     } 
+    // Handle background dropzone only if list is empty
+    else if (['live-panel-dropzone', 'vault-dropzone'].includes(String(overId))) {
+       const list = activeInLive ? islands : vault;
+       if (list.length === 0) {
+           targetIndex = 0;
+       } else {
+           // If list is not empty, dropping on the background should not trigger an append
+           return; 
+       }
+    }
     // If dropped on an item
     else if (over) {
       targetContainerId = over.containerId;
       targetIndex = over.index;
+
+      // CRITICAL FIX: Use edge metadata to determine insertion position
+      // If edge is 'bottom', insert AFTER the target (targetIndex + 1)
+      // If edge is 'top', insert BEFORE the target (targetIndex)
+      // This prevents the "direction flipping" bug where items jump back and forth
+      if (edge === 'bottom') {
+        targetIndex = over.index + 1;
+      }
+      // edge === 'top' means targetIndex stays as over.index (insert before)
 
       // Handle nesting: Dragging a tab over a group header
       // If dropped on group header, target the group itself
@@ -188,7 +235,7 @@ export const useStore = create<TabState>((set, get) => ({
           const currentRoot = activeInLive ? islands : vault;
           // Find the parent group of the item we are hovering over
           const parentGroupIndex = currentRoot.findIndex(i => String(i.id) === String(targetContainerId));
-          
+
           if (parentGroupIndex !== -1) {
               targetContainerId = 'root';
               targetIndex = parentGroupIndex;
@@ -196,6 +243,24 @@ export const useStore = create<TabState>((set, get) => ({
               // Safety fallback: if we can't find the parent, abort to prevent corruption
               return;
           }
+      }
+
+      // VISUAL DIRECTION AWARENESS: Handle "2nd to last slot" append bug
+      // When dragging UP into a group from below, we should APPEND rather than PREPEND
+      const currentRoot = activeInLive ? islands : vault;
+      const globalActiveIndex = findGlobalIndex(currentRoot, activeId);
+      const globalOverIndex = findGlobalIndex(currentRoot, overId);
+
+      // Check if we're moving UP and it's a cross-container move
+      if (globalActiveIndex > globalOverIndex && active.containerId !== targetContainerId) {
+        // Moving UP: If hovering over a tab, append AFTER it (targetIndex + 1)
+        if (over.item && !('tabs' in over.item)) {
+          targetIndex = over.index + 1;
+        }
+        // Moving UP: If hovering over an expanded group header, append to end of group
+        else if (over.item && 'tabs' in over.item && !over.item.collapsed) {
+          targetIndex = (over.item.tabs as any[]).length;
+        }
       }
     }
 
