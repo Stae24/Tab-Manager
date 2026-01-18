@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Trash2, Save, LogOut, ExternalLink } from 'lucide-react';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { TabCard } from './TabCard';
 import { cn, getIslandBorderColor } from '../utils/cn';
@@ -60,6 +61,12 @@ export const Island: React.FC<IslandProps> = ({
     disabled: disabled || isEditing, // Disable DnD when editing
   });
 
+  // "Above" droppable zone - top 50% of header for inserting before this group
+  const { setNodeRef: setAboveRef } = useDroppable({
+    id: `above-${island.id}`,
+    data: { type: 'above-island', island },
+  });
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -106,13 +113,18 @@ export const Island: React.FC<IslandProps> = ({
           island.collapsed && "rounded-b-lg border-b-2 shadow-lg",
           isOverlay && "shadow-2xl ring-2 ring-gx-accent/50 bg-gx-dark rounded-lg border-b-2"
         )}
-        style={{ 
-          borderTopColor: borderColor, 
-          borderLeftColor: borderColor, 
+        style={{
+          borderTopColor: borderColor,
+          borderLeftColor: borderColor,
           borderRightColor: borderColor,
           borderBottomColor: (island.collapsed || isOverlay) ? borderColor : 'transparent'
         }}
       >
+        {/* "Above" drop zone - top 50% of header for inserting before this group */}
+        <div
+          ref={setAboveRef}
+          className="absolute inset-x-0 top-0 h-1/2 pointer-events-auto"
+        />
         <button 
           onClick={handleToggleCollapse} 
           className="p-1 hover:bg-white/10 rounded pointer-events-auto relative z-10"
