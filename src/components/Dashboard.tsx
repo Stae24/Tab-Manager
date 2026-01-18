@@ -101,9 +101,17 @@ const LivePanel: React.FC<{
   const [isCleaning, setIsCleaning] = useState(false);
 
   // Droppable gap component for between items
+  // Note: index === 0 gap is NOT droppable - it's at the top of the panel
+  // and should not interfere with dragging items above the first island
   const DroppableGap: React.FC<{ index: number; isLast?: boolean }> = ({ index, isLast }) => {
     const { active } = useDndContext();
-    const { setNodeRef, gapRef, isOver, expanded } = useProximityGap(`live-gap-${index}`, active, isDraggingGroup);
+    const isFirstGap = index === 0;
+    // Only make droppable if not the first gap (which is at the top of panel)
+    const { setNodeRef, gapRef, isOver, expanded } = useProximityGap(
+      `live-gap-${index}`,
+      active,
+      isDraggingGroup
+    );
 
     return (
       <div
@@ -112,11 +120,15 @@ const LivePanel: React.FC<{
           gapRef.current = node;
         }}
         className={cn(
-          "w-full rounded transition-all duration-200 ease-out",
-          // Default state: nearly invisible
-          !expanded && "h-px min-h-[1px]",
-          // Expanded state: comfortable drop target
-          expanded && "h-8 min-h-[32px]"
+          "w-full rounded transition-all duration-200 ease-out pointer-events-none",
+          // First gap is invisible and non-interactive (at top of panel)
+          isFirstGap && "h-px min-h-[1px]",
+          // Other gaps: default state nearly invisible
+          !isFirstGap && !expanded && "h-px min-h-[1px]",
+          // Other gaps: expanded state - comfortable drop target
+          !isFirstGap && expanded && "h-8 min-h-[32px]",
+          // Visual feedback only when expanded and not first gap
+          !isFirstGap && isOver && expanded && "bg-gx-accent/20"
         )}
       />
     );
@@ -384,17 +396,17 @@ const LivePanel: React.FC<{
           </div>
         ) : (
           // Normal Mode: Show islands and standalone tabs
-          <>
-            <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-              {(islands || []).map((item: any, index: number) => {
-                const isCurrentIsland = item && 'tabs' in item;
-                const prevItem = islands?.[index - 1];
-                const isPrevIsland = prevItem && 'tabs' in prevItem;
-                const showGap = isCurrentIsland && isPrevIsland;
+            <>
+              <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
+                {(islands || []).map((item: any, index: number) => {
+                  const isCurrentIsland = item && 'tabs' in item;
+                  const prevItem = islands?.[index - 1];
+                  const isPrevIsland = prevItem && 'tabs' in prevItem;
+                  const showGap = isCurrentIsland && isPrevIsland;
 
-                return (
-                  <React.Fragment key={item.id}>
-                    {showGap && <DroppableGap index={index} />}
+                  return (
+                    <React.Fragment key={item.id}>
+                      {showGap && <DroppableGap index={index} />}
                     {isCurrentIsland ? (
                       <Island
                         island={item}
