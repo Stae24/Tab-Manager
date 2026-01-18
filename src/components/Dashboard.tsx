@@ -43,16 +43,24 @@ const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) 
     }
 
     // Track pointer movement for proximity detection
+    // Uses fixed reference point to prevent jitter when gap expands/contracts
     const handlePointerMove = (e: PointerEvent) => {
       if (!gapRef.current) return;
 
       const gapRect = gapRef.current.getBoundingClientRect();
-      const gapCenterY = gapRect.top + gapRect.height / 2;
+      const baseRem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
       const pointerY = e.clientY;
-      const distance = Math.abs(pointerY - gapCenterY);
 
-      // Expand when within 80px proximity
-      setExpanded(distance < 80);
+      // Distance from gap's current top (fixed reference for this frame)
+      const distance = pointerY - gapRect.top;
+
+      // Asymmetric detection from fixed reference point
+      // Upward: 1rem buffer above gap
+      // Downward: 3rem buffer below gap (accounts for expanded height + buffer)
+      const expandUp = distance < 0 && Math.abs(distance) < 1 * baseRem;
+      const expandDown = distance >= 0 && distance < 3 * baseRem;
+
+      setExpanded(expandUp || expandDown);
     };
 
     document.addEventListener('pointermove', handlePointerMove);
@@ -101,12 +109,8 @@ const LivePanel: React.FC<{
   const [isCleaning, setIsCleaning] = useState(false);
 
   // Droppable gap component for between items
-  // Note: index === 0 gap is NOT droppable - it's at the top of the panel
-  // and should not interfere with dragging items above the first island
   const DroppableGap: React.FC<{ index: number; isLast?: boolean }> = ({ index, isLast }) => {
     const { active } = useDndContext();
-    const isFirstGap = index === 0;
-    // Only make droppable if not the first gap (which is at the top of panel)
     const { setNodeRef, gapRef, isOver, expanded } = useProximityGap(
       `live-gap-${index}`,
       active,
@@ -121,14 +125,12 @@ const LivePanel: React.FC<{
         }}
         className={cn(
           "w-full rounded transition-all duration-200 ease-out pointer-events-none",
-          // First gap is invisible and non-interactive (at top of panel)
-          isFirstGap && "h-px min-h-[1px]",
-          // Other gaps: default state nearly invisible
-          !isFirstGap && !expanded && "h-px min-h-[1px]",
-          // Other gaps: expanded state - comfortable drop target
-          !isFirstGap && expanded && "h-8 min-h-[32px]",
-          // Visual feedback only when expanded and not first gap
-          !isFirstGap && isOver && expanded && "bg-gx-accent/20"
+          // Default state: nearly invisible
+          !expanded && "h-px min-h-[1px]",
+          // Expanded state - matches tab card height (rem scales with zoom)
+          expanded && "h-[2.375rem]",
+          // Visual feedback when expanded and over
+          isOver && expanded && "bg-gx-accent/20"
         )}
       />
     );
@@ -517,8 +519,8 @@ const VaultPanel: React.FC<{
           "w-full rounded transition-all duration-200 ease-out",
           // Default state: nearly invisible
           !expanded && "h-px min-h-[1px]",
-          // Expanded state: comfortable drop target
-          expanded && "h-8 min-h-[32px]"
+          // Expanded state - matches tab card height (rem scales with zoom)
+          expanded && "h-[2.375rem]"
         )}
       />
     );
