@@ -6,6 +6,8 @@ export interface Tab {
   active: boolean;
   discarded: boolean;
   windowId: number;
+  muted?: boolean;
+  pinned?: boolean;
 }
 
 export interface Island {

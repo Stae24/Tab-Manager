@@ -320,7 +320,9 @@ export const useStore = create<TabState>((set, get) => ({
       discarded: t.discarded,
       windowId: t.windowId,
       index: t.index,
-      groupId: t.groupId
+      groupId: t.groupId,
+      muted: t.mutedInfo?.muted ?? false,
+      pinned: t.pinned
     }));
 
     const groupMap = new Map<number, Island>();
