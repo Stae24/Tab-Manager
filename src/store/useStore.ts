@@ -202,11 +202,18 @@ export const useStore = create<TabState>((set, get) => ({
           // Handle nesting: Dragging a tab over a group header
           if (over.item && 'tabs' in over.item && !isActiveGroup) {
             if (active.containerId === over.item.id) {
+              // Dragging within the same group - stay in group
+              targetContainerId = 'root';
+              targetIndex = over.index;
+            } else if (over.item.collapsed) {
+              // Dropping on a collapsed group header from outside
+              // Treat as dropping ABOVE the group (root container), not inside
               targetContainerId = 'root';
               targetIndex = over.index;
             } else {
+              // Dropping on an expanded group header - insert at beginning
               targetContainerId = over.item.id;
-              targetIndex = over.item.collapsed ? (over.item.tabs as any[]).length : 0;
+              targetIndex = 0;
             }
           }
 
