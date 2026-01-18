@@ -197,6 +197,16 @@ export const useStore = create<TabState>((set, get) => ({
               return;
           }
       }
+      
+      // FIX: When moving from OUTSIDE a group TO INSIDE a group and dropping on the LAST tab,
+      // dnd-kit gives us the index of that tab. To insert at the end, we need index + 1.
+      // Otherwise the new tab goes into the 2nd to last position instead of the last.
+      if (active.containerId !== targetContainerId && over.item && !('tabs' in over.item)) {
+          const targetGroup = (activeInLive ? islands : vault).find(i => String(i.id) === String(targetContainerId));
+          if (targetGroup && 'tabs' in targetGroup && targetGroup.tabs && targetIndex === targetGroup.tabs.length - 1) {
+              targetIndex = targetIndex + 1;
+          }
+      }
     }
 
     // Validation
