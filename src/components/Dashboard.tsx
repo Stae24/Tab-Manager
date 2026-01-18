@@ -26,6 +26,7 @@ import { TabCard } from './TabCard';
 import { Sidebar } from './Sidebar';
 import { useStore, parseNumericId } from '../store/useStore';
 import { cn } from '../utils/cn';
+import { closestEdge } from '../utils/dndUtils';
 import { closeTab, moveIsland, createIsland } from '../utils/chromeApi';
 import { Island as IslandType, Tab as TabType } from '../types/index';
 
@@ -47,8 +48,9 @@ const LivePanel: React.FC<{
   deleteDuplicateTabs: () => Promise<void>,
   showVault: boolean,
   isCreatingIsland: boolean,
-  creatingTabId: number | string | null
-}> = ({ dividerPosition, islands, handleTabClick, addToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, deleteDuplicateTabs, showVault, isCreatingIsland, creatingTabId }) => {
+  creatingTabId: number | string | null,
+  activeItem?: any
+}> = ({ dividerPosition, islands, handleTabClick, addToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, deleteDuplicateTabs, showVault, isCreatingIsland, creatingTabId, activeItem }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'live-panel-dropzone',
   });
@@ -361,6 +363,13 @@ const LivePanel: React.FC<{
               })}
             </SortableContext>
 
+            {/* Bottom Drop Zone / Spacer for Appending */}
+            <div
+              ref={setBottomRef}
+              id="live-panel-bottom"
+              className="h-8 w-full shrink-0"
+            />
+
             <div
               ref={setCreateRef}
               id="new-island-dropzone"
@@ -399,19 +408,6 @@ const LivePanel: React.FC<{
             </div>
           </>
         )}
-
-        {/* Bottom Drop Zone / Spacer for Appending */}
-        <div
-          ref={setBottomRef}
-          className={cn(
-            "h-24 w-full rounded-xl border-2 border-dashed border-transparent transition-all flex items-center justify-center shrink-0",
-            isBottomOver ? "border-gx-accent/30 bg-gx-accent/5" : "hover:border-gx-gray/30"
-          )}
-        >
-          <span className={cn("text-xs font-bold uppercase tracking-widest text-gx-gray opacity-0 transition-opacity", isBottomOver && "opacity-100")}>
-            Drop to Append
-          </span>
-        </div>
       </div>
     </div>
   );
@@ -425,8 +421,9 @@ const VaultPanel: React.FC<{
   createVaultGroup: () => void,
   onRenameGroup: (id: number | string, title: string) => void,
   onToggleCollapse: (id: number | string) => void,
-  restoreToLive: (item: any) => void
-}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, restoreToLive }) => {
+  restoreToLive: (item: any) => void,
+  activeItem?: any
+}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, restoreToLive, activeItem }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'vault-dropzone',
   });
@@ -499,17 +496,11 @@ const VaultPanel: React.FC<{
         )}
 
         {/* Bottom Drop Zone / Spacer */}
-        <div 
-            ref={setBottomRef} 
-            className={cn(
-                "h-24 w-full rounded-xl border-2 border-dashed border-transparent transition-all flex items-center justify-center shrink-0",
-                isBottomOver ? "border-gx-accent/30 bg-gx-accent/5" : "hover:border-gx-gray/30"
-            )}
-        >
-            <span className={cn("text-xs font-bold uppercase tracking-widest text-gx-gray opacity-0 transition-opacity", isBottomOver && "opacity-100")}>
-                Drop to Append
-            </span>
-        </div>
+        <div
+            ref={setBottomRef}
+            id="vault-bottom"
+            className="h-8 w-full shrink-0"
+        />
       </div>
     </div>
   );
@@ -657,14 +648,20 @@ export const Dashboard: React.FC = () => {
     if (!over) return;
     const activeId = active.id;
     const overId = over.id;
+    
     if (activeId === overId) return;
 
     // Skip optimistic UI updates if hovering over the creation zone
-    // This prevents glitches and ensures handleDragEnd receives the correct event data
     if (overId === 'create-island-dropzone') return;
 
-    moveItemOptimistically(activeId as any, overId as any);
+    // Extract edge metadata from collision detection
+    // This determines whether we should insert BEFORE (top) or AFTER (bottom) the target
+    const edge = event.collisions?.[0]?.data?.edge;
+
+    moveItemOptimistically(activeId as any, overId as any, edge);
   };
+
+
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -914,7 +911,7 @@ export const Dashboard: React.FC = () => {
       <Sidebar />
       <DndContext 
         sensors={isRenaming ? [] : sensors} 
-        collisionDetection={closestCorners} 
+        collisionDetection={closestEdge} 
         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }} 
         onDragStart={handleDragStart} 
         onDragOver={handleDragOver} 
@@ -940,6 +937,7 @@ export const Dashboard: React.FC = () => {
             showVault={showVault}
             isCreatingIsland={isCreatingIsland}
             creatingTabId={creatingTabId}
+            activeItem={activeItem}
           />
           {showVault && (
             <>
@@ -956,6 +954,7 @@ export const Dashboard: React.FC = () => {
                 onRenameGroup={renameGroup}
                 onToggleCollapse={toggleVaultGroupCollapse}
                 restoreToLive={restoreToLive}
+                activeItem={activeItem}
               />
             </>
           )}
