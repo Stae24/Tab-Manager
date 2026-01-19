@@ -2,18 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Sun, Moon, ZoomIn, ZoomOut, RefreshCw, Download, Settings, X, Save, ChevronDown, Minus, Plus as PlusIcon, Layers } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn } from '../utils/cn';
+import { AppearanceSettingsPanel } from './AppearanceSettingsPanel';
 
 export const Sidebar: React.FC = () => {
-  const { isDarkMode, toggleTheme, uiScale, setUiScale, islands, vault, showVault, setShowVault, tabDensity, setTabDensity } = useStore();
-  const [showSettings, setShowSettings] = useState(false);
+  const { isDarkMode, toggleTheme, appearanceSettings, setAppearanceSettings, islands, vault, showVault, setShowVault } = useStore();
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
-  const settingsAreaRef = useRef<HTMLDivElement>(null);
-  const settingsButtonRef = useRef<HTMLButtonElement>(null);
-
-  const handleScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUiScale(parseFloat(e.target.value));
-  };
+  const [showAppearancePanel, setShowAppearancePanel] = useState(false);
+  const appearancePanelRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -21,17 +17,17 @@ export const Sidebar: React.FC = () => {
       if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
         setShowExportDropdown(false);
       }
-      const isInSettingsArea = settingsAreaRef.current?.contains(event.target as Node);
-      const isInSettingsButton = settingsButtonRef.current?.contains(event.target as Node);
-      if (!isInSettingsArea && !isInSettingsButton) {
-        setShowSettings(false);
+      if (showAppearancePanel && appearancePanelRef.current && !appearancePanelRef.current.contains(event.target as Node)) {
+        setShowAppearancePanel(false);
       }
     };
-    if (showExportDropdown || showSettings) {
+    if (showExportDropdown || showAppearancePanel) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showExportDropdown, showSettings]);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportDropdown, showAppearancePanel]);
 
   const handleExport = (format: 'json' | 'csv' | 'md') => {
     const data = { islands, vault };
@@ -114,15 +110,14 @@ export const Sidebar: React.FC = () => {
             <p className="text-[10px] text-gray-500 font-mono">GX EDITION</p>
           </div>
         </div>
-        <button 
-          ref={settingsButtonRef}
+        <button
           onClick={(e) => {
             e.stopPropagation();
-            setShowSettings(!showSettings);
+            setShowAppearancePanel(!showAppearancePanel);
           }}
           className={cn(
             "p-2 rounded-lg transition-all border",
-            showSettings
+            showAppearancePanel
               ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan"
               : "bg-gx-gray hover:bg-gx-accent/20 text-gray-400 hover:text-white border-white/5"
           )}
@@ -172,7 +167,7 @@ export const Sidebar: React.FC = () => {
           </button>
           {showExportDropdown && (
             <div
-              className="absolute top-full left-0 mt-1 w-full bg-gx-gray border border-gx-accent/20 rounded shadow-xl flex flex-col z-50 overflow-hidden"
+              className="absolute top-full left-0 mt-1 w-full bg-gx-gray border border-gx-accent/20 rounded-lg shadow-xl overflow-hidden z-50 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -207,57 +202,13 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Settings Dropdown */}
-      {showSettings && (
-        <div ref={settingsAreaRef} className="absolute top-full left-0 mt-2 w-full z-50">
-          <div className="w-full bg-gx-dark border border-gx-gray rounded-xl shadow-xl overflow-hidden">
-            <div className="w-full h-0.5 bg-gradient-to-r from-gx-accent via-gx-red to-gx-accent" />
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-black text-white tracking-tighter italic uppercase flex items-center gap-2">
-                  <Settings className="text-gx-accent" size={16} /> Preferences
-                </h2>
-                <button onClick={() => setShowSettings(false)} className="p-1 hover:bg-white/10 rounded transition-colors">
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold tracking-widest uppercase">
-                    <span>UI SCALE</span>
-                    <span className="font-mono text-gx-accent bg-gx-accent/10 px-2 py-0.5 rounded">{Math.round(uiScale * 100)}%</span>
-                  </div>
-                  <div className="flex items-center gap-3 bg-gx-gray/30 p-3 rounded-lg border border-white/5">
-                    <button onClick={() => setUiScale(Math.max(0.75, uiScale - 0.05))} className="p-1.5 rounded-lg bg-gx-gray hover:bg-gx-accent/20 transition-all"><ZoomOut size={14} /></button>
-                    <input type="range" min="0.75" max="1.5" step="0.05" value={uiScale} onChange={handleScaleChange} className="flex-1 h-1.5 bg-gx-gray rounded-lg appearance-none cursor-pointer accent-gx-accent" />
-                    <button onClick={() => setUiScale(Math.min(1.5, uiScale + 0.05))} className="p-1.5 rounded-lg bg-gx-gray hover:bg-gx-accent/20 transition-all"><ZoomIn size={14} /></button>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold tracking-widest uppercase">
-                    <span>TAB DENSITY</span>
-                    <span className="font-mono text-gx-cyan bg-gx-cyan/10 px-2 py-0.5 rounded capitalize">{tabDensity}</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-gx-gray/30 p-3 rounded-lg border border-white/5">
-                    <button onClick={() => setTabDensity('minified')} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg transition-all border text-[10px] font-bold uppercase", tabDensity === 'minified' ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan" : "bg-gx-gray border-transparent text-gray-500 hover:text-gray-300")}>
-                      <Minus size={12} /> Minified
-                    </button>
-                    <button onClick={() => setTabDensity('compact')} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg transition-all border text-[10px] font-bold uppercase", tabDensity === 'compact' ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan" : "bg-gx-gray border-transparent text-gray-500 hover:text-gray-300")}>
-                      <Minus size={12} /> Compact
-                    </button>
-                    <button onClick={() => setTabDensity('normal')} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg transition-all border text-[10px] font-bold uppercase", tabDensity === 'normal' ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan" : "bg-gx-gray border-transparent text-gray-500 hover:text-gray-300")}>
-                      <Layers size={12} /> Normal
-                    </button>
-                    <button onClick={() => setTabDensity('spacious')} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg transition-all border text-[10px] font-bold uppercase", tabDensity === 'spacious' ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan" : "bg-gx-gray border-transparent text-gray-500 hover:text-gray-300")}>
-                      <PlusIcon size={12} /> Spacious
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Appearance Settings Panel (Slide-over) */}
+      <div ref={appearancePanelRef}>
+        <AppearanceSettingsPanel
+          isOpen={showAppearancePanel}
+          onClose={() => setShowAppearancePanel(false)}
+        />
+      </div>
     </div>
   );
 };
