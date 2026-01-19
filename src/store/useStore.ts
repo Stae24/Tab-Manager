@@ -6,13 +6,69 @@ import { createIsland, updateTabGroup, updateTabGroupCollapse } from '../utils/c
 // Universal ID for cross-panel compatibility
 type UniversalId = number | string;
 
+// Appearance settings types - exported for components
+export type ThemeMode = 'dark' | 'light' | 'system';
+export type AnimationIntensity = 'full' | 'subtle' | 'off';
+export type AudioIndicatorMode = 'off' | 'playing' | 'muted' | 'both';
+export type BorderRadius = 'none' | 'small' | 'medium' | 'large' | 'full';
+export type ButtonSize = 'small' | 'medium' | 'large';
+export type IconPack = 'gx' | 'default' | 'minimal';
+export type MenuPosition = 'left' | 'center' | 'right';
+
+interface AppearanceSettings {
+  // v1 - Essential
+  theme: ThemeMode;
+  uiScale: number;
+  tabDensity: 'minified' | 'compact' | 'normal' | 'spacious';
+  animationIntensity: AnimationIntensity;
+
+  // v1.1 - High Value
+  showFavicons: boolean;
+  showAudioIndicators: AudioIndicatorMode;
+  showFrozenIndicators: boolean;
+  showActiveIndicator: boolean;
+
+  // v1.2 - Polish
+  accentColor: string;
+  borderRadius: BorderRadius;
+  compactGroupHeaders: boolean;
+  buttonSize: ButtonSize;
+  iconPack: IconPack;
+
+  // v2 - Nice to Have
+  customFontFamily?: string;
+  dragOpacity: number;
+  loadingSpinnerStyle: 'pulse' | 'dots' | 'bars' | 'ring';
+  menuPosition: MenuPosition;
+}
+
+// Export default appearance settings for reset functionality
+export const defaultAppearanceSettings: AppearanceSettings = {
+  theme: 'system',
+  uiScale: 1,
+  tabDensity: 'normal',
+  animationIntensity: 'full',
+  showFavicons: true,
+  showAudioIndicators: 'both',
+  showFrozenIndicators: true,
+  showActiveIndicator: true,
+  accentColor: 'gx-accent',
+  borderRadius: 'medium',
+  compactGroupHeaders: false,
+  buttonSize: 'medium',
+  iconPack: 'gx',
+  customFontFamily: undefined,
+  dragOpacity: 0.5,
+  loadingSpinnerStyle: 'pulse',
+  menuPosition: 'left',
+};
+
 interface TabState {
   tabs: Tab[];
   groups: chrome.tabGroups.TabGroup[];
-  islands: (Island | Tab)[]; 
+  islands: (Island | Tab)[];
   vault: VaultItem[];
-  uiScale: number;
-  theme: 'dark' | 'light';
+  appearanceSettings: AppearanceSettings;
   isDarkMode: boolean;
   dividerPosition: number;
   isUpdating: boolean;
@@ -20,17 +76,14 @@ interface TabState {
   pendingRefresh: boolean;
   isRenaming: boolean;
   isRefreshing: boolean; // Guard against recursive refresh calls
-  tabDensity: 'minified' | 'compact' | 'normal' | 'spacious';
 
   refreshTabs: () => Promise<void>;
   setIsUpdating: (val: boolean) => void;
   setIsRenaming: (val: boolean) => void;
-  setUiScale: (scale: number) => void;
-  setTheme: (theme: 'dark' | 'light') => void;
+  setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
   toggleTheme: () => void;
   setDividerPosition: (pos: number) => void;
   setShowVault: (show: boolean) => void;
-  setTabDensity: (density: 'minified' | 'compact' | 'normal' | 'spacious') => void;
   addToVault: (item: Island | Tab) => Promise<void>;
   saveToVault: (item: Island | Tab) => Promise<void>;
   restoreToLive: (item: VaultItem) => Promise<void>;
@@ -75,13 +128,13 @@ export const parseNumericId = (id: UniqueIdentifier): number => {
 // Tactical Item Discovery
 const findItemInList = (list: any[], id: UniqueIdentifier) => {
   const idStr = String(id);
-  
+
   // Check root level first
   const rootIndex = list.findIndex(i => i && String(i.id) == idStr);
   if (rootIndex !== -1) {
     return { item: list[rootIndex], containerId: 'root', index: rootIndex };
   }
-  
+
   // Check nested levels (tabs inside groups)
   for (const entry of list) {
     if (entry && (entry as any).tabs && Array.isArray((entry as any).tabs)) {
@@ -100,8 +153,7 @@ export const useStore = create<TabState>((set, get) => ({
   groups: [],
   islands: [],
   vault: [],
-  uiScale: 1,
-  theme: 'dark',
+  appearanceSettings: { ...defaultAppearanceSettings },
   isDarkMode: true,
   dividerPosition: 50,
   isUpdating: false,
@@ -109,13 +161,33 @@ export const useStore = create<TabState>((set, get) => ({
   pendingRefresh: false,
   isRenaming: false,
   isRefreshing: false,
-  tabDensity: 'normal',
 
   setIsUpdating: (isUpdating) => set({ isUpdating }),
   setIsRenaming: (isRenaming) => set({ isRenaming }),
-  setTabDensity: (tabDensity) => {
-    set({ tabDensity });
-    syncSettings({ tabDensity });
+  setAppearanceSettings: (newSettings) => {
+    const current = get().appearanceSettings;
+    const updated = { ...current, ...newSettings };
+    set({ appearanceSettings: updated });
+
+    // Apply theme changes immediately
+    if (newSettings.theme) {
+      const { theme } = updated;
+      const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      set({ isDarkMode });
+      document.documentElement.classList.toggle('dark', isDarkMode);
+    }
+
+    // Apply uiScale immediately
+    if (newSettings.uiScale !== undefined) {
+      document.documentElement.style.setProperty('--ui-scale', updated.uiScale.toString());
+    }
+
+    // Apply accent color immediately
+    if (newSettings.accentColor) {
+      document.documentElement.style.setProperty('--gx-accent', newSettings.accentColor);
+    }
+
+    syncSettings({ appearanceSettings: updated });
   },
 
   moveItemOptimistically: (() => {
@@ -364,31 +436,19 @@ export const useStore = create<TabState>((set, get) => ({
         }
       }
     });
-    
+
     set({ tabs, groups: chromeGroups, islands: entities, isRefreshing: false });
-  },
-
-  setUiScale: (uiScale) => {
-    set({ uiScale });
-    document.documentElement.style.setProperty('--ui-scale', uiScale.toString());
-    syncSettings({ uiScale });
-  },
-
-  setTheme: (theme) => {
-    const isDarkMode = theme === 'dark';
-    set({ theme, isDarkMode });
-    document.documentElement.classList.toggle('dark', isDarkMode);
-    syncSettings({ theme });
-  },
-
-  toggleTheme: () => {
-    const { theme } = get();
-    get().setTheme(theme === 'dark' ? 'light' : 'dark');
   },
 
   setDividerPosition: (dividerPosition) => {
     set({ dividerPosition });
     syncSettings({ dividerPosition });
+  },
+
+  toggleTheme: () => {
+    const { appearanceSettings } = get();
+    const newTheme: ThemeMode = appearanceSettings.theme === 'dark' ? 'light' : appearanceSettings.theme === 'light' ? 'dark' : 'system';
+    get().setAppearanceSettings({ theme: newTheme });
   },
 
   setShowVault: (showVault) => {
@@ -405,11 +465,11 @@ export const useStore = create<TabState>((set, get) => ({
       i.id = `vault-${i.id}-${timestamp}`;
       if (i.tabs) i.tabs.forEach(transformId);
     };
-    
+
     transformId(newItem);
     newItem.savedAt = timestamp;
 
-    // Previously wrapped single tabs in groups here. 
+    // Previously wrapped single tabs in groups here.
     // Now allowing direct tab additions to vault.
 
     const newVault = [...vault, newItem];
@@ -426,7 +486,7 @@ export const useStore = create<TabState>((set, get) => ({
       i.id = `vault-${i.id}-${timestamp}`;
       if (i.tabs) i.tabs.forEach(transformId);
     };
-    
+
     transformId(newItem);
     newItem.savedAt = timestamp;
 
@@ -502,7 +562,7 @@ export const useStore = create<TabState>((set, get) => ({
   renameGroup: async (id, newTitle) => {
     const { vault, isUpdating } = get();
     const idStr = String(id);
-    
+
     if (idStr.startsWith('vault-')) {
       const newVault = vault.map(item => {
         if (String(item.id) === idStr && 'tabs' in item) {
@@ -564,7 +624,7 @@ export const useStore = create<TabState>((set, get) => ({
 
     // Try to update Chrome tab group using robust wrapper
     const success = await updateTabGroupCollapse(numericId, newCollapsedState);
-    
+
     setIsUpdating(false);
 
     if (!success) {
@@ -589,7 +649,7 @@ export const useStore = create<TabState>((set, get) => ({
   deleteDuplicateTabs: async () => {
     try {
       console.log('[Deduplicator] Starting deduplication process...');
-      
+
       // Query all tabs in the current window
       // We use currentWindow: true as it's the most common and reliable way to target the active workspace
       const currentTabs = await chrome.tabs.query({ currentWindow: true });
@@ -623,14 +683,14 @@ export const useStore = create<TabState>((set, get) => ({
       urlMap.forEach((group, url) => {
         if (group.length > 1) {
           console.log(`[Deduplicator] Found ${group.length} occurrences for URL: ${url}`);
-          
+
           // Sort by index to keep the leftmost tab
           group.sort((a, b) => (a.index || 0) - (b.index || 0));
 
           // Strategy: Keep the active tab if it's in this group, otherwise keep the first one
           const activeTab = group.find(t => t.active);
           const keepTab = activeTab || group[0];
-          
+
           console.log(`[Deduplicator] Keeping tab ID: ${keepTab.id} (index: ${keepTab.index}, active: ${keepTab.active})`);
 
           group.forEach(tab => {
@@ -667,10 +727,10 @@ export const useStore = create<TabState>((set, get) => ({
       }
 
       console.log(`[Deduplicator] Successfully closed ${closedCount} tabs.`);
-      
+
       // Force a UI refresh
       await get().refreshTabs();
-      
+
     } catch (error) {
       console.error("[Deduplicator] Fatal error during deduplication:", error);
     }
@@ -680,16 +740,16 @@ export const useStore = create<TabState>((set, get) => ({
 // Cross-Window Sync Initialization
 const init = async () => {
   const [sync, local] = await Promise.all([
-    chrome.storage.sync.get(['uiScale', 'theme', 'dividerPosition', 'showVault', 'tabDensity']),
+    chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault']),
     chrome.storage.local.get(['vault'])
   ]);
 
   const state = useStore.getState();
-  if (sync.uiScale) state.setUiScale(Number(sync.uiScale));
-  if (sync.theme) state.setTheme(sync.theme as 'dark' | 'light');
+  if (sync.appearanceSettings) {
+    state.setAppearanceSettings(sync.appearanceSettings as AppearanceSettings);
+  }
   if (sync.dividerPosition) state.setDividerPosition(Number(sync.dividerPosition));
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
-  if (sync.tabDensity) state.setTabDensity(sync.tabDensity as 'minified' | 'compact' | 'normal' | 'spacious');
   if (local.vault) useStore.setState({ vault: local.vault as VaultItem[] });
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -701,10 +761,11 @@ const init = async () => {
       }
     }
     if (area === 'sync') {
-       if (changes.uiScale) state.setUiScale(Number(changes.uiScale.newValue));
-       if (changes.theme) state.setTheme(changes.theme.newValue as 'dark' | 'light');
+       if (changes.appearanceSettings) {
+         state.setAppearanceSettings(changes.appearanceSettings.newValue as AppearanceSettings);
+       }
        if (changes.showVault) state.setShowVault(Boolean(changes.showVault.newValue));
-       if (changes.tabDensity) state.setTabDensity(changes.tabDensity.newValue as 'minified' | 'compact' | 'normal' | 'spacious');
+       if (changes.dividerPosition) state.setDividerPosition(Number(changes.dividerPosition.newValue));
     }
   });
 };

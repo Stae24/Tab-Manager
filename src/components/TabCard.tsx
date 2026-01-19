@@ -32,7 +32,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const tabDensity = useStore(state => state.tabDensity);
+  const { appearanceSettings } = useStore();
   const {
     attributes,
     listeners,
@@ -47,7 +47,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
   });
 
   // Density classes mapping
-  const densityClasses = {
+  const densityClasses: Record<string, string> = {
     minified: 'py-0 px-1',
     compact: 'py-1 px-2 text-[9px]',
     normal: 'py-2 px-3 text-xs',
@@ -85,7 +85,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
         {...attributes}
         className={cn(
           `group relative flex items-center gap-2 rounded-lg transition-all cursor-grab active:cursor-grabbing touch-none`,
-          densityClasses[tabDensity],
+          densityClasses[appearanceSettings.tabDensity],
           'bg-gx-gray border border-white/5',
           tab.active && 'bg-gx-accent/10 border-gx-accent/40 shadow-[0_0_15px_rgba(127,34,254,0.15)]',
           tab.discarded && 'opacity-60 grayscale-[0.3]',

@@ -613,7 +613,6 @@ const VaultPanel: React.FC<{
 export const Dashboard: React.FC = () => {
   const {
     isDarkMode,
-    uiScale,
     islands,
     vault,
     addToVault,
@@ -629,7 +628,8 @@ export const Dashboard: React.FC = () => {
     toggleLiveGroupCollapse,
     deleteDuplicateTabs,
     showVault,
-    isRenaming
+    isRenaming,
+    appearanceSettings
   } = useStore();
 
   const [isResizing, setIsResizing] = useState(false);
@@ -1005,7 +1005,7 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div id="dashboard-container" className={cn('flex flex-col h-screen w-full select-none overflow-hidden fixed inset-0 z-0 bg-[#050505] text-white', isDarkMode ? 'dark' : 'light')} style={{ fontSize: `${16 * uiScale}px` }}>
+    <div id="dashboard-container" className={cn('flex flex-col h-screen w-full select-none overflow-hidden fixed inset-0 z-0 bg-[#050505] text-white', isDarkMode ? 'dark' : 'light')} style={{ fontSize: `${16 * appearanceSettings.uiScale}px` }}>
       <Sidebar />
       <DndContext 
         sensors={isRenaming ? [] : sensors} 
