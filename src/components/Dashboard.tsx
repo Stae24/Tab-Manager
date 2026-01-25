@@ -966,7 +966,16 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div id="dashboard-container" className={cn('flex flex-col h-screen w-full select-none overflow-hidden fixed inset-0 z-0 bg-[#050505] text-white', isDarkMode ? 'dark' : 'light')} style={{ fontSize: `${16 * appearanceSettings.uiScale}px` }}>
+    <div 
+      id="dashboard-container" 
+      className={cn('flex flex-col select-none overflow-hidden fixed top-0 left-0 z-0 bg-[#050505] text-white', isDarkMode ? 'dark' : 'light')} 
+      style={{ 
+        transform: `scale(${appearanceSettings.uiScale})`,
+        transformOrigin: 'top left',
+        width: `${100 / appearanceSettings.uiScale}%`,
+        height: `${100 / appearanceSettings.uiScale}%`
+      }}
+    >
       <Sidebar />
       <DndContext 
         sensors={isRenaming ? [] : sensors} 

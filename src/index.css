@@ -10,12 +10,10 @@
 }
 
 :root {
-  --ui-scale: 1;
 }
 
 body {
   @apply bg-gx-dark text-white overflow-hidden fixed inset-0;
-  font-size: calc(1rem * var(--ui-scale));
   touch-action: none;
 }
 

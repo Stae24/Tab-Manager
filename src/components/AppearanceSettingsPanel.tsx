@@ -315,10 +315,17 @@ export const AppearanceSettingsPanel: React.FC<{
       <div
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "fixed right-0 top-0 h-full w-[480px] bg-gx-dark border-l border-gx-gray z-50 flex flex-col transition-transform duration-300 ease-out shadow-2xl",
-          isOpen ? "translate-x-0" : "translate-x-full",
+          "fixed right-0 top-0 w-[480px] bg-gx-dark border-l border-gx-gray z-50 flex flex-col transition-transform duration-300 ease-out shadow-2xl",
+          !isOpen && "translate-x-full",
           isClosing && "transition-transform duration-200"
         )}
+        style={{
+          transform: isOpen 
+            ? `scale(${appearanceSettings.settingsScale})` 
+            : `scale(${appearanceSettings.settingsScale}) translateX(100%)`,
+          transformOrigin: 'top right',
+          height: `${100 / appearanceSettings.settingsScale}%`
+        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gx-gray bg-gx-gray/50">
@@ -416,24 +423,35 @@ export const AppearanceSettingsPanel: React.FC<{
                 />
               </CollapsibleSection>
 
-              {/* UI Scale */}
-              <CollapsibleSection
-                id="ui-scale"
-                title="UI Scale"
-                icon={ZoomIn}
-                isExpanded={expandedSections.has('ui-scale')}
-                onToggle={() => toggleSection('ui-scale')}
-              >
-                <SliderControl
-                  value={appearanceSettings.uiScale}
-                  onChange={(value) => setAppearanceSettings({ uiScale: value })}
-                  min={0.5}
-                  max={2}
-                  step={0.05}
-                  label="Interface Scale"
-                  displayValue={`${Math.round(appearanceSettings.uiScale * 100)}%`}
-                />
-              </CollapsibleSection>
+          {/* UI Scale */}
+          <CollapsibleSection
+            id="ui-scale"
+            title="UI Scale"
+            icon={ZoomIn}
+            isExpanded={expandedSections.has('ui-scale')}
+            onToggle={() => toggleSection('ui-scale')}
+          >
+            <div className="space-y-4">
+              <SliderControl
+                value={appearanceSettings.uiScale}
+                onChange={(value) => setAppearanceSettings({ uiScale: value })}
+                min={0.5}
+                max={2}
+                step={0.05}
+                label="Interface Scale"
+                displayValue={`${Math.round(appearanceSettings.uiScale * 100)}%`}
+              />
+              <SliderControl
+                value={appearanceSettings.settingsScale}
+                onChange={(value) => setAppearanceSettings({ settingsScale: value })}
+                min={0.5}
+                max={2}
+                step={0.05}
+                label="Settings Panel Scale"
+                displayValue={`${Math.round(appearanceSettings.settingsScale * 100)}%`}
+              />
+            </div>
+          </CollapsibleSection>
 
               {/* Accent Color */}
               <CollapsibleSection

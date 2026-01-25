@@ -16,6 +16,7 @@ interface AppearanceSettings {
   // v1 - Essential
   theme: ThemeMode;
   uiScale: number;
+  settingsScale: number;
   tabDensity: 'minified' | 'compact' | 'normal' | 'spacious';
   animationIntensity: AnimationIntensity;
 
@@ -43,6 +44,7 @@ interface AppearanceSettings {
 export const defaultAppearanceSettings: AppearanceSettings = {
   theme: 'system',
   uiScale: 1,
+  settingsScale: 1,
   tabDensity: 'normal',
   animationIntensity: 'full',
   showFavicons: true,
@@ -181,11 +183,6 @@ export const useStore = create<TabState>((set, get) => ({
       const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       set({ isDarkMode });
       document.documentElement.classList.toggle('dark', isDarkMode);
-    }
-
-    // Apply uiScale immediately
-    if (newSettings.uiScale !== undefined) {
-      document.documentElement.style.setProperty('--ui-scale', updated.uiScale.toString());
     }
 
     // Apply accent color immediately
@@ -466,13 +463,25 @@ export const useStore = create<TabState>((set, get) => ({
 
   moveToVault: async (id) => {
     const { islands, vault } = get();
-    
     // Find item in Live state
     const found = findItemInList(islands, id);
     if (!found || !found.item) return;
-    
     const item = found.item;
-    
+    // Remove from islands state
+    let newIslands = islands;
+    if (found.containerId === 'root') {
+      newIslands = islands.filter(i => String(i.id) !== String(item.id));
+    } else {
+      newIslands = islands.map(i => {
+        if (String(i.id) === String(found.containerId) && 'tabs' in i) {
+          const group = i as Island;
+          const newTabs = group.tabs.filter(t => String(t.id) !== String(item.id));
+          return { ...group, tabs: newTabs };
+        }
+        return i;
+      });
+    }
+    set({ islands: newIslands });
     // 1. Save to Vault (Deep Copy + ID Transform)
     const timestamp = Date.now();
     const itemClone = JSON.parse(JSON.stringify(item));
