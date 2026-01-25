@@ -27,5 +27,5 @@ export type LiveItem = Island | Tab;
 
 export type VaultItem = (Island | Tab) & {
   savedAt: number;
-  originalId?: number; // Track original Chrome ID for reference
+  originalId: UniversalId;
 };

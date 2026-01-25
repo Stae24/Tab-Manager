@@ -129,6 +129,10 @@ export const parseNumericId = (id: UniqueIdentifier): number => {
   return num;
 };
 
+const isIsland = (item: any): item is Island => {
+  return item && typeof item === 'object' && 'tabs' in item && Array.isArray(item.tabs);
+};
+
 // Tactical Item Discovery
 const findItemInList = (list: any[], id: UniqueIdentifier) => {
   const idStr = String(id);
@@ -377,14 +381,12 @@ export const useStore = create<TabState>((set, get) => ({
   })(),
 
   syncLiveTabs: async () => {
-    const state = get();
-
     // Guard against overlapping refreshes during drag operations
-    if (state.isUpdating) return;
+    if (get().isUpdating) return;
 
     // Guard against recursive refresh calls from useTabSync
-    if ((useStore as any).getState().isRefreshing) return;
-    (useStore as any).setState({ isRefreshing: true });
+    if (get().isRefreshing) return;
+    set({ isRefreshing: true });
 
     try {
       const [chromeTabs, chromeGroups] = await Promise.all([
@@ -477,10 +479,14 @@ export const useStore = create<TabState>((set, get) => ({
     
     const transformId = (i: any) => {
       // If it already has an original ID, keep it, otherwise use the numeric part of current ID
-      const originalId = parseNumericId(i.id);
-      i.originalId = originalId > 0 ? originalId : undefined;
+      const numericId = parseNumericId(i.id);
+      // Ensure originalId is preserved or generated from current state
+      i.originalId = i.originalId ?? (numericId > 0 ? numericId : i.id);
       i.id = `vault-${i.id}-${timestamp}`;
-      if (i.tabs) i.tabs.forEach(transformId);
+      
+      if (isIsland(i)) {
+        i.tabs.forEach(transformId);
+      }
     };
     
     transformId(itemClone);
@@ -491,7 +497,7 @@ export const useStore = create<TabState>((set, get) => ({
     await persistVault(newVault);
     
     // 2. Close in Chrome
-    if ('tabs' in item && Array.isArray(item.tabs)) {
+    if (isIsland(item)) {
          // It's a group - close all tabs in it
          const tabIds = item.tabs.map((t: Tab) => parseNumericId(t.id)).filter((id: number) => id > 0);
          if (tabIds.length > 0) {
@@ -512,10 +518,12 @@ export const useStore = create<TabState>((set, get) => ({
     const timestamp = Date.now();
 
     const transformId = (i: any) => {
-      const originalId = parseNumericId(i.id);
-      i.originalId = originalId > 0 ? originalId : undefined;
+      const numericId = parseNumericId(i.id);
+      i.originalId = i.originalId ?? (numericId > 0 ? numericId : i.id);
       i.id = `vault-${i.id}-${timestamp}`;
-      if (i.tabs) i.tabs.forEach(transformId);
+      if (isIsland(i)) {
+        i.tabs.forEach(transformId);
+      }
     };
 
     transformId(newItem);
@@ -554,11 +562,6 @@ export const useStore = create<TabState>((set, get) => ({
         insertionIndex = currentWindowTabs.length;
     }
 
-    // Type guard to check if item is an Island
-    const isIsland = (item: VaultItem): item is Island & { savedAt: number; id: string | number; } => {
-      return 'tabs' in item && Array.isArray(item.tabs);
-    };
-
     if (isIsland(item)) {
       // Restore as a group
       const newIds: number[] = [];
@@ -589,7 +592,8 @@ export const useStore = create<TabState>((set, get) => ({
       color: 'grey',
       collapsed: false,
       tabs: [],
-      savedAt: timestamp
+      savedAt: timestamp,
+      originalId: -1 // New group in vault has no original Chrome ID
     };
     // Add to top
     const newVault = [newGroup, ...vault];
