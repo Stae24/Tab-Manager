@@ -1,5 +1,7 @@
+export type UniversalId = number | string;
+
 export interface Tab {
-  id: number | string; // Changed to allow string-prefixed IDs
+  id: UniversalId;
   title: string;
   url: string;
   favicon: string;
@@ -14,14 +16,16 @@ export interface Tab {
 }
 
 export interface Island {
-  id: number | string; // Updated to allow string IDs for Vault items
+  id: UniversalId;
   title: string;
   color: string;
   collapsed: boolean;
   tabs: Tab[];
 }
 
+export type LiveItem = Island | Tab;
+
 export type VaultItem = (Island | Tab) & {
   savedAt: number;
-  id: number | string;
+  originalId?: number; // Track original Chrome ID for reference
 };

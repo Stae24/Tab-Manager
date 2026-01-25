@@ -1,10 +1,7 @@
 import { create } from 'zustand';
-import { Island, Tab, VaultItem } from '../types/index';
+import { Island, Tab, VaultItem, UniversalId, LiveItem } from '../types/index';
 import { UniqueIdentifier } from '@dnd-kit/core';
-import { createIsland, updateTabGroup, updateTabGroupCollapse } from '../utils/chromeApi';
-
-// Universal ID for cross-panel compatibility
-type UniversalId = number | string;
+import { createIsland, updateTabGroup, updateTabGroupCollapse, closeTab, discardTabs } from '../utils/chromeApi';
 
 // Appearance settings types - exported for components
 export type ThemeMode = 'dark' | 'light' | 'system';
@@ -64,10 +61,11 @@ export const defaultAppearanceSettings: AppearanceSettings = {
 };
 
 interface TabState {
-  tabs: Tab[];
-  groups: chrome.tabGroups.TabGroup[];
-  islands: (Island | Tab)[];
-  vault: VaultItem[];
+  // Core State
+  islands: LiveItem[];  // Live Panel State (Tabs & Groups)
+  vault: VaultItem[];   // Vault Panel State (Saved Items)
+  
+  // UI State
   appearanceSettings: AppearanceSettings;
   isDarkMode: boolean;
   dividerPosition: number;
@@ -75,8 +73,9 @@ interface TabState {
   showVault: boolean;
   pendingRefresh: boolean;
   isRenaming: boolean;
-  isRefreshing: boolean; // Guard against recursive refresh calls
+  isRefreshing: boolean;
 
+  // Actions
   syncLiveTabs: () => Promise<void>;
   setIsUpdating: (val: boolean) => void;
   setIsRenaming: (val: boolean) => void;
@@ -84,17 +83,22 @@ interface TabState {
   toggleTheme: () => void;
   setDividerPosition: (pos: number) => void;
   setShowVault: (show: boolean) => void;
+  
+  // Vault Actions
   moveToVault: (id: UniversalId) => Promise<void>;
-  saveToVault: (item: Island | Tab) => Promise<void>;
+  saveToVault: (item: LiveItem) => Promise<void>;
   restoreFromVault: (id: UniversalId) => Promise<void>;
   removeFromVault: (id: UniversalId) => Promise<void>;
-  renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
   createVaultGroup: () => Promise<void>;
   toggleVaultGroupCollapse: (id: UniversalId) => Promise<void>;
+  
+  // Live Actions
+  renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
   toggleLiveGroupCollapse: (id: UniversalId) => Promise<void>;
   moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
   deleteDuplicateTabs: () => Promise<void>;
 }
+
 
 const debounce = (fn: Function, ms = 500) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -149,8 +153,6 @@ const findItemInList = (list: any[], id: UniqueIdentifier) => {
 };
 
 export const useStore = create<TabState>((set, get) => ({
-  tabs: [],
-  groups: [],
   islands: [],
   vault: [],
   appearanceSettings: { ...defaultAppearanceSettings },
@@ -268,7 +270,6 @@ export const useStore = create<TabState>((set, get) => ({
         }
         // If dropped on a gap between items
         else if (String(overId).startsWith('live-gap-') || String(overId).startsWith('vault-gap-')) {
-          const isLiveGap = String(overId).startsWith('live-gap-');
           const gapIndex = parseInt(String(overId).split('-')[2], 10);
           targetIndex = isNaN(gapIndex) ? (activeInLive ? islands.length : vault.length) : gapIndex;
           targetContainerId = 'root';
@@ -385,59 +386,64 @@ export const useStore = create<TabState>((set, get) => ({
     if ((useStore as any).getState().isRefreshing) return;
     (useStore as any).setState({ isRefreshing: true });
 
-    const [chromeTabs, chromeGroups] = await Promise.all([
-      chrome.tabs.query({ currentWindow: true }),
-      chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT })
-    ]);
+    try {
+      const [chromeTabs, chromeGroups] = await Promise.all([
+        chrome.tabs.query({ currentWindow: true }),
+        chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT })
+      ]);
 
-    const tabs: Tab[] = chromeTabs.map(t => ({
-      id: `live-tab-${t.id}`,
-      title: t.title || 'Untitled',
-      url: t.url || '',
-      favicon: t.favIconUrl || '',
-      active: t.active,
-      discarded: t.discarded,
-      windowId: t.windowId,
-      index: t.index,
-      groupId: t.groupId,
-      muted: t.mutedInfo?.muted ?? false,
-      pinned: t.pinned,
-      audible: t.audible ?? false
-    }));
+      const tabs: Tab[] = chromeTabs.map(t => ({
+        id: `live-tab-${t.id}`,
+        title: t.title || 'Untitled',
+        url: t.url || '',
+        favicon: t.favIconUrl || '',
+        active: t.active,
+        discarded: t.discarded,
+        windowId: t.windowId,
+        index: t.index,
+        groupId: t.groupId,
+        muted: t.mutedInfo?.muted ?? false,
+        pinned: t.pinned,
+        audible: t.audible ?? false
+      }));
 
-    const groupMap = new Map<number, Island>();
-    chromeGroups.forEach(g => {
-      groupMap.set(g.id, {
-        id: `live-group-${g.id}`,
-        title: g.title || '',
-        color: g.color,
-        collapsed: g.collapsed,
-        tabs: []
+      const groupMap = new Map<number, Island>();
+      chromeGroups.forEach(g => {
+        groupMap.set(g.id, {
+          id: `live-group-${g.id}`,
+          title: g.title || '',
+          color: g.color,
+          collapsed: g.collapsed,
+          tabs: []
+        });
       });
-    });
 
-    tabs.forEach(t => {
-      if (t.groupId !== -1 && groupMap.has(t.groupId)) {
-        groupMap.get(t.groupId)!.tabs.push(t);
-      }
-    });
-
-    const entities: (Island | Tab)[] = [];
-    const processedGroupIds = new Set<number>();
-
-    tabs.sort((a, b) => a.index - b.index).forEach(t => {
-      if (t.groupId === -1) {
-        entities.push(t);
-      } else if (!processedGroupIds.has(t.groupId)) {
-        const group = groupMap.get(t.groupId);
-        if (group) {
-          entities.push(group);
-          processedGroupIds.add(t.groupId);
+      tabs.forEach(t => {
+        if (t.groupId !== -1 && groupMap.has(t.groupId)) {
+          groupMap.get(t.groupId)!.tabs.push(t);
         }
-      }
-    });
+      });
 
-    set({ tabs, groups: chromeGroups, islands: entities, isRefreshing: false });
+      const entities: LiveItem[] = [];
+      const processedGroupIds = new Set<number>();
+
+      tabs.sort((a, b) => a.index - b.index).forEach(t => {
+        if (t.groupId === -1) {
+          entities.push(t);
+        } else if (!processedGroupIds.has(t.groupId)) {
+          const group = groupMap.get(t.groupId);
+          if (group) {
+            entities.push(group);
+            processedGroupIds.add(t.groupId);
+          }
+        }
+      });
+
+      set({ islands: entities, isRefreshing: false });
+    } catch (error) {
+      console.error('Failed to sync live tabs:', error);
+      set({ isRefreshing: false });
+    }
   },
 
   setDividerPosition: (dividerPosition) => {
@@ -470,6 +476,9 @@ export const useStore = create<TabState>((set, get) => ({
     const itemClone = JSON.parse(JSON.stringify(item));
     
     const transformId = (i: any) => {
+      // If it already has an original ID, keep it, otherwise use the numeric part of current ID
+      const originalId = parseNumericId(i.id);
+      i.originalId = originalId > 0 ? originalId : undefined;
       i.id = `vault-${i.id}-${timestamp}`;
       if (i.tabs) i.tabs.forEach(transformId);
     };
@@ -492,7 +501,7 @@ export const useStore = create<TabState>((set, get) => ({
         // Single tab
         const numericId = parseNumericId(item.id);
         if (numericId > 0) {
-            await chrome.tabs.remove(numericId);
+            await closeTab(numericId);
         }
     }
   },
@@ -503,14 +512,14 @@ export const useStore = create<TabState>((set, get) => ({
     const timestamp = Date.now();
 
     const transformId = (i: any) => {
+      const originalId = parseNumericId(i.id);
+      i.originalId = originalId > 0 ? originalId : undefined;
       i.id = `vault-${i.id}-${timestamp}`;
       if (i.tabs) i.tabs.forEach(transformId);
     };
 
     transformId(newItem);
     newItem.savedAt = timestamp;
-
-    // Non-destructive save - just add to vault without closing tabs
 
     const newVault = [...vault, newItem];
     set({ vault: newVault });
@@ -531,18 +540,18 @@ export const useStore = create<TabState>((set, get) => ({
 
     if (currentWindowGroups.length > 0) {
       // Find the group with the highest index (last group in the window)
-      // We sort groups by the index of their first tab
       const groupsWithIndices = currentWindowGroups.map(g => {
         const groupTabs = currentWindowTabs.filter(t => t.groupId === g.id);
-        const minIndex = groupTabs.length > 0 ? Math.min(...groupTabs.map(t => t.index)) : -1;
         const maxIndex = groupTabs.length > 0 ? Math.max(...groupTabs.map(t => t.index)) : -1;
-        return { ...g, minIndex, maxIndex };
-      }).filter(g => g.minIndex !== -1);
+        return { ...g, maxIndex };
+      }).filter(g => g.maxIndex !== -1);
 
       if (groupsWithIndices.length > 0) {
         const lastGroup = groupsWithIndices.reduce((prev, current) => (current.maxIndex > prev.maxIndex) ? current : prev);
         insertionIndex = lastGroup.maxIndex + 1;
       }
+    } else if (currentWindowTabs.length > 0) {
+        insertionIndex = currentWindowTabs.length;
     }
 
     // Type guard to check if item is an Island
@@ -574,7 +583,7 @@ export const useStore = create<TabState>((set, get) => ({
   createVaultGroup: async () => {
     const { vault } = get();
     const timestamp = Date.now();
-    const newGroup = {
+    const newGroup: VaultItem = {
       id: `vault-group-new-${timestamp}`,
       title: '',
       color: 'grey',
@@ -800,3 +809,4 @@ const init = async () => {
 };
 
 init();
+
