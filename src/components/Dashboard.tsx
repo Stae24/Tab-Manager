@@ -693,6 +693,14 @@ export const Dashboard: React.FC = () => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const scaleModifier = useCallback(({ transform }: any) => {
+    return {
+      ...transform,
+      x: transform.x / appearanceSettings.uiScale,
+      y: transform.y / appearanceSettings.uiScale,
+    };
+  }, [appearanceSettings.uiScale]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsResizing(true);
     e.preventDefault();
@@ -967,6 +975,7 @@ export const Dashboard: React.FC = () => {
         onDragStart={handleDragStart} 
         onDragOver={handleDragOver} 
         onDragEnd={handleDragEnd}
+        modifiers={[scaleModifier]}
       >
         <div className="flex flex-1 overflow-hidden relative overscroll-none">
           <LivePanel
