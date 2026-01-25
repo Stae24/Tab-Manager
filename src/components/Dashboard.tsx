@@ -773,46 +773,40 @@ export const Dashboard: React.FC = () => {
     const { active, over } = event;
     setActiveItem(null);
     setIsDraggingVaultItem(false);
+    setIsDraggingGroup(false);
     
-    if (!over) {
-      useStore.getState().setIsUpdating(false);
-      await useStore.getState().syncLiveTabs();
-      return;
-    }
+    try {
+      if (!over) return;
 
-    const activeId = active.id;
-    const overId = over.id;
-    
-    // We MUST use the latest state from the store after optimistic moves
-    const { islands: finalIslands, vault: finalVault } = useStore.getState();
-
-    // Identify Source and Target
-    const activeIdStr = activeId.toString();
-    const overIdStr = overId.toString();
-    const isVaultSource = activeIdStr.startsWith('vault-');
-    
-    // Target is Vault if dropzone OR if the ID starts with 'vault-'
-    // This covers all Vault items and the dropzone
-    const isVaultTarget = overIdStr === 'vault-dropzone' || overIdStr === 'vault-bottom' || overIdStr.startsWith('vault-');
-    
-    // SCENARIO 1: Internal Vault Move (Sort)
-    if (isVaultSource && isVaultTarget) {
-      await chrome.storage.local.set({ vault: finalVault });
-      useStore.getState().setIsUpdating(false);
-      await useStore.getState().syncLiveTabs();
-      return;
-    }
-
-    // SCENARIO 2: Archive (Live -> Vault)
-    if (!isVaultSource && isVaultTarget) {
-      // Find item in islands to get ID, or just use activeId
-      // Note: activeId is enough for moveToVault
+      const activeId = active.id;
+      const overId = over.id;
       
+      // We MUST use the latest state from the store after optimistic moves
+      const { islands: finalIslands, vault: finalVault } = useStore.getState();
+
+      // Identify Source and Target
+      const activeIdStr = activeId.toString();
+      const overIdStr = overId.toString();
+      const isVaultSource = activeIdStr.startsWith('vault-');
+      
+      // Target is Vault if dropzone OR if the ID starts with 'vault-'
+      // This covers all Vault items and the dropzone
+      const isVaultTarget = overIdStr === 'vault-dropzone' || overIdStr === 'vault-bottom' || overIdStr.startsWith('vault-');
+      
+      // SCENARIO 1: Internal Vault Move (Sort)
+      if (isVaultSource && isVaultTarget) {
+        await chrome.storage.local.set({ vault: finalVault });
+        return;
+      }
+
+      // SCENARIO 2: Archive (Live -> Vault)
+      if (!isVaultSource && isVaultTarget) {
+        // Find item in islands to get ID, or just use activeId
+        // Note: activeId is enough for moveToVault
+        
         if (activeId) {
           await moveToVault(activeId as any);
         }
-        useStore.getState().setIsUpdating(false);
-        await useStore.getState().syncLiveTabs();
         return;
       }
 
@@ -830,138 +824,131 @@ export const Dashboard: React.FC = () => {
           return null;
         };
 
-      const tabId = resolveTabId();
+        const tabId = resolveTabId();
 
-      if (tabId) {
-        try {
-          const tab = await chrome.tabs.get(tabId);
+        if (tabId) {
+          try {
+            const tab = await chrome.tabs.get(tabId);
             if (tab.pinned) {
               console.warn('[ISLAND] Cannot create island from pinned tab');
-              useStore.getState().setIsUpdating(false);
-              await useStore.getState().syncLiveTabs();
               return;
             }
 
-          // Set island creation state (lightweight, just for UI indicators)
-          setIsCreatingIsland(true);
-          setCreatingTabId(tabId);
+            // Set island creation state (lightweight, just for UI indicators)
+            setIsCreatingIsland(true);
+            setCreatingTabId(tabId);
 
-          // Signal background to defer refreshes during group creation
-          await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
+            // Signal background to defer refreshes during group creation
+            await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
 
-          console.log(`[ISLAND] Creating island for tab: ${tabId}`);
-          
-          // Call createIsland with no title to ensure it remains "Untitled"
-          const groupId = await createIsland([tabId], undefined, 'blue' as any);
-          
-          if (groupId) {
-            console.log(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
-          } else {
-            console.error(`[FAILED] createIsland returned null for tab: ${tabId}`);
+            console.log(`[ISLAND] Creating island for tab: ${tabId}`);
+            
+            // Call createIsland with no title to ensure it remains "Untitled"
+            const groupId = await createIsland([tabId], undefined, 'blue' as any);
+            
+            if (groupId) {
+              console.log(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
+            } else {
+              console.error(`[FAILED] createIsland returned null for tab: ${tabId}`);
+            }
+
+            // Signal end of island creation to background (triggers refresh)
+            await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
+
+            // Brief delay for visual feedback completion (ensures pulse completes before refresh)
+            await new Promise(r => setTimeout(r, 300));
+          } catch (e) {
+            console.error('[ISLAND] Tab no longer exists or access denied', e);
+            await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
+          } finally {
+            setIsCreatingIsland(false);
+            setCreatingTabId(null);
           }
-
-          // Signal end of island creation to background (triggers refresh)
-          await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
-
-          // Brief delay for visual feedback completion
-          await new Promise(r => setTimeout(r, 150));
-          setIsCreatingIsland(false);
-          setCreatingTabId(null);
-          
-        } catch (e) {
-          console.error('[ISLAND] Tab no longer exists or access denied', e);
-          await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
-          setIsCreatingIsland(false);
-          setCreatingTabId(null);
+        } else {
+          console.error(`[FAILED] Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
         }
-      } else {
-        console.error(`[FAILED] Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
+        return;
       }
-      
-      // Always clear the update lock and trigger refresh
-      useStore.getState().setIsUpdating(false);
-      await useStore.getState().syncLiveTabs();
-      return;
-    }
 
-    // SCENARIO 3: Internal Live Move (Sort) OR Restore (Vault -> Live)
-    // Skip if it was the Create Dropzone (handled in SCENARIO 5)
-    if (!isVaultSource && !isVaultTarget && overIdStr !== 'create-island-dropzone') {
-      // Show loading overlay for complex moves only
-      setIsLoading(true);
-      
-      try {
-        // Internal Live Move
-        let browserIndex = 0;
-        let targetItem: any = null;
-        let targetIslandId: number | null = null;
-        let isMovingGroup = false;
+      // SCENARIO 3: Internal Live Move (Sort) OR Restore (Vault -> Live)
+      // Skip if it was the Create Dropzone (handled in SCENARIO 5)
+      if (!isVaultSource && !isVaultTarget && overIdStr !== 'create-island-dropzone') {
+        // Show loading overlay for complex moves only
+        setIsLoading(true);
+        
+        try {
+          // Internal Live Move
+          let browserIndex = 0;
+          let targetItem: any = null;
+          let targetIslandId: number | null = null;
+          let isMovingGroup = false;
 
-        for (const item of finalIslands) {
-          const itemAny = item as any;
-          if (itemAny.id == activeId) {
-            targetItem = itemAny;
-            const island = item as IslandType;
-            isMovingGroup = island.tabs !== undefined;
-            break;
-          }
-          if (itemAny.tabs) {
-            const nested = itemAny.tabs.find((t: any) => t.id == activeId);
-            if (nested) {
-              targetItem = nested;
-              targetIslandId = itemAny.id;
-              browserIndex += itemAny.tabs.indexOf(nested);
+          for (const item of finalIslands) {
+            const itemAny = item as any;
+            if (itemAny.id == activeId) {
+              targetItem = itemAny;
+              const island = item as IslandType;
+              isMovingGroup = island.tabs !== undefined;
               break;
             }
-            browserIndex += itemAny.tabs.length;
-          } else {
-            browserIndex += 1;
+            if (itemAny.tabs) {
+              const nested = itemAny.tabs.find((t: any) => t.id == activeId);
+              if (nested) {
+                targetItem = nested;
+                targetIslandId = itemAny.id;
+                browserIndex += itemAny.tabs.indexOf(nested);
+                break;
+              }
+              browserIndex += itemAny.tabs.length;
+            } else {
+              browserIndex += 1;
+            }
           }
-        }
 
-        if (targetItem) {
-          if (isMovingGroup) {
-            // Use moveIsland (chrome.tabGroups.move) to move the entire group atomically.
-            // This prevents the group from being ungrouped or split during the move.
-            await moveIsland(parseNumericId(targetItem.id), browserIndex);
-          } else {
-            const tabId = parseNumericId(activeId);
-            if (tabId !== -1) {
-              await chrome.tabs.move(tabId, { index: browserIndex });
-              if (targetIslandId) {
-                const numericIslandId = parseNumericId(targetIslandId);
-                if (numericIslandId !== -1) {
-                  await chrome.tabs.group({ tabIds: tabId, groupId: numericIslandId });
+          if (targetItem) {
+            if (isMovingGroup) {
+              // Use moveIsland (chrome.tabGroups.move) to move the entire group atomically.
+              // This prevents the group from being ungrouped or split during the move.
+              await moveIsland(parseNumericId(targetItem.id), browserIndex);
+            } else {
+              const tabId = parseNumericId(activeId);
+              if (tabId !== -1) {
+                await chrome.tabs.move(tabId, { index: browserIndex });
+                if (targetIslandId) {
+                  const numericIslandId = parseNumericId(targetIslandId);
+                  if (numericIslandId !== -1) {
+                    await chrome.tabs.group({ tabIds: tabId, groupId: numericIslandId });
+                  }
+                } else {
+                  try { await chrome.tabs.ungroup(tabId); } catch(e) {}
                 }
-              } else {
-                try { await chrome.tabs.ungroup(tabId); } catch(e) {}
               }
             }
           }
+        } finally {
+          setIsLoading(false);
         }
-      } finally {
-        setIsLoading(false);
-        useStore.getState().setIsUpdating(false);
-        await useStore.getState().syncLiveTabs();
+        return;
       }
-      return;
-    }
 
-    // SCENARIO 4: Restore (Vault -> Live)
-    // (isVaultSource && !isVaultTarget)
-    if (isVaultSource && !isVaultTarget) {
-      setIsLoading(true);
-      
-      try {
-        if (activeId) {
-          await restoreFromVault(activeId as any);
+      // SCENARIO 4: Restore (Vault -> Live)
+      // (isVaultSource && !isVaultTarget)
+      if (isVaultSource && !isVaultTarget) {
+        setIsLoading(true);
+        
+        try {
+          if (activeId) {
+            await restoreFromVault(activeId as any);
+          }
+        } finally {
+          setIsLoading(false);
         }
-      } finally {
-        setIsLoading(false);
-        useStore.getState().setIsUpdating(false);
-        await useStore.getState().syncLiveTabs();
+        return;
       }
-      return;
+    } finally {
+      // Orchestrate drag-end state and refresh logic
+      useStore.getState().setIsUpdating(false);
+      await useStore.getState().syncLiveTabs();
     }
   };
 
