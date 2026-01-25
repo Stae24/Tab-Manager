@@ -59,8 +59,9 @@ const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) 
       // Downward: 3rem buffer below gap (accounts for expanded height + buffer)
       const expandUp = distance < 0 && Math.abs(distance) < 1 * baseRem;
       const expandDown = distance >= 0 && distance < 3 * baseRem;
+      const isWithinHorizontal = e.clientX >= gapRect.left && e.clientX <= gapRect.right;
 
-      setExpanded(expandUp || expandDown);
+      setExpanded((expandUp || expandDown) && isWithinHorizontal);
     };
 
     document.addEventListener('pointermove', handlePointerMove);
