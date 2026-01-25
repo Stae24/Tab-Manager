@@ -8,6 +8,9 @@ export interface Tab {
   windowId: number;
   index: number;
   groupId: number;
+  muted?: boolean;
+  pinned?: boolean;
+  audible?: boolean;
 }
 
 export interface Island {

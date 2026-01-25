@@ -77,16 +77,16 @@ interface TabState {
   isRenaming: boolean;
   isRefreshing: boolean; // Guard against recursive refresh calls
 
-  refreshTabs: () => Promise<void>;
+  syncLiveTabs: () => Promise<void>;
   setIsUpdating: (val: boolean) => void;
   setIsRenaming: (val: boolean) => void;
   setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
   toggleTheme: () => void;
   setDividerPosition: (pos: number) => void;
   setShowVault: (show: boolean) => void;
-  addToVault: (item: Island | Tab) => Promise<void>;
+  moveToVault: (id: UniversalId) => Promise<void>;
   saveToVault: (item: Island | Tab) => Promise<void>;
-  restoreToLive: (item: VaultItem) => Promise<void>;
+  restoreFromVault: (id: UniversalId) => Promise<void>;
   removeFromVault: (id: UniversalId) => Promise<void>;
   renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
   createVaultGroup: () => Promise<void>;
@@ -375,7 +375,7 @@ export const useStore = create<TabState>((set, get) => ({
     };
   })(),
 
-  refreshTabs: async () => {
+  syncLiveTabs: async () => {
     const state = get();
 
     // Guard against overlapping refreshes during drag operations
@@ -456,25 +456,45 @@ export const useStore = create<TabState>((set, get) => ({
     syncSettings({ showVault });
   },
 
-  addToVault: async (item) => {
-    const { vault } = get();
-    let newItem = JSON.parse(JSON.stringify(item));
+  moveToVault: async (id) => {
+    const { islands, vault } = get();
+    
+    // Find item in Live state
+    const found = findItemInList(islands, id);
+    if (!found || !found.item) return;
+    
+    const item = found.item;
+    
+    // 1. Save to Vault (Deep Copy + ID Transform)
     const timestamp = Date.now();
-
+    const itemClone = JSON.parse(JSON.stringify(item));
+    
     const transformId = (i: any) => {
       i.id = `vault-${i.id}-${timestamp}`;
       if (i.tabs) i.tabs.forEach(transformId);
     };
-
-    transformId(newItem);
-    newItem.savedAt = timestamp;
-
-    // Previously wrapped single tabs in groups here.
-    // Now allowing direct tab additions to vault.
-
-    const newVault = [...vault, newItem];
+    
+    transformId(itemClone);
+    (itemClone as VaultItem).savedAt = timestamp;
+    
+    const newVault = [...vault, itemClone as VaultItem];
     set({ vault: newVault });
     await persistVault(newVault);
+    
+    // 2. Close in Chrome
+    if ('tabs' in item && Array.isArray(item.tabs)) {
+         // It's a group - close all tabs in it
+         const tabIds = item.tabs.map((t: Tab) => parseNumericId(t.id)).filter((id: number) => id > 0);
+         if (tabIds.length > 0) {
+             await chrome.tabs.remove(tabIds);
+         }
+    } else {
+        // Single tab
+        const numericId = parseNumericId(item.id);
+        if (numericId > 0) {
+            await chrome.tabs.remove(numericId);
+        }
+    }
   },
 
   saveToVault: async (item) => {
@@ -497,8 +517,12 @@ export const useStore = create<TabState>((set, get) => ({
     await persistVault(newVault);
   },
 
-  restoreToLive: async (item) => {
+  restoreFromVault: async (id) => {
     const { vault } = get();
+    const itemIndex = vault.findIndex(v => String(v.id) === String(id));
+    if (itemIndex === -1) return;
+
+    const item = vault[itemIndex];
 
     // Calculate insertion index: after the last existing group in the current window
     let insertionIndex = 0;
@@ -540,6 +564,11 @@ export const useStore = create<TabState>((set, get) => ({
       // Restore as a single tab
       await chrome.tabs.create({ url: item.url, active: false, index: insertionIndex });
     }
+    
+    // Remove from Vault after restore
+    const newVault = vault.filter(v => String(v.id) !== String(id));
+    set({ vault: newVault });
+    await persistVault(newVault);
   },
 
   createVaultGroup: async () => {
@@ -729,7 +758,7 @@ export const useStore = create<TabState>((set, get) => ({
       console.log(`[Deduplicator] Successfully closed ${closedCount} tabs.`);
 
       // Force a UI refresh
-      await get().refreshTabs();
+      await get().syncLiveTabs();
 
     } catch (error) {
       console.error("[Deduplicator] Fatal error during deduplication:", error);
