@@ -3,13 +3,13 @@ import { vi } from 'vitest';
 const chromeMock = {
   storage: {
     sync: {
-      get: vi.fn(),
+      get: vi.fn().mockResolvedValue({}),
       set: vi.fn(),
       remove: vi.fn(),
       clear: vi.fn(),
     },
     local: {
-      get: vi.fn(),
+      get: vi.fn().mockResolvedValue({}),
       set: vi.fn(),
       remove: vi.fn(),
       clear: vi.fn(),
@@ -48,4 +48,5 @@ const chromeMock = {
   },
 };
 
+// @ts-ignore
 global.chrome = chromeMock as any;
