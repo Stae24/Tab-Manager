@@ -8,7 +8,7 @@ export const useTabSync = () => {
 
   useEffect(() => {
     // Initial fetch
-    useStore.getState().refreshTabs();
+    useStore.getState().syncLiveTabs();
 
     // Listen for updates from background script
     const listener = (message: any) => {
@@ -16,7 +16,7 @@ export const useTabSync = () => {
         // Guard against recursive refresh calls
         if (isRefreshing.current) return;
 
-        const { isUpdating, refreshTabs } = useStore.getState();
+        const { isUpdating, syncLiveTabs } = useStore.getState();
 
         if (isUpdating) {
           // If already pending a refresh, don't schedule another
@@ -27,10 +27,10 @@ export const useTabSync = () => {
           if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
           refreshTimeout.current = setTimeout(() => {
             pendingRefresh.current = false;
-            refreshTabs();
+            syncLiveTabs();
           }, 200);
         } else {
-          refreshTabs();
+          syncLiveTabs();
         }
       }
     };
@@ -40,7 +40,7 @@ export const useTabSync = () => {
     // Also listen for local focus/visibility changes
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        useStore.getState().refreshTabs();
+        useStore.getState().syncLiveTabs();
       }
     };
     

@@ -77,7 +77,7 @@ const LivePanel: React.FC<{
   dividerPosition: number,
   islands: any[],
   handleTabClick: (id: number | string) => void,
-  addToVault: (island: any) => void,
+  moveToVault: (id: number | string) => void,
   saveToVault: (island: any) => void,
   closeTab: (id: number | string) => void,
   onRenameGroup: (id: number | string, title: string) => void,
@@ -92,7 +92,7 @@ const LivePanel: React.FC<{
   showVault: boolean,
   isCreatingIsland: boolean,
   creatingTabId: number | string | null
-}> = ({ dividerPosition, islands, handleTabClick, addToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, deleteDuplicateTabs, showVault, isCreatingIsland, creatingTabId }) => {
+}> = ({ dividerPosition, islands, handleTabClick, moveToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, deleteDuplicateTabs, showVault, isCreatingIsland, creatingTabId }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'live-panel-dropzone',
   });
@@ -414,7 +414,7 @@ const LivePanel: React.FC<{
                         island={item}
                         onTabClick={(tab) => handleTabClick(tab.id)}
                         onNonDestructiveSave={() => saveToVault(item)}
-                        onSave={() => addToVault(item)}
+                        onSave={() => moveToVault(item.id)}
                         onDelete={() => item.tabs.forEach((t: any) => closeTab(t.id))}
                         onRename={(title) => onRenameGroup(item.id, title)}
                         onToggleCollapse={() => onToggleCollapse(item.id)}
@@ -494,8 +494,8 @@ const VaultPanel: React.FC<{
   createVaultGroup: () => void,
   onRenameGroup: (id: number | string, title: string) => void,
   onToggleCollapse: (id: number | string) => void,
-  restoreToLive: (item: any) => void
-}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, restoreToLive }) => {
+  restoreFromVault: (id: number | string) => void
+}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, restoreFromVault }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'vault-dropzone',
   });
@@ -564,18 +564,18 @@ const VaultPanel: React.FC<{
                   <Island
                     island={item}
                     isVault={true}
-                    onRestore={() => restoreToLive(item)}
+                    onRestore={() => restoreFromVault(item.id)}
                     onDelete={() => removeFromVault(item.id)}
                     onRename={(title) => onRenameGroup(item.id, title)}
                     onToggleCollapse={() => onToggleCollapse(item.id)}
-                    onTabRestore={(tab) => restoreToLive(tab)}
+                    onTabRestore={(tab) => restoreFromVault(tab.id)}
                     onTabClose={(id) => removeFromVault(id)}
                   />
                 ) : (
                   <TabCard
                     tab={item}
                     isVault={true}
-                    onRestore={() => restoreToLive(item)}
+                    onRestore={() => restoreFromVault(item.id)}
                     onClose={() => removeFromVault(item.id)}
                   />
                 )}
@@ -615,9 +615,9 @@ export const Dashboard: React.FC = () => {
     isDarkMode,
     islands,
     vault,
-    addToVault,
+    moveToVault,
     saveToVault,
-    restoreToLive,
+    restoreFromVault,
     dividerPosition,
     setDividerPosition,
     removeFromVault,
@@ -768,7 +768,7 @@ export const Dashboard: React.FC = () => {
     
     if (!over) {
       useStore.getState().setIsUpdating(false);
-      await useStore.getState().refreshTabs();
+      await useStore.getState().syncLiveTabs();
       return;
     }
 
@@ -791,32 +791,20 @@ export const Dashboard: React.FC = () => {
     if (isVaultSource && isVaultTarget) {
       await chrome.storage.local.set({ vault: finalVault });
       useStore.getState().setIsUpdating(false);
-      await useStore.getState().refreshTabs();
+      await useStore.getState().syncLiveTabs();
       return;
     }
 
     // SCENARIO 2: Archive (Live -> Vault)
     if (!isVaultSource && isVaultTarget) {
-      const findInList = (list: any[], id: UniqueIdentifier) => {
-        const rootIndex = list.findIndex(i => i && i.id == id);
-        if (rootIndex !== -1) return { item: list[rootIndex] };
-        for (const group of list) {
-          if (group && group.tabs) {
-            const tabIndex = group.tabs.findIndex((t: any) => t && t.id == id);
-            if (tabIndex !== -1) return { item: group.tabs[tabIndex] };
-          }
-        }
-        return null;
-      };
+      // Find item in islands to get ID, or just use activeId
+      // Note: activeId is enough for moveToVault
       
-        const item = findInList(islands, activeId)?.item; 
-        if (item) {
-          await addToVault(item);
-          const ids = 'tabs' in item ? item.tabs.map((t: any) => parseNumericId(t.id)) : [parseNumericId(activeId)];
-          for (const id of ids) { if (id !== -1) { try { await chrome.tabs.remove(id); } catch(e) {} } }
+        if (activeId) {
+          await moveToVault(activeId as any);
         }
         useStore.getState().setIsUpdating(false);
-        await useStore.getState().refreshTabs();
+        await useStore.getState().syncLiveTabs();
         return;
       }
 
@@ -839,12 +827,12 @@ export const Dashboard: React.FC = () => {
       if (tabId) {
         try {
           const tab = await chrome.tabs.get(tabId);
-          if (tab.pinned) {
-            console.warn('[ISLAND] Cannot create island from pinned tab');
-            useStore.getState().setIsUpdating(false);
-            await useStore.getState().refreshTabs();
-            return;
-          }
+            if (tab.pinned) {
+              console.warn('[ISLAND] Cannot create island from pinned tab');
+              useStore.getState().setIsUpdating(false);
+              await useStore.getState().syncLiveTabs();
+              return;
+            }
 
           // Set island creation state (lightweight, just for UI indicators)
           setIsCreatingIsland(true);
@@ -884,7 +872,7 @@ export const Dashboard: React.FC = () => {
       
       // Always clear the update lock and trigger refresh
       useStore.getState().setIsUpdating(false);
-      await useStore.getState().refreshTabs();
+      await useStore.getState().syncLiveTabs();
       return;
     }
 
@@ -946,7 +934,7 @@ export const Dashboard: React.FC = () => {
       } finally {
         setIsLoading(false);
         useStore.getState().setIsUpdating(false);
-        await useStore.getState().refreshTabs();
+        await useStore.getState().syncLiveTabs();
       }
       return;
     }
@@ -957,48 +945,13 @@ export const Dashboard: React.FC = () => {
       setIsLoading(true);
       
       try {
-        const findVaultItem = (list: any[]) => {
-          const root = list.find(i => i && i.id == activeId);
-          if (root) return root;
-          for (const group of list) {
-            if (group && group.tabs) {
-              const nested = group.tabs.find((t: any) => t && t.id == activeId);
-              if (nested) return group;
-            }
-          }
-          return null;
-        };
-
-        const itemToRestore = findVaultItem(finalVault);
-        if (itemToRestore) {
-          // Calculate Browser Index
-          let browserIndex = 0;
-          for (const item of finalIslands) {
-            if (item.id == overId || (item as any).tabs?.some((t: any) => t.id == overId)) break;
-            browserIndex += (item as any).tabs ? (item as any).tabs.length : 1;
-          }
-
-          const isGroup = Array.isArray(itemToRestore.tabs) && itemToRestore.tabs.length > 0;
-
-          if (isGroup) {
-            const newIds: number[] = [];
-            for (const t of itemToRestore.tabs) {
-              const nt = await chrome.tabs.create({ url: t.url, active: false, index: browserIndex + newIds.length });
-              if (nt.id) newIds.push(nt.id);
-            }
-            if (newIds.length > 0) {
-              await createIsland(newIds, itemToRestore.title, itemToRestore.color as any);
-            }
-          } else {
-            await chrome.tabs.create({ url: itemToRestore.url, active: false, index: browserIndex });
-          }
-          
-          await useStore.getState().removeFromVault(activeId as any);
+        if (activeId) {
+          await restoreFromVault(activeId as any);
         }
       } finally {
         setIsLoading(false);
         useStore.getState().setIsUpdating(false);
-        await useStore.getState().refreshTabs();
+        await useStore.getState().syncLiveTabs();
       }
       return;
     }
@@ -1020,7 +973,7 @@ export const Dashboard: React.FC = () => {
             dividerPosition={dividerPosition}
             islands={islands}
             handleTabClick={handleTabClick}
-            addToVault={addToVault}
+            moveToVault={moveToVault}
             saveToVault={saveToVault}
             closeTab={handleCloseTab}
             onRenameGroup={renameGroup}
@@ -1050,7 +1003,7 @@ export const Dashboard: React.FC = () => {
                 createVaultGroup={createVaultGroup}
                 onRenameGroup={renameGroup}
                 onToggleCollapse={toggleVaultGroupCollapse}
-                restoreToLive={restoreToLive}
+                restoreFromVault={restoreFromVault}
               />
             </>
           )}
