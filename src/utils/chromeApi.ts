@@ -1,74 +1,68 @@
 export const moveIsland = async (groupId: number, index: number, windowId?: number) => {
-  return chrome.tabGroups.move(groupId, { index, windowId });
+  try {
+    return await chrome.tabGroups.move(groupId, { index, windowId });
+  } catch (error) {
+    console.error('[moveIsland] Move failed:', error);
+    throw error;
+  }
 };
 
 export const moveTab = async (tabId: number, index: number, windowId?: number) => {
-  return chrome.tabs.move(tabId, { index, windowId });
+  try {
+    return await chrome.tabs.move(tabId, { index, windowId });
+  } catch (error) {
+    console.error('[moveTab] Move failed:', error);
+    throw error;
+  }
 };
 
 export const createIsland = async (tabIds: number[], title?: string, color?: chrome.tabGroups.Color, windowId?: number): Promise<number | null> => {
   try {
-    const validIds = [...tabIds.filter(id => typeof id === 'number' && id > 0)];
-    if (validIds.length === 0) return null;
+    // 1. Fetch tab objects to verify existence and window affinity
+    const tabs = await Promise.all(
+      tabIds.map(id => chrome.tabs.get(id).catch(() => null))
+    );
+    const validTabs = tabs.filter((t): t is chrome.tabs.Tab => t !== null);
     
-    // Opera GX specific: If only one tab, create a secondary new tab to prevent the group from auto-disbanding.
-    if (validIds.length === 1) {
+    if (validTabs.length === 0) return null;
+
+    // 2. Ensure all tabs are in the same window (Chrome requirement for grouping)
+    // If not specified, use the window of the first valid tab
+    const targetWindowId = windowId ?? validTabs[0].windowId;
+    const sameWindowTabs = validTabs.filter(t => t.windowId === targetWindowId);
+    const finalTabIds = sameWindowTabs.map(t => t.id as number);
+
+    if (finalTabIds.length === 0) return null;
+    
+    // 3. Opera GX specific: If only one tab, create a companion tab in the SAME window
+    if (finalTabIds.length === 1) {
       try {
-        const sourceTab = await chrome.tabs.get(validIds[0]);
+        const sourceTab = sameWindowTabs[0];
         const newTab = await chrome.tabs.create({ 
-          windowId: sourceTab.windowId, 
+          windowId: targetWindowId, 
           active: false,
           index: sourceTab.index + 1
         });
         if (newTab.id) {
-          validIds.push(newTab.id);
+          finalTabIds.push(newTab.id);
         }
       } catch (e) {
         console.warn('[createIsland] Could not create companion tab:', e);
       }
     }
 
-    // Create the group with all identified tabs
+    // 4. Create the group
     const groupId = await chrome.tabs.group({ 
-      tabIds: validIds as [number, ...number[]], 
-      createProperties: windowId ? { windowId } : undefined
+      tabIds: finalTabIds as [number, ...number[]], 
+      createProperties: { windowId: targetWindowId }
     });
     
     if (groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-      console.log(`[createIsland] Group ${groupId} created. Syncing...`);
-      
-      const maxWaitTime = 2000;
-      const pollInterval = 100;
-      let synced = false;
-      
-      for (let i = 0; i < maxWaitTime / pollInterval; i++) {
-        try {
-          const tab = await chrome.tabs.get(validIds[0]);
-          if (tab.groupId === groupId) {
-            synced = true;
-            break;
-          }
-        } catch (e) {}
-        await new Promise(r => setTimeout(r, pollInterval));
-      }
-      
-      if (synced) {
-        // Only update properties if title or color is EXPLICITLY provided.
-        // If title is empty/missing, we leave the group as "Untitled" (no name).
-        if (title || color) {
-          for (let i = 0; i < 3; i++) {
-            const success = await updateTabGroup(groupId, { 
-              title: title || '', // Empty string for no name
-              color: color || ('cyan' as any)
-            });
-            if (success) break;
-            await new Promise(r => setTimeout(r, 100));
-          }
-        } else {
-            // Default behavior for manual creation: ensure no title is set
-            await updateTabGroup(groupId, { title: '', color: 'cyan' as any });
-        }
-      }
+      // Update properties (title, color)
+      await updateTabGroup(groupId, { 
+        title: title || '', 
+        color: color || 'cyan'
+      });
     }
     
     return groupId;
