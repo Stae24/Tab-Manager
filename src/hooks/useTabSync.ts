@@ -4,7 +4,6 @@ import { useStore } from '../store/useStore';
 export const useTabSync = () => {
   const refreshTimeout = useRef<any>(null);
   const pendingRefresh = useRef(false);
-  const isRefreshing = useRef(false);
 
   useEffect(() => {
     // Initial fetch
@@ -13,9 +12,6 @@ export const useTabSync = () => {
     // Listen for updates from background script
     const listener = (message: any) => {
       if (message.type === 'REFRESH_TABS') {
-        // Guard against recursive refresh calls
-        if (isRefreshing.current) return;
-
         const { isUpdating, syncLiveTabs } = useStore.getState();
 
         if (isUpdating) {
