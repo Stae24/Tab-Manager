@@ -2,7 +2,7 @@ export const moveIsland = async (groupId: number, index: number, windowId?: numb
   try {
     return await chrome.tabGroups.move(groupId, { index, windowId });
   } catch (error) {
-    console.error('[moveIsland] Move failed:', error);
+    console.error(`[moveIsland] Failed to move group ${groupId} to index ${index} (window ${windowId}):`, error);
     throw error;
   }
 };
@@ -11,7 +11,7 @@ export const moveTab = async (tabId: number, index: number, windowId?: number) =
   try {
     return await chrome.tabs.move(tabId, { index, windowId });
   } catch (error) {
-    console.error('[moveTab] Move failed:', error);
+    console.error(`[moveTab] Failed to move tab ${tabId} to index ${index} (window ${windowId}):`, error);
     throw error;
   }
 };
@@ -22,19 +22,48 @@ export const createIsland = async (tabIds: number[], title?: string, color?: chr
     const tabs = await Promise.all(
       tabIds.map(id => chrome.tabs.get(id).catch(() => null))
     );
-    const validTabs = tabs.filter((t): t is chrome.tabs.Tab => t !== null);
+    const validTabs = tabs.filter((t): t is chrome.tabs.Tab => t !== null && t.id !== undefined);
     
     if (validTabs.length === 0) return null;
 
-    // 2. Ensure all tabs are in the same window (Chrome requirement for grouping)
-    // If not specified, use the window of the first valid tab
-    const targetWindowId = windowId ?? validTabs[0].windowId;
+    // 2. Determine target window (majority rule or forced)
+    let targetWindowId: number | undefined = windowId;
+
+    if (targetWindowId === chrome.windows.WINDOW_ID_CURRENT) {
+        const currentWindow = await chrome.windows.getCurrent();
+        targetWindowId = currentWindow.id;
+    }
+
+    if (!targetWindowId) {
+      // Find window with most tabs
+      const windowCounts = new Map<number, number>();
+      validTabs.forEach(t => {
+        const wid = t.windowId;
+        windowCounts.set(wid, (windowCounts.get(wid) || 0) + 1);
+      });
+      
+      let maxCount = -1;
+      // Initialize with first valid tab's window as fallback
+      targetWindowId = validTabs[0].windowId; 
+
+      for (const [wid, count] of windowCounts.entries()) {
+        if (count > maxCount) {
+          maxCount = count;
+          targetWindowId = wid;
+        }
+      }
+    }
+
+    // 3. Filter tabs to ensure they belong to the target window
     const sameWindowTabs = validTabs.filter(t => t.windowId === targetWindowId);
     const finalTabIds = sameWindowTabs.map(t => t.id as number);
 
-    if (finalTabIds.length === 0) return null;
+    if (finalTabIds.length === 0) {
+        console.warn(`[createIsland] No tabs found for target window ${targetWindowId}`);
+        return null;
+    }
     
-    // 3. Opera GX specific: If only one tab, create a companion tab in the SAME window
+    // 4. Opera GX specific: If only one tab, create a companion tab in the SAME window
     if (finalTabIds.length === 1) {
       try {
         const sourceTab = sameWindowTabs[0];
@@ -51,7 +80,7 @@ export const createIsland = async (tabIds: number[], title?: string, color?: chr
       }
     }
 
-    // 4. Create the group
+    // 5. Create the group
     const groupId = await chrome.tabs.group({ 
       tabIds: finalTabIds as [number, ...number[]], 
       createProperties: { windowId: targetWindowId }
