@@ -115,7 +115,7 @@ const syncSettings = debounce((settings: any) => {
 }, 1000);
 
 const persistVault = async (vault: VaultItem[]) => {
-  await chrome.storage.local.set({ vault });
+  await chrome.storage.sync.set({ vault });
 };
 
 // Helper to extract numeric ID from prefixed strings
@@ -791,8 +791,8 @@ export const useStore = create<TabState>((set, get) => ({
 // Cross-Window Sync Initialization
 const init = async () => {
   const [sync, local] = await Promise.all([
-    chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault']),
-    chrome.storage.local.get(['vault'])
+    chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault', 'vault']),
+    chrome.storage.local.get([])
   ]);
 
   const state = useStore.getState();
@@ -801,17 +801,17 @@ const init = async () => {
   }
   if (sync.dividerPosition) state.setDividerPosition(Number(sync.dividerPosition));
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
-  if (local.vault) useStore.setState({ vault: local.vault as VaultItem[] });
+  if (sync.vault) useStore.setState({ vault: sync.vault as VaultItem[] });
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.vault) {
-      // Don't overwrite vault during optimistic updates or drag operations
-      // This prevents vault state from being corrupted when user is actively reordering items
-      if (!useStore.getState().isUpdating) {
-        useStore.setState({ vault: changes.vault.newValue as VaultItem[] });
-      }
-    }
     if (area === 'sync') {
+       if (changes.vault) {
+         // Don't overwrite vault during optimistic updates or drag operations
+         // This prevents vault state from being corrupted when user is actively reordering items
+         if (!useStore.getState().isUpdating) {
+           useStore.setState({ vault: changes.vault.newValue as VaultItem[] });
+         }
+       }
        if (changes.appearanceSettings) {
          state.setAppearanceSettings(changes.appearanceSettings.newValue as AppearanceSettings);
        }

@@ -114,7 +114,7 @@ Untrack all ignored files so they no longer appear in GitHub Desktop's "Changes"
   - [ ] Command completes successfully.
   - [ ] `git status` shows thousands of "deleted" files in the staged area.
 
-- [ ] 3. Verification & Commit
+- [x] 3. Verification & Commit
   **What to do**:
   - Verify node_modules is untracked: `git ls-files --cached node_modules | wc -l` (should be 0).
   - Add the updated `.gitignore`: `git add .gitignore`
@@ -127,6 +127,6 @@ Untrack all ignored files so they no longer appear in GitHub Desktop's "Changes"
 ---
 
 ## Success Criteria
-- [ ] GitHub Desktop "Changes" list only shows relevant source code.
-- [ ] `node_modules` and `dist` are no longer tracked.
-- [ ] `.gitignore` is robust and follows best practices.
+- [x] GitHub Desktop "Changes" list only shows relevant source code.
+- [x] `node_modules` and `dist` are no longer tracked.
+- [x] `.gitignore` is robust and follows best practices.

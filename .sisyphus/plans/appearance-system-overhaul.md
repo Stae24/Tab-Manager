@@ -98,7 +98,8 @@ Task 0 (Test Setup) → Task 1 (Store Refactor) → Task 2 (DnD Alignment) → T
   **Acceptance Criteria**:
   - Dragging items in a scaled dashboard follows cursor exactly.
 
-- [ ] 3. Implement Independent Dual Scaling
+- [x] 3. Implement Independent Dual Scaling
+
   **What to do**:
   - **GREEN**: 
     - Remove `--ui-scale` from `index.css`.

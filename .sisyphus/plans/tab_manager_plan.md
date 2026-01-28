@@ -46,7 +46,7 @@ A Chrome Extension specifically optimized for Opera GX to manage tabs and Tab Is
 7. **Sidebars & Export:** Finalize the Opera Sidebar view and the data export module.
 
 ## 5. Success Criteria
-- [ ] User can drag a tab into the "New Island" zone and create a group.
+- [x] User can drag a tab into the "New Island" zone and create a group.
 - [ ] Vault data syncs across devices using Chrome Sync.
-- [ ] UI scale and Theme settings persist.
-- [ ] Extension functions as both a full page and a sidebar action.
+- [x] UI scale and Theme settings persist.
+- [x] Extension functions as both a full page and a sidebar action.
