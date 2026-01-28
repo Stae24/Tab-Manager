@@ -2,3 +2,4 @@
 /%TMP%/dnd-kit
 nul
 /dist
+/node_modules
