@@ -1,5 +1,40 @@
-/TidyTabGroups
-/%TMP%/dnd-kit
-nul
-/dist
+# Dependencies
 /node_modules
+
+# Build outputs
+/dist
+*.tsbuildinfo
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Chrome Extension artifacts
+*.crx
+*.zip
+key.pem
+
+# IDE & OS
+/.vscode
+/.idea
+.DS_Store
+Thumbs.db
+
+# Logs & Debug
+*.log
+npm-debug.log*
+
+# Test & Coverage
+/coverage
+
+# Vite cache
+.vite/
+
+# Screenshots
+/Screenshot*.png
+
+# Legacy Reference (Project Specific)
+/TidyTabGroups
+/%TMP%
