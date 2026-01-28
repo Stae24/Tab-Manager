@@ -1,6 +1,35 @@
+const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = 3): Promise<T> => {
+  let lastError: any;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      const msg = error.message || '';
+      const isRetryable = msg.includes('Tab cannot be modified') || 
+                         msg.includes('dragging') || 
+                         msg.includes('moving') ||
+                         msg.includes('tabs cannot be edited') ||
+                         msg.includes('editable');
+      
+      if (isRetryable && attempt < maxAttempts) {
+        const delay = 100 * Math.pow(2, attempt - 1);
+        console.warn(`[${label}] Attempt ${attempt} failed. Retrying in ${delay}ms...`, msg);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+};
+
 export const moveIsland = async (groupId: number, index: number, windowId?: number) => {
   try {
-    return await chrome.tabGroups.move(groupId, { index, windowId });
+    return await withRetry(
+      () => chrome.tabGroups.move(groupId, { index, windowId }),
+      'moveIsland'
+    );
   } catch (error) {
     console.error(`[moveIsland] Failed to move group ${groupId} to index ${index} (window ${windowId}):`, error);
     throw error;
@@ -9,7 +38,10 @@ export const moveIsland = async (groupId: number, index: number, windowId?: numb
 
 export const moveTab = async (tabId: number, index: number, windowId?: number) => {
   try {
-    return await chrome.tabs.move(tabId, { index, windowId });
+    return await withRetry(
+      () => chrome.tabs.move(tabId, { index, windowId }),
+      'moveTab'
+    );
   } catch (error) {
     console.error(`[moveTab] Failed to move tab ${tabId} to index ${index} (window ${windowId}):`, error);
     throw error;
@@ -102,33 +134,50 @@ export const createIsland = async (tabIds: number[], title?: string, color?: chr
 };
 
 export const ungroupTab = async (tabIds: number | number[]) => {
-  return chrome.tabs.ungroup(tabIds as number | [number, ...number[]]);
+  try {
+    return await withRetry(
+      () => chrome.tabs.ungroup(tabIds as number | [number, ...number[]]),
+      'ungroupTab'
+    );
+  } catch (error) {
+    console.error(`[ungroupTab] Failed to ungroup tabs:`, error);
+    throw error;
+  }
 };
+
 
 export const updateTabGroup = async (groupId: number, properties: chrome.tabGroups.UpdateProperties): Promise<boolean> => {
   if (!Number.isInteger(groupId) || groupId <= 0) return false;
   
-  return new Promise((resolve) => {
-    try {
-      chrome.tabGroups.update(groupId, properties, () => {
-        if (chrome.runtime.lastError) {
-          const msg = chrome.runtime.lastError.message || '';
-          if (msg.includes('saved') || msg.includes('editable')) {
-            console.warn(`[updateTabGroup] Group ${groupId} is not editable (likely saved):`, msg);
+  try {
+    return await withRetry(async () => {
+      return new Promise((resolve, reject) => {
+        chrome.tabGroups.update(groupId, properties, () => {
+          if (chrome.runtime.lastError) {
+            const msg = chrome.runtime.lastError.message || '';
+            if (msg.includes('saved') || msg.includes('editable')) {
+              reject(new Error(msg));
+            } else {
+              console.error(`[updateTabGroup] Error updating group ${groupId}:`, msg);
+              resolve(false);
+            }
           } else {
-            console.error(`[updateTabGroup] Error updating group ${groupId}:`, msg);
+            resolve(true);
           }
-          resolve(false);
-        } else {
-          resolve(true);
-        }
+        });
       });
-    } catch (e) {
-      console.error(`[updateTabGroup] Fatal error updating group ${groupId}:`, e);
-      resolve(false);
+    }, 'updateTabGroup');
+  } catch (error: any) {
+    const msg = error.message || '';
+    if (msg.includes('saved') || msg.includes('editable')) {
+      console.warn(`[updateTabGroup] Group ${groupId} is not editable (likely saved):`, msg);
+    } else {
+      console.error(`[updateTabGroup] Fatal error updating group ${groupId}:`, error);
     }
-  });
+    return false;
+  }
 };
+
 
 export const updateTabGroupCollapse = async (groupId: number, collapsed: boolean): Promise<boolean> => {
   return updateTabGroup(groupId, { collapsed: !!collapsed });

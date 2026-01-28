@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { GripVertical, Plus, FolderOpen, Save, Loader2, ChevronUp, ChevronDown, Search, ChevronDown as SortDown, X, ChevronUp as SortUp, Trash2 } from 'lucide-react';
+import { GripVertical, Plus, FolderOpen, Save, Loader2, ChevronUp, ChevronDown, Search, ChevronDown as SortDown, X, ChevronUp as SortUp, Trash2, LayoutGrid } from 'lucide-react';
 import {
   DndContext,
   closestCorners,
@@ -90,10 +90,11 @@ const LivePanel: React.FC<{
   setSortOption: (option: 'browser-order' | 'alpha-title' | 'alpha-url') => void,
   filteredTabs: any[],
   deleteDuplicateTabs: () => Promise<void>,
+  sortGroupsToTop: () => Promise<void>,
   showVault: boolean,
   isCreatingIsland: boolean,
   creatingTabId: number | string | null
-}> = ({ dividerPosition, islands, handleTabClick, moveToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, deleteDuplicateTabs, showVault, isCreatingIsland, creatingTabId }) => {
+}> = ({ dividerPosition, islands, handleTabClick, moveToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, deleteDuplicateTabs, sortGroupsToTop, showVault, isCreatingIsland, creatingTabId }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'live-panel-dropzone',
   });
@@ -310,9 +311,19 @@ const LivePanel: React.FC<{
                   title="Expand All"
                   className="p-1 hover:bg-gx-accent/20 hover:text-gx-accent rounded transition-all group"
                 >
-                  <ChevronDown size={14} className="group-hover:scale-110 transition-transform" />
+                <ChevronDown size={14} className="group-hover:scale-110 transition-transform" />
                 </button>
               </div>
+            )}
+
+            {!searchQuery && (
+              <button
+                onClick={sortGroupsToTop}
+                title="Sort Groups to Top"
+                className="p-1.5 bg-gx-gray/80 rounded-lg border border-white/5 hover:border-gx-accent/30 hover:bg-gx-accent/10 transition-all group shadow-inner"
+              >
+                <LayoutGrid size={14} className="text-gray-400 group-hover:text-gx-accent transition-colors" />
+              </button>
             )}
 
             {/* Delete Duplicate Tabs (hidden in search mode) */}
@@ -495,8 +506,9 @@ const VaultPanel: React.FC<{
   createVaultGroup: () => void,
   onRenameGroup: (id: number | string, title: string) => void,
   onToggleCollapse: (id: number | string) => void,
+  sortVaultGroupsToTop: () => Promise<void>,
   restoreFromVault: (id: number | string) => void
-}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, restoreFromVault }) => {
+}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'vault-dropzone',
   });
@@ -543,6 +555,13 @@ const VaultPanel: React.FC<{
           <h2 className="text-sm font-bold tracking-widest uppercase italic text-gx-red">Neural Vault</h2>
         </div>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={sortVaultGroupsToTop} 
+            title="Sort Groups to Top" 
+            className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all group"
+          >
+            <LayoutGrid size={14} className="group-hover:scale-110 transition-transform" />
+          </button>
           <button onClick={createVaultGroup} title="Add Group" className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all">
              <Plus className="w-4 h-4" />
           </button>
@@ -628,6 +647,8 @@ export const Dashboard: React.FC = () => {
     toggleVaultGroupCollapse,
     toggleLiveGroupCollapse,
     deleteDuplicateTabs,
+    sortGroupsToTop,
+    sortVaultGroupsToTop,
     showVault,
     isRenaming,
     appearanceSettings
@@ -991,6 +1012,7 @@ export const Dashboard: React.FC = () => {
             setSortOption={setSortOption}
             filteredTabs={filteredTabs}
             deleteDuplicateTabs={deleteDuplicateTabs}
+            sortGroupsToTop={sortGroupsToTop}
             showVault={showVault}
             isCreatingIsland={isCreatingIsland}
             creatingTabId={creatingTabId}
@@ -1009,6 +1031,7 @@ export const Dashboard: React.FC = () => {
                 createVaultGroup={createVaultGroup}
                 onRenameGroup={renameGroup}
                 onToggleCollapse={toggleVaultGroupCollapse}
+                sortVaultGroupsToTop={sortVaultGroupsToTop}
                 restoreFromVault={restoreFromVault}
               />
             </>

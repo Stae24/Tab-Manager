@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Island, Tab, VaultItem, UniversalId, LiveItem } from '../types/index';
 import { UniqueIdentifier } from '@dnd-kit/core';
-import { createIsland, updateTabGroup, updateTabGroupCollapse, closeTab, discardTabs } from '../utils/chromeApi';
+import { createIsland, updateTabGroup, updateTabGroupCollapse, closeTab, discardTabs, moveIsland, moveTab } from '../utils/chromeApi';
 
 // Appearance settings types - exported for components
 export type ThemeMode = 'dark' | 'light' | 'system';
@@ -93,12 +93,14 @@ interface TabState {
   removeFromVault: (id: UniversalId) => Promise<void>;
   createVaultGroup: () => Promise<void>;
   toggleVaultGroupCollapse: (id: UniversalId) => Promise<void>;
+  sortVaultGroupsToTop: () => Promise<void>;
   
   // Live Actions
   renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
   toggleLiveGroupCollapse: (id: UniversalId) => Promise<void>;
   moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
   deleteDuplicateTabs: () => Promise<void>;
+  sortGroupsToTop: () => Promise<void>;
 }
 
 
@@ -785,6 +787,65 @@ export const useStore = create<TabState>((set, get) => ({
     } catch (error) {
       console.error("[Deduplicator] Fatal error during deduplication:", error);
     }
+  },
+
+  sortGroupsToTop: async () => {
+    if (get().isUpdating) {
+      console.debug('[Sorter] Sort already in progress, skipping re-entrant call.');
+      return;
+    }
+
+    const { islands, setIsUpdating, syncLiveTabs } = get();
+    
+    const pinned = islands.filter(i => !isIsland(i) && (i as Tab).pinned);
+    const groups = islands.filter(isIsland);
+    const loose = islands.filter(i => !isIsland(i) && !(i as Tab).pinned);
+    
+    const sorted = [...pinned, ...groups, ...loose];
+    if (sorted.every((item, idx) => item.id === islands[idx]?.id)) return;
+
+    setIsUpdating(true);
+    try {
+      let currentIdx = 0;
+      for (const item of sorted) {
+        const numericId = parseNumericId(item.id);
+        if (numericId === -1) {
+          currentIdx += isIsland(item) ? item.tabs.length : 1;
+          continue;
+        }
+
+        try {
+          if (isIsland(item)) {
+            await moveIsland(numericId, currentIdx);
+            currentIdx += item.tabs.length;
+          } else {
+            await moveTab(numericId, currentIdx);
+            currentIdx += 1;
+          }
+        } catch (itemError) {
+          console.warn(`[Sorter] Failed to move item ${item.id} to index ${currentIdx}:`, itemError);
+          currentIdx += isIsland(item) ? item.tabs.length : 1;
+        }
+      }
+      await syncLiveTabs();
+    } catch (error) {
+      console.error('[Sorter] Fatal error during sorting:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  },
+
+  sortVaultGroupsToTop: async () => {
+    const { vault } = get();
+    const pinned = vault.filter(i => !isIsland(i) && (i as any).pinned);
+    const groups = vault.filter(isIsland);
+    const loose = vault.filter(i => !isIsland(i) && !(i as any).pinned);
+    
+    const sorted = [...pinned, ...groups, ...loose];
+    if (sorted.every((item, idx) => item.id === vault[idx]?.id)) return;
+
+    set({ vault: sorted });
+    await persistVault(sorted);
   }
 }));
 
