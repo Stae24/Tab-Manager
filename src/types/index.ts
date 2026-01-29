@@ -29,3 +29,48 @@ export type VaultItem = (Island | Tab) & {
   savedAt: number;
   originalId: UniversalId;
 };
+
+// Vault Storage Types
+export interface VaultStorageConfig {
+  syncEnabled: boolean;
+}
+
+export type VaultStorageErrorType = 
+  | 'QUOTA_EXCEEDED'
+  | 'SYNC_FAILED'
+  | 'CORRUPTION'
+  | 'CHUNK_MISMATCH';
+
+export type QuotaWarningLevel = 'none' | 'warning' | 'critical';
+
+export interface VaultStorageResult {
+  success: boolean;
+  error?: VaultStorageErrorType;
+  bytesUsed?: number;
+  bytesAvailable?: number;
+  warningLevel?: QuotaWarningLevel;
+}
+
+export interface VaultQuotaInfo {
+  used: number;
+  available: number;
+  total: number;
+  percentage: number;
+  warningLevel: QuotaWarningLevel;
+}
+
+export interface VaultMeta {
+  version: number;
+  chunkCount: number;
+  chunkKeys: string[];
+  checksum: string;
+  timestamp: number;
+  compressed: boolean;
+}
+
+export interface MigrationResult {
+  migrated: boolean;
+  itemCount: number;
+  from?: 'sync_legacy' | 'local_legacy' | 'none';
+  error?: string;
+}
