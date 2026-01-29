@@ -25,10 +25,12 @@ import {
 import { Island } from './Island';
 import { TabCard } from './TabCard';
 import { Sidebar } from './Sidebar';
+import { QuotaWarningBanner } from './QuotaWarningBanner';
+import { QuotaExceededModal, QuotaExceededAction } from './QuotaExceededModal';
 import { useStore, parseNumericId } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { closeTab, moveIsland, createIsland } from '../utils/chromeApi';
-import { Island as IslandType, Tab as TabType } from '../types/index';
+import { Island as IslandType, Tab as TabType, VaultQuotaInfo } from '../types/index';
 
 // Proximity tracking hook for droppable gaps
 const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) => {
@@ -507,8 +509,10 @@ const VaultPanel: React.FC<{
   onRenameGroup: (id: number | string, title: string) => void,
   onToggleCollapse: (id: number | string) => void,
   sortVaultGroupsToTop: () => Promise<void>,
-  restoreFromVault: (id: number | string) => void
-}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault }) => {
+  restoreFromVault: (id: number | string) => void,
+  vaultQuota: VaultQuotaInfo | null,
+  onManageStorage?: () => void
+}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault, vaultQuota, onManageStorage }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'vault-dropzone',
   });
@@ -570,6 +574,13 @@ const VaultPanel: React.FC<{
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none">
+        {vaultQuota && vaultQuota.warningLevel !== 'none' && (
+          <QuotaWarningBanner
+            warningLevel={vaultQuota.warningLevel}
+            percentage={vaultQuota.percentage}
+            onManageStorage={onManageStorage}
+          />
+        )}
         <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
           {(vault || []).map((item, index) => {
             const isCurrentIsland = 'tabs' in item;
@@ -651,7 +662,11 @@ export const Dashboard: React.FC = () => {
     sortVaultGroupsToTop,
     showVault,
     isRenaming,
-    appearanceSettings
+    appearanceSettings,
+    vaultQuota,
+    quotaExceededPending,
+    clearQuotaExceeded,
+    setVaultSyncEnabled
   } = useStore();
 
   const [isResizing, setIsResizing] = useState(false);
@@ -722,6 +737,13 @@ export const Dashboard: React.FC = () => {
       y: transform.y / appearanceSettings.uiScale,
     };
   }, [appearanceSettings.uiScale]);
+
+  const handleQuotaExceededAction = useCallback(async (action: QuotaExceededAction) => {
+    if (action === 'switch-local') {
+      await setVaultSyncEnabled(false);
+    }
+    clearQuotaExceeded();
+  }, [setVaultSyncEnabled, clearQuotaExceeded]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsResizing(true);
@@ -817,7 +839,7 @@ export const Dashboard: React.FC = () => {
       
       // SCENARIO 1: Internal Vault Move (Sort)
       if (isVaultSource && isVaultTarget) {
-        await chrome.storage.local.set({ vault: finalVault });
+        await useStore.getState().reorderVault(finalVault);
         return;
       }
 
@@ -1033,6 +1055,7 @@ export const Dashboard: React.FC = () => {
                 onToggleCollapse={toggleVaultGroupCollapse}
                 sortVaultGroupsToTop={sortVaultGroupsToTop}
                 restoreFromVault={restoreFromVault}
+                vaultQuota={vaultQuota}
               />
             </>
           )}
@@ -1052,6 +1075,12 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
+      <QuotaExceededModal
+        isOpen={!!quotaExceededPending}
+        bytesUsed={quotaExceededPending?.bytesUsed ?? 0}
+        bytesAvailable={quotaExceededPending?.bytesAvailable ?? 0}
+        onAction={handleQuotaExceededAction}
+      />
     </div>
   );
 };

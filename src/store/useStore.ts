@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { Island, Tab, VaultItem, UniversalId, LiveItem } from '../types/index';
+import { Island, Tab, VaultItem, UniversalId, LiveItem, VaultQuotaInfo, VaultStorageResult } from '../types/index';
 import { UniqueIdentifier } from '@dnd-kit/core';
 import { createIsland, updateTabGroup, updateTabGroupCollapse, closeTab, discardTabs, moveIsland, moveTab } from '../utils/chromeApi';
+import { saveVault, loadVault, migrateFromLegacy, getVaultQuota, toggleSyncMode } from '../utils/vaultStorage';
 
 // Appearance settings types - exported for components
 export type ThemeMode = 'dark' | 'light' | 'system';
@@ -38,6 +39,9 @@ interface AppearanceSettings {
   dragOpacity: number;
   loadingSpinnerStyle: 'pulse' | 'dots' | 'bars' | 'ring';
   menuPosition: MenuPosition;
+  
+  // v2.1 - Storage
+  vaultSyncEnabled: boolean;
 }
 
 // Export default appearance settings for reset functionality
@@ -60,12 +64,13 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   dragOpacity: 0.5,
   loadingSpinnerStyle: 'pulse',
   menuPosition: 'left',
+  vaultSyncEnabled: true,
 };
 
 interface TabState {
   // Core State
-  islands: LiveItem[];  // Live Panel State (Tabs & Groups)
-  vault: VaultItem[];   // Vault Panel State (Saved Items)
+  islands: LiveItem[];
+  vault: VaultItem[];
   
   // UI State
   appearanceSettings: AppearanceSettings;
@@ -76,6 +81,10 @@ interface TabState {
   pendingRefresh: boolean;
   isRenaming: boolean;
   isRefreshing: boolean;
+  
+  // Quota State
+  vaultQuota: VaultQuotaInfo | null;
+  quotaExceededPending: VaultStorageResult | null;
 
   // Actions
   syncLiveTabs: () => Promise<void>;
@@ -92,8 +101,14 @@ interface TabState {
   restoreFromVault: (id: UniversalId) => Promise<void>;
   removeFromVault: (id: UniversalId) => Promise<void>;
   createVaultGroup: () => Promise<void>;
+  reorderVault: (newVault: VaultItem[]) => Promise<void>;
   toggleVaultGroupCollapse: (id: UniversalId) => Promise<void>;
   sortVaultGroupsToTop: () => Promise<void>;
+  
+  // Quota Actions
+  refreshVaultQuota: () => Promise<void>;
+  clearQuotaExceeded: () => void;
+  setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
   
   // Live Actions
   renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
@@ -116,8 +131,17 @@ const syncSettings = debounce((settings: any) => {
   chrome.storage.sync.set(settings);
 }, 1000);
 
-const persistVault = async (vault: VaultItem[]) => {
-  await chrome.storage.sync.set({ vault });
+const persistVault = async (vault: VaultItem[], syncEnabled: boolean): Promise<VaultStorageResult> => {
+  const result = await saveVault(vault, { syncEnabled });
+  
+  // Always refresh quota information after a save to keep UI reactive
+  const quota = await getVaultQuota();
+  useStore.setState({ vaultQuota: quota });
+
+  if (!result.success && result.error === 'QUOTA_EXCEEDED') {
+    useStore.setState({ quotaExceededPending: result });
+  }
+  return result;
 };
 
 // Helper to extract numeric ID from prefixed strings
@@ -171,9 +195,36 @@ export const useStore = create<TabState>((set, get) => ({
   pendingRefresh: false,
   isRenaming: false,
   isRefreshing: false,
+  vaultQuota: null,
+  quotaExceededPending: null,
 
   setIsUpdating: (isUpdating) => set({ isUpdating }),
   setIsRenaming: (isRenaming) => set({ isRenaming }),
+  
+  refreshVaultQuota: async () => {
+    const quota = await getVaultQuota();
+    set({ vaultQuota: quota });
+  },
+  
+  clearQuotaExceeded: () => set({ quotaExceededPending: null }),
+  
+  setVaultSyncEnabled: async (enabled: boolean) => {
+    const { vault, appearanceSettings } = get();
+    const result = await toggleSyncMode(vault, enabled);
+    
+    if (result.success) {
+      const updated = { ...appearanceSettings, vaultSyncEnabled: enabled };
+      set({ appearanceSettings: updated });
+      // Consolidate sync to a single appearanceSettings key to avoid redundant onChanged events
+      syncSettings({ appearanceSettings: updated });
+      
+      const quota = await getVaultQuota();
+      set({ vaultQuota: quota });
+    }
+    
+    return result;
+  },
+  
   setAppearanceSettings: (newSettings) => {
     const current = get().appearanceSettings;
     const updated = { ...current, ...newSettings };
@@ -505,7 +556,7 @@ export const useStore = create<TabState>((set, get) => ({
     
     const newVault = [...vault, itemClone as VaultItem];
     set({ vault: newVault });
-    await persistVault(newVault);
+    await persistVault(newVault, get().appearanceSettings.vaultSyncEnabled);
     
     // 2. Close in Chrome
     if (isIsland(item)) {
@@ -542,7 +593,7 @@ export const useStore = create<TabState>((set, get) => ({
 
     const newVault = [...vault, newItem];
     set({ vault: newVault });
-    await persistVault(newVault);
+    await persistVault(newVault, get().appearanceSettings.vaultSyncEnabled);
   },
 
   restoreFromVault: async (id) => {
@@ -591,7 +642,7 @@ export const useStore = create<TabState>((set, get) => ({
     // Remove from Vault after restore
     const newVault = vault.filter(v => String(v.id) !== String(id));
     set({ vault: newVault });
-    await persistVault(newVault);
+    await persistVault(newVault, get().appearanceSettings.vaultSyncEnabled);
   },
 
   createVaultGroup: async () => {
@@ -609,7 +660,13 @@ export const useStore = create<TabState>((set, get) => ({
     // Add to top
     const newVault = [newGroup, ...vault];
     set({ vault: newVault });
-    await persistVault(newVault);
+    await persistVault(newVault, get().appearanceSettings.vaultSyncEnabled);
+  },
+
+  reorderVault: async (newVault) => {
+    set({ vault: newVault });
+    // Vault reorders must be persisted to ensure cloud sync and consistency across reloads
+    await persistVault(newVault, get().appearanceSettings.vaultSyncEnabled);
   },
 
   renameGroup: async (id, newTitle) => {
@@ -624,7 +681,7 @@ export const useStore = create<TabState>((set, get) => ({
         return item;
       });
       set({ vault: newVault });
-      if (!isUpdating) await persistVault(newVault);
+      if (!isUpdating) await persistVault(newVault, get().appearanceSettings.vaultSyncEnabled);
     } else {
       // Live panel group rename
       const numericId = parseNumericId(id);
@@ -646,7 +703,7 @@ export const useStore = create<TabState>((set, get) => ({
       return item;
     });
     set({ vault: newVault });
-    if (!isUpdating) await persistVault(newVault);
+    if (!isUpdating) await persistVault(newVault, get().appearanceSettings.vaultSyncEnabled);
   },
 
   toggleLiveGroupCollapse: async (id) => {
@@ -696,7 +753,7 @@ export const useStore = create<TabState>((set, get) => ({
     const { vault } = get();
     const newVault = vault.filter(v => v && v.id != id);
     set({ vault: newVault });
-    await persistVault(newVault);
+    await persistVault(newVault, get().appearanceSettings.vaultSyncEnabled);
   },
 
   deleteDuplicateTabs: async () => {
@@ -844,43 +901,65 @@ export const useStore = create<TabState>((set, get) => ({
     const sorted = [...pinned, ...groups, ...loose];
     if (sorted.every((item, idx) => item.id === vault[idx]?.id)) return;
 
-    set({ vault: sorted });
-    await persistVault(sorted);
+    // Use reorderVault to ensure persistence and quota refresh
+    await get().reorderVault(sorted);
   }
 }));
 
 // Cross-Window Sync Initialization
 const init = async () => {
-  const [sync, local] = await Promise.all([
-    chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault', 'vault']),
-    chrome.storage.local.get([])
-  ]);
+  const sync = await chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault']);
 
   const state = useStore.getState();
+  
   if (sync.appearanceSettings) {
     state.setAppearanceSettings(sync.appearanceSettings as AppearanceSettings);
   }
   if (sync.dividerPosition) state.setDividerPosition(Number(sync.dividerPosition));
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
-  if (sync.vault) useStore.setState({ vault: sync.vault as VaultItem[] });
+  
+  const syncEnabled = (sync.appearanceSettings as AppearanceSettings)?.vaultSyncEnabled ?? defaultAppearanceSettings.vaultSyncEnabled;
+  
+  const migrationResult = await migrateFromLegacy({ syncEnabled });
+  if (migrationResult.migrated) {
+    console.log('[VaultStorage] Migration complete:', migrationResult);
+  }
+  
+  const vault = await loadVault({ syncEnabled });
+  useStore.setState({ vault });
+  
+  const quota = await getVaultQuota();
+  useStore.setState({ vaultQuota: quota });
 
-  chrome.storage.onChanged.addListener((changes, area) => {
+  chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area === 'sync') {
-       if (changes.vault) {
-         // Don't overwrite vault during optimistic updates or drag operations
-         // This prevents vault state from being corrupted when user is actively reordering items
-         if (!useStore.getState().isUpdating) {
-           useStore.setState({ vault: changes.vault.newValue as VaultItem[] });
-         }
-       }
        if (changes.appearanceSettings) {
          state.setAppearanceSettings(changes.appearanceSettings.newValue as AppearanceSettings);
        }
        if (changes.showVault) state.setShowVault(Boolean(changes.showVault.newValue));
        if (changes.dividerPosition) state.setDividerPosition(Number(changes.dividerPosition.newValue));
+       
+       if (changes.vault_meta) {
+         if (!useStore.getState().isUpdating) {
+           const currentSettings = useStore.getState().appearanceSettings;
+           const reloadedVault = await loadVault({ syncEnabled: currentSettings.vaultSyncEnabled });
+           useStore.setState({ vault: reloadedVault });
+           const quota = await getVaultQuota();
+           useStore.setState({ vaultQuota: quota });
+         }
+       }
+    }
+    
+    if (area === 'local') {
+      if (changes.vault && !useStore.getState().appearanceSettings.vaultSyncEnabled) {
+        if (!useStore.getState().isUpdating) {
+          useStore.setState({ vault: changes.vault.newValue as VaultItem[] });
+          const quota = await getVaultQuota();
+          useStore.setState({ vaultQuota: quota });
+        }
+      }
     }
   });
 };
 
 init();
-

@@ -7,12 +7,14 @@ const chromeMock = {
       set: vi.fn(),
       remove: vi.fn(),
       clear: vi.fn(),
+      getBytesInUse: vi.fn().mockResolvedValue(0),
     },
     local: {
       get: vi.fn().mockResolvedValue({}),
       set: vi.fn(),
       remove: vi.fn(),
       clear: vi.fn(),
+      getBytesInUse: vi.fn().mockResolvedValue(0),
     },
     onChanged: {
       addListener: vi.fn(),
