@@ -359,7 +359,7 @@ const LivePanel: React.FC<{
 
         {/* Search Mode Header (only visible when searching) */}
         {searchQuery && (
-          <div className="px-4 py-2 bg-gradient-to-r from-gx-accent/5 via-gx-accent/10 to-gx-accent/5 border-t border-gx-accent/10 flex items-center justify-between animate-pulse-glow">
+          <div key="search-mode-header" className="px-4 py-2 bg-gradient-to-r from-gx-accent/5 via-gx-accent/10 to-gx-accent/5 border-t border-gx-accent/10 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Search size={10} className="text-gx-accent" />
               <span className="text-[10px] font-bold text-gx-accent tracking-wider uppercase">
@@ -381,9 +381,9 @@ const LivePanel: React.FC<{
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none scrollbar-hide">
         {searchQuery ? (
           // Search Mode: Show filtered tabs in flat list
-          <div className="space-y-2 search-mode-enter">
+          <div key="search-results-list" className="space-y-2 search-mode-enter">
             {filteredTabs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40 animate-pulse">
+              <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40">
                 <Search size={48} className="mb-4" />
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-center">
                   No tabs found<br/>
@@ -678,6 +678,7 @@ export const Dashboard: React.FC = () => {
   const [sortOption, setSortOption] = useState<'browser-order' | 'alpha-title' | 'alpha-url'>('browser-order');
   const [isCreatingIsland, setIsCreatingIsland] = useState(false);
   const [creatingTabId, setCreatingTabId] = useState<number | string | null>(null);
+  const lastFilteredTabsRef = useRef<any[]>([]);
 
   // Flatten all tabs from islands and standalone tabs for search mode
   const allTabs = useMemo(() => {
@@ -685,7 +686,8 @@ export const Dashboard: React.FC = () => {
     (islands || []).forEach(item => {
       if (item && 'tabs' in item && item.tabs) {
         // It's an Island - extract all tabs
-        tabs.push(...item.tabs.map((tab: any) => ({ ...tab, sourceIsland: item })));
+        // We use the direct tab references to maintain stability
+        tabs.push(...item.tabs);
       } else if (item) {
         // It's a standalone Tab
         tabs.push(item);
@@ -698,7 +700,7 @@ export const Dashboard: React.FC = () => {
   const filteredTabs = useMemo(() => {
     if (!searchQuery.trim()) return [];
 
-    let filtered = allTabs.filter(tab => {
+    const filtered = allTabs.filter(tab => {
       const query = searchQuery.toLowerCase();
       return (
         tab.title?.toLowerCase().includes(query) ||
@@ -709,10 +711,10 @@ export const Dashboard: React.FC = () => {
     // Sort based on selected option
     switch (sortOption) {
       case 'alpha-title':
-        filtered.sort((a, b) => a.title.localeCompare(b.title));
+        filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
         break;
       case 'alpha-url':
-        filtered.sort((a, b) => a.url.localeCompare(b.url));
+        filtered.sort((a, b) => (a.url || '').localeCompare(b.url || ''));
         break;
       case 'browser-order':
       default:
@@ -720,6 +722,23 @@ export const Dashboard: React.FC = () => {
         break;
     }
 
+    // Stabilize reference if content hasn't changed to prevent entrance animation re-triggering
+    const isIdentical = 
+      filtered.length === lastFilteredTabsRef.current.length &&
+      filtered.every((tab, i) => {
+        const prev = lastFilteredTabsRef.current[i];
+        return tab.id === prev.id && 
+               tab.title === prev.title && 
+               tab.url === prev.url &&
+               tab.active === prev.active &&
+               tab.discarded === prev.discarded;
+      });
+
+    if (isIdentical) {
+      return lastFilteredTabsRef.current;
+    }
+
+    lastFilteredTabsRef.current = filtered;
     return filtered;
   }, [searchQuery, allTabs, sortOption]);
 
