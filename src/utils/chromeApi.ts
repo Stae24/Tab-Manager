@@ -265,6 +265,7 @@ export const consolidateAndGroupTabs = async (tabIds: number[], options: { color
     const windowId = targetWindow.id;
     console.log(`[GroupSearchResults] Target window: ${windowId}`);
 
+    
     const tabs = await Promise.all(
       tabIds.map(id => chrome.tabs.get(id).catch(() => null))
     );
@@ -303,7 +304,7 @@ export const consolidateAndGroupTabs = async (tabIds: number[], options: { color
             () => chrome.tabs.move(tab.id as number, { windowId, index: -1 }),
             `moveTab-${tab.id}`
           );
-          console.log(`[GroupSearchResults] Moved tab ${tab.id} to window ${windowId}`);
+          console.log(`[GroupSearchResults] Moved tab ${tab.id} to window ${windowId} at end`);
           tabsToGroup.push(tab.id as number);
         } catch (error) {
           console.error(`[GroupSearchResults] Failed to move tab ${tab.id}:`, error);
@@ -314,6 +315,7 @@ export const consolidateAndGroupTabs = async (tabIds: number[], options: { color
       }
     }
 
+    
     if (tabsToGroup.length >= 2) {
       try {
         const groupId = await withRetry(
@@ -321,7 +323,59 @@ export const consolidateAndGroupTabs = async (tabIds: number[], options: { color
           'groupTabs'
         );
         
-        if (options.color && groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+        console.log(`[GroupSearchResults] Created group ${groupId}`);
+
+        
+        // 1. Get all tabs in the target window (the single source of truth for indices)
+        const allTabs = await withRetry(() => chrome.tabs.query({ windowId }), 'queryAllTabs');
+        
+        // 2. Find the highest index occupied by any group OTHER than our new one
+        let targetIndex = 0;
+        let lastGroupedTabId = -1;
+        
+        let newGroupStartIndex = -1;
+        let newGroupSize = 0;
+
+        for (const tab of allTabs) {
+          // Track the new group's current position and size to correct index shift later
+          if (String(tab.groupId) === String(groupId)) {
+            if (newGroupStartIndex === -1) newGroupStartIndex = tab.index;
+            newGroupSize++;
+          }
+
+          const isOtherGroup = tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && 
+                               String(tab.groupId) !== String(groupId);
+                               
+          if (isOtherGroup) {
+            if (tab.index + 1 > targetIndex) {
+              targetIndex = tab.index + 1;
+              lastGroupedTabId = tab.id || -1;
+            }
+          }
+        }
+        
+        // CORRECTION: If moving the group from left to right, we must account for the indices shifting.
+        // When the group (currently at low index) is picked up, all subsequent indices shift down by groupSize.
+        if (newGroupStartIndex !== -1 && newGroupStartIndex < targetIndex) {
+            console.log(`[GroupSearchResults] Adjusting target index ${targetIndex} by -${newGroupSize} (Left-to-Right Move)`);
+            targetIndex = Math.max(0, targetIndex - newGroupSize);
+        }
+        
+        console.log(`[GroupSearchResults] Calculated target position: ${targetIndex} (found after tab ${lastGroupedTabId})`);
+        if (targetIndex === 0) {
+          console.log('[GroupSearchResults] No other groups found, targeting index 0');
+        }
+        
+        // 3. Move the entire group to that slot
+        await withRetry(
+          () => chrome.tabGroups.move(groupId, { index: targetIndex }),
+          'moveGroup'
+        );
+        
+        console.log(`[GroupSearchResults] Moved group ${groupId} to index ${targetIndex}`);
+
+        
+        if (options.color && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
           let groupColor = options.color;
           
           if (options.color === 'random') {
@@ -330,9 +384,7 @@ export const consolidateAndGroupTabs = async (tabIds: number[], options: { color
           }
           
           await updateTabGroup(groupId, { color: groupColor as chrome.tabGroups.Color });
-          console.log(`[GroupSearchResults] Created group ${groupId} with color ${groupColor}`);
-        } else {
-          console.log(`[GroupSearchResults] Created group ${groupId}`);
+          console.log(`[GroupSearchResults] Applied color ${groupColor} to group ${groupId}`);
         }
       } catch (error) {
         console.error('[GroupSearchResults] Failed to group tabs:', error);
