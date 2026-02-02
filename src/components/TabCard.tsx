@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2, Link, Volume2, VolumeX, Copy, CopyPlus, Speaker } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { cn } from '../utils/cn';
+import { cn, getBorderRadiusClass } from '../utils/cn';
 import { discardTab, ungroupTab, closeTab, copyTabUrl, muteTab, unmuteTab, pinTab, unpinTab, duplicateTab } from '../utils/chromeApi';
 import { parseNumericId, useStore } from '../store/useStore';
 import type { Tab } from '../types/index';
@@ -45,10 +45,22 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
     spacious: 'py-3 px-4 text-sm',
   };
 
+  const buttonPadding: Record<string, string> = {
+    small: 'p-1',
+    medium: 'p-1.5',
+    large: 'p-2',
+  };
+
+  const buttonIconSize: Record<string, number> = {
+    small: 14,
+    medium: 16,
+    large: 18,
+  };
+
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging && !isOverlay ? 0.2 : 1, // Make original very faint or 0
+    opacity: isDragging && !isOverlay ? appearanceSettings.dragOpacity : 1,
     zIndex: isOverlay ? 9999 : undefined,
   };
 
@@ -75,7 +87,8 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
         {...listeners}
         {...attributes}
         className={cn(
-          `group relative flex items-center gap-2 rounded-lg transition-all cursor-grab active:cursor-grabbing touch-none`,
+          `group relative flex items-center gap-2 transition-all cursor-grab active:cursor-grabbing touch-none`,
+          getBorderRadiusClass(appearanceSettings.borderRadius),
           densityClasses[appearanceSettings.tabDensity],
           'bg-gx-gray border border-white/5',
           tab.active && 'bg-gx-accent/10 border-gx-accent/40 shadow-[0_0_15px_rgba(127,34,254,0.15)]',
@@ -97,27 +110,37 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
       >
         {/* Glow background for active/drag state */}
         {isOverlay && (
-          <div className="absolute inset-0 bg-gradient-to-r from-gx-accent/10 via-transparent to-gx-red/10 rounded-lg animate-pulse-glow" />
+          <div className={cn(
+            "absolute inset-0 bg-gradient-to-r from-gx-accent/10 via-transparent to-gx-red/10 animate-pulse-glow",
+            getBorderRadiusClass(appearanceSettings.borderRadius)
+          )} />
         )}
 
         {/* Loading state - absorption animation */}
         {isLoading && !isOverlay && (
           <>
-            <div className="absolute inset-0 bg-gx-cyan/5 rounded-lg animate-pulse-glow" />
+            <div className={cn(
+              "absolute inset-0 bg-gx-cyan/5 animate-pulse-glow",
+              getBorderRadiusClass(appearanceSettings.borderRadius)
+            )} />
             <div className="absolute inset-0 flex items-center justify-center z-20">
               <Loader2 className="w-4 h-4 text-gx-cyan animate-spin" />
             </div>
           </>
         )}
 
-        {tab.favicon && <img src={tab.favicon} alt="" className="w-4 h-4 pointer-events-none relative z-10" />}
+        {tab.favicon && appearanceSettings.showFavicons && <img src={tab.favicon} alt="" className="w-4 h-4 pointer-events-none relative z-10" />}
         <span className="flex-1 text-xs font-medium truncate pointer-events-none relative z-10">{tab.title}</span>
-        {tab.discarded && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
-        {tab.muted ? (
-          <VolumeX size={14} className="text-orange-400 relative z-10 mr-1" />
-        ) : tab.audible ? (
-          <Speaker size={14} className="text-green-400 relative z-10 mr-1 animate-pulse" />
-        ) : null}
+        {tab.discarded && appearanceSettings.showFrozenIndicators && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
+        {appearanceSettings.showAudioIndicators !== 'off' && (
+          <>
+            {tab.muted && (appearanceSettings.showAudioIndicators === 'muted' || appearanceSettings.showAudioIndicators === 'both') ? (
+              <VolumeX size={14} className="text-orange-400 relative z-10 mr-1" />
+            ) : tab.audible && (appearanceSettings.showAudioIndicators === 'playing' || appearanceSettings.showAudioIndicators === 'both') ? (
+              <Speaker size={14} className="text-green-400 relative z-10 mr-1 animate-pulse" />
+            ) : null}
+          </>
+        )}
 
         {/* Action Buttons - visible on hover */}
         {!isOverlay && (
@@ -128,10 +151,13 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
                   e.stopPropagation();
                   onSave();
                 }}
-                className="p-1.5 rounded-lg hover:bg-gx-cyan/20 text-gray-500 hover:text-gx-cyan transition-all group/save"
+                className={cn(
+                  "rounded-lg hover:bg-gx-cyan/20 text-gray-500 hover:text-gx-cyan transition-all group/save",
+                  buttonPadding[appearanceSettings.buttonSize]
+                )}
                 title="Save to Vault"
               >
-                <Save size={16} className="group-hover/save:scale-110 transition-transform" />
+                <Save size={buttonIconSize[appearanceSettings.buttonSize]} className="group-hover/save:scale-110 transition-transform" />
               </button>
             )}
             {isVault && onRestore && (
@@ -140,10 +166,13 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
                   e.stopPropagation();
                   onRestore();
                 }}
-                className="p-1.5 rounded-lg hover:bg-gx-green/20 text-gray-500 hover:text-gx-green transition-all group/restore"
+                className={cn(
+                  "rounded-lg hover:bg-gx-green/20 text-gray-500 hover:text-gx-green transition-all group/restore",
+                  buttonPadding[appearanceSettings.buttonSize]
+                )}
                 title="Open in Window"
               >
-                <ExternalLink size={16} className="group-hover/restore:scale-110 transition-transform" />
+                <ExternalLink size={buttonIconSize[appearanceSettings.buttonSize]} className="group-hover/restore:scale-110 transition-transform" />
               </button>
             )}
             <button
@@ -155,16 +184,19 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
                   if (numericId !== -1) closeTab(numericId);
                 }
               }}
-              className="p-1.5 rounded-lg hover:bg-gx-red/20 text-gray-500 hover:text-gx-red transition-all group/close"
+              className={cn(
+                "rounded-lg hover:bg-gx-red/20 text-gray-500 hover:text-gx-red transition-all group/close",
+                buttonPadding[appearanceSettings.buttonSize]
+              )}
               title={isVault ? "Delete from Vault" : "Close Tab"}
             >
-              <X size={16} className="group-hover/close:scale-110 transition-transform" />
+              <X size={buttonIconSize[appearanceSettings.buttonSize]} className="group-hover/close:scale-110 transition-transform" />
             </button>
           </div>
         )}
 
         {/* Active tab indicator */}
-        {tab.active && (
+        {tab.active && appearanceSettings.showActiveIndicator && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-3 bg-gx-accent rounded-r-full shadow-[0_0_8px_#7f22fe] z-20" />
         )}
       </div>

@@ -19,3 +19,25 @@ export function getIslandBorderColor(color: string): string {
   };
   return colorMap[color] || '#737373';
 }
+
+export function getBorderRadiusClass(radius: string): string {
+  const map: Record<string, string> = {
+    none: 'rounded-none',
+    small: 'rounded-sm',
+    medium: 'rounded-lg',
+    large: 'rounded-xl',
+    full: 'rounded-2xl',
+  };
+  return map[radius] || 'rounded-lg';
+}
+
+export function getBottomBorderRadiusClass(radius: string): string {
+  const map: Record<string, string> = {
+    none: 'rounded-b-none',
+    small: 'rounded-b-sm',
+    medium: 'rounded-b-lg',
+    large: 'rounded-b-xl',
+    full: 'rounded-b-2xl',
+  };
+  return map[radius] || 'rounded-b-lg';
+}
