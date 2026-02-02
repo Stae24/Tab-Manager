@@ -48,4 +48,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
+
+  if (message.type === 'FETCH_FAVICON') {
+    (async () => {
+      try {
+        const url = message.url;
+        
+        const restrictedProtocols = [
+          'chrome://',
+          'about:',
+          'file:',
+          'data:',
+          'edge:',
+          'opera:',
+          'chrome-extension:',
+          'view-source:'
+        ];
+        
+        if (restrictedProtocols.some(protocol => url.startsWith(protocol))) {
+          sendResponse({ success: false, error: 'RESTRICTED_PROTOCOL' });
+          return;
+        }
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const dataUrl = `data:${blob.type};base64,${base64}`;
+        
+        sendResponse({ success: true, dataUrl });
+      } catch (e: unknown) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        sendResponse({ success: false, error: errorMessage });
+      }
+    })();
+    return true;
+  }
 });

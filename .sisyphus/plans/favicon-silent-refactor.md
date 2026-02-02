@@ -93,7 +93,7 @@ Implement a "Silent Proxy" favicon system where the background script probes URL
 
 ## TODOs
 
-- [ ] 1. Update Manifest & Ruleset
+- [x] 1. Update Manifest & Ruleset
   
   **What to do**:
   - Add `declarativeNetRequest` and `declarativeNetRequestFeedback` to `manifest.json`.
@@ -106,11 +106,11 @@ Implement a "Silent Proxy" favicon system where the background script probes URL
     - `condition.urlFilter`: "*".
   
   **Acceptance Criteria**:
-  - [ ] `manifest.json` contains `declarativeNetRequest`.
-  - [ ] `public/ruleset.json` exists with valid JSON (NO `initiatorDomains`).
-  - [ ] Extension loads without manifest errors.
+  - [x] `manifest.json` contains `declarativeNetRequest`.
+  - [x] `public/ruleset.json` exists with valid JSON (NO `initiatorDomains`).
+  - [x] Extension loads without manifest errors.
 
-- [ ] 2. Refactor Background Script
+- [x] 2. Refactor Background Script
   
   **What to do**:
   - Implement `FETCH_FAVICON` handler inside an async IIFE wrapper.
@@ -119,11 +119,11 @@ Implement a "Silent Proxy" favicon system where the background script probes URL
   - Ensure `sendResponse` is called exactly once in `try` and once in `catch`.
   
   **Acceptance Criteria**:
-  - [ ] `FETCH_FAVICON` successfully returns Data URLs.
-  - [ ] Background script rejects internal protocols silently.
-  - [ ] No "Message port closed" errors in background.
+  - [x] `FETCH_FAVICON` successfully returns Data URLs.
+  - [x] Background script rejects internal protocols silently.
+  - [x] No "Message port closed" errors in background.
 
-- [ ] 3. Refactor Favicon Component
+- [x] 3. Refactor Favicon Component
   
   **What to do**:
   - Remove all logic that sets `displaySrc` to a remote URL.
@@ -132,15 +132,15 @@ Implement a "Silent Proxy" favicon system where the background script probes URL
   - Only update `displaySrc` when background returns a `data:` URL.
   
   **Acceptance Criteria**:
-  - [ ] Component correctly shows `Globe` while fetching.
-  - [ ] Component updates to favicon image once background probe succeeds.
-  - [ ] Page console remains silent during the entire process.
+  - [x] Component correctly shows `Globe` while fetching.
+  - [x] Component updates to favicon image once background probe succeeds.
+  - [x] Page console remains silent during the entire process.
 
 ---
 
 ## Success Criteria
 
 ### Final Checklist
-- [ ] No network errors in page console for favicon loads.
-- [ ] Favicons load reliably for CORP-restricted sites.
-- [ ] All requirements met.
+- [x] No network errors in page console for favicon loads.
+- [x] Favicons load reliably for CORP-restricted sites.
+- [x] All requirements met.
