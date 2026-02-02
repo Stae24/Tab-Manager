@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Island, Tab, VaultItem, UniversalId, LiveItem, VaultQuotaInfo, VaultStorageResult } from '../types/index';
 import { UniqueIdentifier } from '@dnd-kit/core';
-import { createIsland, updateTabGroup, updateTabGroupCollapse, closeTab, discardTabs, moveIsland, moveTab } from '../utils/chromeApi';
+import { createIsland, updateTabGroup, updateTabGroupCollapse, closeTab, discardTabs, moveIsland, moveTab, consolidateAndGroupTabs } from '../utils/chromeApi';
 import { saveVault, loadVault, migrateFromLegacy, getVaultQuota, toggleSyncMode } from '../utils/vaultStorage';
 
 // Appearance settings types - exported for components
@@ -119,6 +119,7 @@ interface TabState {
   moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
   deleteDuplicateTabs: () => Promise<void>;
   sortGroupsToTop: () => Promise<void>;
+  groupSearchResults: (tabs: Tab[]) => Promise<void>;
 }
 
 
@@ -913,6 +914,18 @@ export const useStore = create<TabState>((set, get) => ({
 
     // Use reorderVault to ensure persistence and quota refresh
     await get().reorderVault(sorted);
+  },
+
+  groupSearchResults: async (tabs: Tab[]) => {
+    const { setIsUpdating, syncLiveTabs } = get();
+    setIsUpdating(true);
+    try {
+      const numericIds = tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+      await consolidateAndGroupTabs(numericIds, { color: 'random' });
+      await syncLiveTabs();
+    } finally {
+      setIsUpdating(false);
+    }
   }
 }));
 
