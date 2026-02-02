@@ -155,7 +155,7 @@ npm test src/components/__tests__/Favicon.test.tsx
 ```
 
 ### Final Checklist
-- [ ] `src` prop used correctly.
-- [ ] `_favicon` fallback implemented.
-- [ ] System URL guards added.
-- [ ] Console is clean of favicon-related ERR_FAILED.
+- [x] `src` prop used correctly.
+- [x] `_favicon` fallback implemented.
+- [x] System URL guards added.
+- [x] Console is clean of favicon-related ERR_FAILED.
