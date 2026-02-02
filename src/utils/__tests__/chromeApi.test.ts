@@ -9,12 +9,15 @@ vi.stubGlobal('chrome', {
     get: vi.fn(),
     move: vi.fn(),
     group: vi.fn(),
+    query: vi.fn(),
   },
   tabGroups: {
     TAB_GROUP_ID_NONE: -1,
     update: vi.fn((groupId: number, properties: chrome.tabGroups.UpdateProperties, callback?: () => void) => {
       if (callback) callback();
     }),
+    query: vi.fn(),
+    move: vi.fn(),
   },
   runtime: {
     lastError: null,
@@ -43,6 +46,9 @@ const setupMocks = () => {
   const mockMove = chrome.tabs.move as ReturnType<typeof vi.fn>;
   const mockGroup = chrome.tabs.group as ReturnType<typeof vi.fn>;
   const mockTabGroupsUpdate = chrome.tabGroups.update as ReturnType<typeof vi.fn>;
+  const mockTabGroupsMove = chrome.tabGroups.move as ReturnType<typeof vi.fn>;
+  const mockTabsQuery = chrome.tabs.query as ReturnType<typeof vi.fn>;
+  const mockTabGroupsQuery = chrome.tabGroups.query as ReturnType<typeof vi.fn>;
 
   mockGetLastFocused.mockResolvedValue({ id: 1 } as chrome.windows.Window);
   mockMove.mockResolvedValue([{ id: 1 }] as chrome.tabs.Tab[]);
@@ -50,8 +56,12 @@ const setupMocks = () => {
   mockTabGroupsUpdate.mockImplementation((groupId: number, properties: chrome.tabGroups.UpdateProperties, callback?: () => void) => {
     if (callback) callback();
   });
+  mockTabGroupsMove.mockResolvedValue(undefined);
+  // Default empty arrays for query functions - tests can override as needed
+  mockTabsQuery.mockResolvedValue([]);
+  mockTabGroupsQuery.mockResolvedValue([]);
 
-  return { mockGetLastFocused, mockGet, mockMove, mockGroup, mockTabGroupsUpdate };
+  return { mockGetLastFocused, mockGet, mockMove, mockGroup, mockTabGroupsUpdate, mockTabGroupsMove, mockTabsQuery, mockTabGroupsQuery };
 };
 
 describe('chromeApi - consolidateAndGroupTabs', () => {
@@ -62,7 +72,7 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
 
   describe('Happy Path', () => {
     it('should correctly resolve window, filter tabs, move cross-window tabs, and group them', async () => {
-      const { mockGetLastFocused, mockGet, mockMove, mockGroup } = setupMocks();
+      const { mockGetLastFocused, mockGet, mockMove, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2, 3];
       const tabs = [
@@ -86,12 +96,13 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
 
       expect(mockMove).toHaveBeenCalledWith(2, { windowId: 1, index: -1 });
       expect(mockGroup).toHaveBeenCalledWith({ tabIds: [1, 2, 3] as [number, ...number[]] });
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(123, { index: expect.any(Number) });
     });
   });
 
   describe('Pinned Filter', () => {
     it('should skip pinned tabs', async () => {
-      const { mockGet, mockMove, mockGroup } = setupMocks();
+      const { mockGet, mockMove, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2, 3];
       const tabs = [
@@ -109,10 +120,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
 
       expect(mockGroup).toHaveBeenCalledWith({ tabIds: [1, 3] as [number, ...number[]] });
       expect(mockMove).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(123, { index: expect.any(Number) });
     });
 
     it('should not group if only pinned tabs remain', async () => {
-      const { mockGet, mockGroup } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -128,12 +140,13 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       await consolidateAndGroupTabs(tabIds, {});
 
       expect(mockGroup).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).not.toHaveBeenCalled();
     });
   });
 
   describe('Restricted URL Filter', () => {
     it('should skip tabs with restricted URLs', async () => {
-      const { mockGet, mockGroup } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2, 3, 4, 5];
       const tabs = [
@@ -152,10 +165,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       await consolidateAndGroupTabs(tabIds, {});
 
       expect(mockGroup).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).not.toHaveBeenCalled();
     });
 
     it('should skip chrome-extension URLs', async () => {
-      const { mockGet, mockGroup } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -171,12 +185,13 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       await consolidateAndGroupTabs(tabIds, {});
 
       expect(mockGroup).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).not.toHaveBeenCalled();
     });
   });
 
   describe('Cross-Window Move', () => {
     it('should move tabs from other windows to target window', async () => {
-      const { mockGet, mockMove, mockGroup } = setupMocks();
+      const { mockGet, mockMove, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2, 3];
       const tabs = [
@@ -195,10 +210,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       expect(mockMove).toHaveBeenCalledWith(2, { windowId: 1, index: -1 });
       expect(mockMove).toHaveBeenCalledWith(3, { windowId: 1, index: -1 });
       expect(mockGroup).toHaveBeenCalledWith({ tabIds: [1, 2, 3] as [number, ...number[]] });
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(123, { index: expect.any(Number) });
     });
 
     it('should not move tabs already in target window', async () => {
-      const { mockGet, mockMove, mockGroup } = setupMocks();
+      const { mockGet, mockMove, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -215,12 +231,13 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
 
       expect(mockMove).not.toHaveBeenCalled();
       expect(mockGroup).toHaveBeenCalledWith({ tabIds: [1, 2] as [number, ...number[]] });
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(123, { index: expect.any(Number) });
     });
   });
 
   describe('Grouping Threshold', () => {
     it('should group tabs only if >= 2 valid tabs remain', async () => {
-      const { mockGet, mockGroup } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -236,10 +253,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       await consolidateAndGroupTabs(tabIds, {});
 
       expect(mockGroup).toHaveBeenCalledWith({ tabIds: [1, 2] as [number, ...number[]] });
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(123, { index: expect.any(Number) });
     });
 
     it('should not group if only 1 valid tab remains', async () => {
-      const { mockGet, mockGroup } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1];
       const tabs = [
@@ -254,10 +272,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       await consolidateAndGroupTabs(tabIds, {});
 
       expect(mockGroup).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).not.toHaveBeenCalled();
     });
 
     it('should not group if no valid tabs remain', async () => {
-      const { mockGet, mockGroup } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -273,12 +292,13 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       await consolidateAndGroupTabs(tabIds, {});
 
       expect(mockGroup).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).not.toHaveBeenCalled();
     });
   });
 
   describe('Random Color', () => {
     it('should update tab group with specific color when provided', async () => {
-      const { mockGet, mockGroup, mockTabGroupsUpdate } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsUpdate, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -295,10 +315,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
 
       expect(mockGroup).toHaveBeenCalled();
       expect(mockTabGroupsUpdate).toHaveBeenCalledWith(123, { color: 'blue' as chrome.tabGroups.Color }, expect.any(Function));
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(123, { index: expect.any(Number) });
     });
 
     it('should update tab group with random color when color is "random"', async () => {
-      const { mockGet, mockGroup, mockTabGroupsUpdate } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsUpdate, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -321,10 +342,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
         }),
         expect.any(Function)
       );
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(123, { index: expect.any(Number) });
     });
 
     it('should not update color when no color option provided', async () => {
-      const { mockGet, mockGroup, mockTabGroupsUpdate } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsUpdate, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -341,10 +363,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
 
       expect(mockGroup).toHaveBeenCalled();
       expect(mockTabGroupsUpdate).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(123, { index: expect.any(Number) });
     });
 
     it('should not update color when group creation fails', async () => {
-      const { mockGet, mockGroup, mockTabGroupsUpdate } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsUpdate, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -363,6 +386,7 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
 
       expect(mockGroup).toHaveBeenCalled();
       expect(mockTabGroupsUpdate).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).not.toHaveBeenCalled();
     });
   });
 
@@ -371,6 +395,7 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       const mockGetLastFocused = chrome.windows.getLastFocused as ReturnType<typeof vi.fn>;
       const mockGet = chrome.tabs.get as ReturnType<typeof vi.fn>;
       const mockGroup = chrome.tabs.group as ReturnType<typeof vi.fn>;
+      const mockTabGroupsMove = chrome.tabGroups.move as ReturnType<typeof vi.fn>;
 
       mockGetLastFocused.mockResolvedValue({ id: undefined } as chrome.windows.Window);
       mockGroup.mockResolvedValue(123);
@@ -385,10 +410,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
 
       await expect(consolidateAndGroupTabs(tabIds, {})).resolves.toBeUndefined();
       expect(mockGroup).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).not.toHaveBeenCalled();
     });
 
     it('should handle tab move failures gracefully', async () => {
-      const { mockGet, mockMove, mockGroup } = setupMocks();
+      const { mockGet, mockMove, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2];
       const tabs = [
@@ -406,10 +432,11 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       await consolidateAndGroupTabs(tabIds, {});
 
       expect(mockGroup).not.toHaveBeenCalled();
+      expect(mockTabGroupsMove).not.toHaveBeenCalled();
     });
 
     it('should handle missing tabs gracefully', async () => {
-      const { mockGet, mockGroup } = setupMocks();
+      const { mockGet, mockGroup, mockTabGroupsMove } = setupMocks();
 
       const tabIds = [1, 2, 3];
       const tabs = [
@@ -425,6 +452,7 @@ describe('chromeApi - consolidateAndGroupTabs', () => {
       await consolidateAndGroupTabs(tabIds, {});
 
       expect(mockGroup).toHaveBeenCalledWith({ tabIds: [1, 3] as [number, ...number[]] });
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(123, { index: expect.any(Number) });
     });
   });
 });
