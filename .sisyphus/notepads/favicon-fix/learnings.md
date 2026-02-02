@@ -1,0 +1,12 @@
+- Fixed Favicon component to use tiered fallback: src -> _favicon -> Globe.
+- Implemented system URL scheme filtering in getFaviconUrl to avoid net::ERR_FAILED.
+- Added trailing slash cleaning for chrome.runtime.getURL("/_favicon/").
+- Ensured error and fallback states are reset when src or url props change.
+- Installed @testing-library/react for component testing.
+- Fixed accessibility issue in tests where img with alt="" is assigned role "presentation" instead of "img".
+## 2026-02-02 Task: Fix Favicon.tsx Fallback Logic
+- Implemented tiered fallback chain: src -> _favicon service -> Globe icon.
+- Added guards for system URL schemes (chrome://, about:, etc.) in getFaviconUrl.
+- Fixed _favicon URL construction to handle trailing slashes correctly.
+- Added Vitest unit tests in src/components/__tests__/Favicon.test.tsx.
+- Installed @testing-library/react and related dependencies for testing.
