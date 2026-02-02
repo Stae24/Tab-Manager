@@ -44,9 +44,9 @@ Ensure the tab sorting process is resilient to temporary browser locks and concu
 - `src/store/useStore.ts`: Guarded `sortGroupsToTop` function.
 
 ### Definition of Done
-- [ ] Sorting 10+ tabs during a simulated drag operation (or with synthetic delay) does not crash the extension.
-- [ ] Logs show "Retrying move..." when a modification lock is encountered.
-- [ ] The `isUpdating` lock prevents overlapping sort executions.
+- [x] Sorting 10+ tabs during a simulated drag operation (or with synthetic delay) does not crash the extension.
+- [x] Logs show "Retrying move..." when a modification lock is encountered.
+- [x] The `isUpdating` lock prevents overlapping sort executions.
 
 ### Must Have
 - Exponential backoff (100, 200, 400ms).
@@ -70,11 +70,11 @@ Ensure the tab sorting process is resilient to temporary browser locks and concu
 ### Manual QA Procedure
 
 **For Tab/Group Moves:**
-- [ ] Using interactive_bash (tmux session):
+- [x] Using interactive_bash (tmux session):
   - Add `console.log` to `withRetry` to verify attempts.
   - Trigger `sortGroupsToTop`.
   - Verify that if a lock is hit, it retries and succeeds (or skips after 3 attempts).
-- [ ] Visual verification:
+- [x] Visual verification:
   - Drag a tab while clicking the "Sort" button (if exposed in UI) or trigger the command.
   - Verify the extension remains responsive and eventually completes the sort or skips locked items.
 
@@ -89,7 +89,7 @@ Sequential - core utility must be updated before the store can use it reliably.
 
 ## TODOs
 
-- [ ] 1. Implement `withRetry` utility in `src/utils/chromeApi.ts`
+- [x] 1. Implement `withRetry` utility in `src/utils/chromeApi.ts`
 
   **What to do**:
   - Add a private `withRetry` helper function that takes a task function.
@@ -113,10 +113,10 @@ Sequential - core utility must be updated before the store can use it reliably.
   - `src/utils/chromeApi.ts` - Existing wrappers.
 
   **Acceptance Criteria**:
-  - [ ] `moveTab` correctly retries on "Tab cannot be modified".
-  - [ ] `moveTab` fails fast on "Tab not found".
+  - [x] `moveTab` correctly retries on "Tab cannot be modified".
+  - [x] `moveTab` fails fast on "Tab not found".
 
-- [ ] 2. Refactor `sortGroupsToTop` in `src/store/useStore.ts`
+- [x] 2. Refactor `sortGroupsToTop` in `src/store/useStore.ts`
 
   **What to do**:
   - Add re-entrance guard at the start: `if (get().isUpdating) return;`.
@@ -138,15 +138,15 @@ Sequential - core utility must be updated before the store can use it reliably.
   - `src/store/useStore.ts:792-826` - Current `sortGroupsToTop` implementation.
 
   **Acceptance Criteria**:
-  - [ ] Sorter uses `moveTab` and `moveIsland` wrappers.
-  - [ ] Sorter continues if one item fails.
-  - [ ] `isUpdating` is false after completion/failure.
+  - [x] Sorter uses `moveTab` and `moveIsland` wrappers.
+  - [x] Sorter continues if one item fails.
+  - [x] `isUpdating` is false after completion/failure.
 
 ---
 
 ## Success Criteria
 
 ### Final Checklist
-- [ ] No more "Tab cannot be modified" unhandled errors.
-- [ ] Sorting is resilient to user interaction (dragging).
-- [ ] `chromeApi.ts` provides a robust foundation for all move operations.
+- [x] No more "Tab cannot be modified" unhandled errors.
+- [x] Sorting is resilient to user interaction (dragging).
+- [x] `chromeApi.ts` provides a robust foundation for all move operations.

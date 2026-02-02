@@ -98,8 +98,8 @@ Untrack all ignored files so they no longer appear in GitHub Desktop's "Changes"
   - **Skills**: []
 
   **Acceptance Criteria**:
-  - [ ] `.gitignore` contains all recommended patterns.
-  - [ ] Dead rules (`/%TMP%`, `nul`) are removed.
+  - [x] `.gitignore` contains all recommended patterns.
+  - [x] Dead rules (`/%TMP%`, `nul`) are removed.
 
 - [x] 2. Remove ignored files from Git index
   **What to do**:
@@ -111,8 +111,8 @@ Untrack all ignored files so they no longer appear in GitHub Desktop's "Changes"
   - **Skills**: ["git-master"]
 
   **Acceptance Criteria**:
-  - [ ] Command completes successfully.
-  - [ ] `git status` shows thousands of "deleted" files in the staged area.
+  - [x] Command completes successfully.
+  - [x] `git status` shows thousands of "deleted" files in the staged area.
 
 - [x] 3. Verification & Commit
   **What to do**:
@@ -121,8 +121,8 @@ Untrack all ignored files so they no longer appear in GitHub Desktop's "Changes"
   - Commit: `git commit -m "chore: untrack node_modules and dist, update .gitignore"`
 
   **Acceptance Criteria**:
-  - [ ] Final commit is created.
-  - [ ] `git status` no longer shows ignored files as changed or untracked.
+  - [x] Final commit is created.
+  - [x] `git status` no longer shows ignored files as changed or untracked.
 
 ---
 
