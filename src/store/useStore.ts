@@ -39,7 +39,7 @@ interface AppearanceSettings {
   dragOpacity: number;
   loadingSpinnerStyle: 'pulse' | 'dots' | 'bars' | 'ring';
   menuPosition: MenuPosition;
-  
+
   // v2.1 - Storage
   vaultSyncEnabled: boolean;
 }
@@ -71,7 +71,7 @@ interface TabState {
   // Core State
   islands: LiveItem[];
   vault: VaultItem[];
-  
+
   // UI State
   appearanceSettings: AppearanceSettings;
   isDarkMode: boolean;
@@ -81,10 +81,13 @@ interface TabState {
   pendingRefresh: boolean;
   isRenaming: boolean;
   isRefreshing: boolean;
-  
+
   // Quota State
   vaultQuota: VaultQuotaInfo | null;
   quotaExceededPending: VaultStorageResult | null;
+
+  // Sync State (for conflict resolution)
+  lastVaultTimestamp: number;
 
   // Actions
   syncLiveTabs: () => Promise<void>;
@@ -94,7 +97,7 @@ interface TabState {
   toggleTheme: () => void;
   setDividerPosition: (pos: number) => void;
   setShowVault: (show: boolean) => void;
-  
+
   // Vault Actions
   moveToVault: (id: UniversalId) => Promise<void>;
   saveToVault: (item: LiveItem) => Promise<void>;
@@ -104,12 +107,12 @@ interface TabState {
   reorderVault: (newVault: VaultItem[]) => Promise<void>;
   toggleVaultGroupCollapse: (id: UniversalId) => Promise<void>;
   sortVaultGroupsToTop: () => Promise<void>;
-  
+
   // Quota Actions
   refreshVaultQuota: () => Promise<void>;
   clearQuotaExceeded: () => void;
   setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
-  
+
   // Live Actions
   renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
   toggleLiveGroupCollapse: (id: UniversalId) => Promise<void>;
@@ -133,10 +136,10 @@ const syncSettings = debounce((settings: any) => {
 
 const persistVault = async (vault: VaultItem[], syncEnabled: boolean): Promise<VaultStorageResult> => {
   const result = await saveVault(vault, { syncEnabled });
-  
+
   // Always refresh quota information after a save to keep UI reactive
   const quota = await getVaultQuota();
-  useStore.setState({ vaultQuota: quota });
+  useStore.setState({ vaultQuota: quota, lastVaultTimestamp: Date.now() });
 
   if (!result.success && result.error === 'QUOTA_EXCEEDED') {
     useStore.setState({ quotaExceededPending: result });
@@ -197,34 +200,35 @@ export const useStore = create<TabState>((set, get) => ({
   isRefreshing: false,
   vaultQuota: null,
   quotaExceededPending: null,
+  lastVaultTimestamp: 0,
 
   setIsUpdating: (isUpdating) => set({ isUpdating }),
   setIsRenaming: (isRenaming) => set({ isRenaming }),
-  
+
   refreshVaultQuota: async () => {
     const quota = await getVaultQuota();
     set({ vaultQuota: quota });
   },
-  
+
   clearQuotaExceeded: () => set({ quotaExceededPending: null }),
-  
+
   setVaultSyncEnabled: async (enabled: boolean) => {
     const { vault, appearanceSettings } = get();
     const result = await toggleSyncMode(vault, enabled);
-    
+
     if (result.success) {
       const updated = { ...appearanceSettings, vaultSyncEnabled: enabled };
       set({ appearanceSettings: updated });
       // Consolidate sync to a single appearanceSettings key to avoid redundant onChanged events
       syncSettings({ appearanceSettings: updated });
-      
+
       const quota = await getVaultQuota();
       set({ vaultQuota: quota });
     }
-    
+
     return result;
   },
-  
+
   setAppearanceSettings: (newSettings) => {
     const current = get().appearanceSettings;
     const updated = { ...current, ...newSettings };
@@ -286,7 +290,7 @@ export const useStore = create<TabState>((set, get) => ({
         // If active item not found, we can't proceed.
         // This usually means the item was deleted or the ID doesn't match.
         if (!active) {
-            return;
+          return;
         }
 
         // Detect Source and Target Panels
@@ -353,23 +357,23 @@ export const useStore = create<TabState>((set, get) => ({
 
           // Prevent Groups from being nested inside other groups
           if (isActiveGroup && targetContainerId !== 'root') {
-              const currentRoot = activeInLive ? islands : vault;
-              const parentGroupIndex = currentRoot.findIndex(i => String(i.id) === String(targetContainerId));
+            const currentRoot = activeInLive ? islands : vault;
+            const parentGroupIndex = currentRoot.findIndex(i => String(i.id) === String(targetContainerId));
 
-              if (parentGroupIndex !== -1) {
-                  targetContainerId = 'root';
-                  targetIndex = parentGroupIndex;
-              } else {
-                  return;
-              }
+            if (parentGroupIndex !== -1) {
+              targetContainerId = 'root';
+              targetIndex = parentGroupIndex;
+            } else {
+              return;
+            }
           }
 
           // When moving from OUTSIDE a group TO INSIDE a group and dropping on the LAST tab
           if (active.containerId !== targetContainerId && over.item && !('tabs' in over.item)) {
-              const targetGroup = (activeInLive ? islands : vault).find(i => String(i.id) === String(targetContainerId));
-              if (targetGroup && 'tabs' in targetGroup && targetGroup.tabs && targetIndex === targetGroup.tabs.length - 1) {
-                  targetIndex = targetIndex + 1;
-              }
+            const targetGroup = (activeInLive ? islands : vault).find(i => String(i.id) === String(targetContainerId));
+            if (targetGroup && 'tabs' in targetGroup && targetGroup.tabs && targetIndex === targetGroup.tabs.length - 1) {
+              targetIndex = targetIndex + 1;
+            }
           }
         }
 
@@ -398,18 +402,18 @@ export const useStore = create<TabState>((set, get) => ({
         let targetArr = getTargetList(rootList, targetContainerId);
 
         if (!sourceArr && active.item) {
-            return;
+          return;
         }
         if (!sourceArr || !targetArr) return;
 
         const sourceItem = sourceArr[active.index];
 
         if (!sourceItem || String(sourceItem.id) !== String(activeId)) {
-            const correctIndex = sourceArr.findIndex((item: any) => String(item.id) === String(activeId));
-            if (correctIndex === -1) {
-                return;
-            }
-            active.index = correctIndex;
+          const correctIndex = sourceArr.findIndex((item: any) => String(item.id) === String(activeId));
+          if (correctIndex === -1) {
+            return;
+          }
+          active.index = correctIndex;
         }
 
         const [movedItem] = sourceArr.splice(active.index, 1);
@@ -421,10 +425,10 @@ export const useStore = create<TabState>((set, get) => ({
         targetArr.splice(safeTargetIndex, 0, movedItem);
 
         if (activeInLive) {
-            set({ islands: newIslands });
+          set({ islands: newIslands });
         } else {
-            const finalVault = [...newVault];
-            set({ vault: finalVault });
+          const finalVault = [...newVault];
+          set({ vault: finalVault });
         }
       });
     };
@@ -435,8 +439,14 @@ export const useStore = create<TabState>((set, get) => ({
     if (get().isUpdating) return;
 
     // Guard against recursive refresh calls from useTabSync
-    if (get().isRefreshing) return;
-    set({ isRefreshing: true });
+    // Use atomic check-and-set to prevent race conditions
+    let acquiredLock = false;
+    set((state) => {
+      if (state.isRefreshing) return state;
+      acquiredLock = true;
+      return { isRefreshing: true };
+    });
+    if (!acquiredLock) return;
 
     try {
       const [chromeTabs, chromeGroups] = await Promise.all([
@@ -538,39 +548,39 @@ export const useStore = create<TabState>((set, get) => ({
     // 1. Save to Vault (Deep Copy + ID Transform)
     const timestamp = Date.now();
     const itemClone = JSON.parse(JSON.stringify(item));
-    
+
     const transformId = (i: any) => {
       // If it already has an original ID, keep it, otherwise use the numeric part of current ID
       const numericId = parseNumericId(i.id);
       // Ensure originalId is preserved or generated from current state
       i.originalId = i.originalId ?? (numericId > 0 ? numericId : i.id);
       i.id = `vault-${i.id}-${timestamp}`;
-      
+
       if (isIsland(i)) {
         i.tabs.forEach(transformId);
       }
     };
-    
+
     transformId(itemClone);
     (itemClone as VaultItem).savedAt = timestamp;
-    
+
     const newVault = [...vault, itemClone as VaultItem];
     set({ vault: newVault });
     await persistVault(newVault, get().appearanceSettings.vaultSyncEnabled);
-    
+
     // 2. Close in Chrome
     if (isIsland(item)) {
-         // It's a group - close all tabs in it
-         const tabIds = item.tabs.map((t: Tab) => parseNumericId(t.id)).filter((id: number) => id > 0);
-         if (tabIds.length > 0) {
-             await chrome.tabs.remove(tabIds);
-         }
+      // It's a group - close all tabs in it
+      const tabIds = item.tabs.map((t: Tab) => parseNumericId(t.id)).filter((id: number) => id > 0);
+      if (tabIds.length > 0) {
+        await chrome.tabs.remove(tabIds);
+      }
     } else {
-        // Single tab
-        const numericId = parseNumericId(item.id);
-        if (numericId > 0) {
-            await closeTab(numericId);
-        }
+      // Single tab
+      const numericId = parseNumericId(item.id);
+      if (numericId > 0) {
+        await closeTab(numericId);
+      }
     }
   },
 
@@ -621,7 +631,7 @@ export const useStore = create<TabState>((set, get) => ({
         insertionIndex = lastGroup.maxIndex + 1;
       }
     } else if (currentWindowTabs.length > 0) {
-        insertionIndex = currentWindowTabs.length;
+      insertionIndex = currentWindowTabs.length;
     }
 
     if (isIsland(item)) {
@@ -638,7 +648,7 @@ export const useStore = create<TabState>((set, get) => ({
       // Restore as a single tab
       await chrome.tabs.create({ url: item.url, active: false, index: insertionIndex });
     }
-    
+
     // Remove from Vault after restore
     const newVault = vault.filter(v => String(v.id) !== String(id));
     set({ vault: newVault });
@@ -853,11 +863,11 @@ export const useStore = create<TabState>((set, get) => ({
     }
 
     const { islands, setIsUpdating, syncLiveTabs } = get();
-    
+
     const pinned = islands.filter(i => !isIsland(i) && (i as Tab).pinned);
     const groups = islands.filter(isIsland);
     const loose = islands.filter(i => !isIsland(i) && !(i as Tab).pinned);
-    
+
     const sorted = [...pinned, ...groups, ...loose];
     if (sorted.every((item, idx) => item.id === islands[idx]?.id)) return;
 
@@ -897,7 +907,7 @@ export const useStore = create<TabState>((set, get) => ({
     const pinned = vault.filter(i => !isIsland(i) && (i as any).pinned);
     const groups = vault.filter(isIsland);
     const loose = vault.filter(i => !isIsland(i) && !(i as any).pinned);
-    
+
     const sorted = [...pinned, ...groups, ...loose];
     if (sorted.every((item, idx) => item.id === vault[idx]?.id)) return;
 
@@ -911,46 +921,51 @@ const init = async () => {
   const sync = await chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault']);
 
   const state = useStore.getState();
-  
+
   if (sync.appearanceSettings) {
     state.setAppearanceSettings(sync.appearanceSettings as AppearanceSettings);
   }
   if (sync.dividerPosition) state.setDividerPosition(Number(sync.dividerPosition));
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
-  
+
   const syncEnabled = (sync.appearanceSettings as AppearanceSettings)?.vaultSyncEnabled ?? defaultAppearanceSettings.vaultSyncEnabled;
-  
+
   const migrationResult = await migrateFromLegacy({ syncEnabled });
   if (migrationResult.migrated) {
     console.log('[VaultStorage] Migration complete:', migrationResult);
   }
-  
-  const vault = await loadVault({ syncEnabled });
-  useStore.setState({ vault });
-  
+
+  const { vault, timestamp } = await loadVault({ syncEnabled });
+  useStore.setState({ vault, lastVaultTimestamp: timestamp });
+
   const quota = await getVaultQuota();
   useStore.setState({ vaultQuota: quota });
 
   chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area === 'sync') {
-       if (changes.appearanceSettings) {
-         state.setAppearanceSettings(changes.appearanceSettings.newValue as AppearanceSettings);
-       }
-       if (changes.showVault) state.setShowVault(Boolean(changes.showVault.newValue));
-       if (changes.dividerPosition) state.setDividerPosition(Number(changes.dividerPosition.newValue));
-       
-       if (changes.vault_meta) {
-         if (!useStore.getState().isUpdating) {
-           const currentSettings = useStore.getState().appearanceSettings;
-           const reloadedVault = await loadVault({ syncEnabled: currentSettings.vaultSyncEnabled });
-           useStore.setState({ vault: reloadedVault });
-           const quota = await getVaultQuota();
-           useStore.setState({ vaultQuota: quota });
-         }
-       }
+      if (changes.appearanceSettings) {
+        state.setAppearanceSettings(changes.appearanceSettings.newValue as AppearanceSettings);
+      }
+      if (changes.showVault) state.setShowVault(Boolean(changes.showVault.newValue));
+      if (changes.dividerPosition) state.setDividerPosition(Number(changes.dividerPosition.newValue));
+
+      if (changes.vault_meta) {
+        const incomingTimestamp = (changes.vault_meta.newValue as { timestamp?: number })?.timestamp ?? 0;
+        const currentTimestamp = useStore.getState().lastVaultTimestamp;
+        // Only reload if incoming version is newer (timestamp-based conflict resolution)
+        if (incomingTimestamp > currentTimestamp && !useStore.getState().isUpdating) {
+          const currentSettings = useStore.getState().appearanceSettings;
+          const { vault: reloadedVault } = await loadVault({ syncEnabled: currentSettings.vaultSyncEnabled });
+          useStore.setState({ vault: reloadedVault, lastVaultTimestamp: incomingTimestamp });
+          const quota = await getVaultQuota();
+          useStore.setState({ vaultQuota: quota });
+        }
+      }
     }
-    
+
     if (area === 'local') {
+      // For local storage, vault_meta is not written - only the vault key is updated
+      // Use direct comparison since there's no timestamp metadata in local storage
       if (changes.vault && !useStore.getState().appearanceSettings.vaultSyncEnabled) {
         if (!useStore.getState().isUpdating) {
           useStore.setState({ vault: changes.vault.newValue as VaultItem[] });
