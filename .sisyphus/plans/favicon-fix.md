@@ -46,10 +46,10 @@ Ensure favicons display correctly using the most reliable source available, with
 - `src/components/Favicon.tsx` (modified)
 
 ### Definition of Done
-- [ ] No "net::ERR_FAILED" errors for favicons in the console.
-- [ ] Standard tabs (https://...) show their actual favicons.
-- [ ] System tabs (chrome://...) show the Globe icon without console errors.
-- [ ] Vault items show favicons if available.
+- [x] No "net::ERR_FAILED" errors for favicons in the console.
+- [x] Standard tabs (https://...) show their actual favicons.
+- [x] System tabs (chrome://...) show the Globe icon without console errors.
+- [x] Vault items show favicons if available.
 
 ### Must Have
 - Use of `src` prop (`tab.favIconUrl`) as the primary source.
@@ -134,11 +134,11 @@ npm test src/components/__tests__/Favicon.test.tsx
   - `public/manifest.json` - Permission reference.
 
   **Acceptance Criteria**:
-  - [ ] `src` prop is used in the first attempt to render the image.
-  - [ ] `_favicon` service URL is constructed without trailing slash bugs.
-  - [ ] System URLs (chrome://) immediately fall back to Globe icon.
-  - [ ] Image `onError` handler triggers fallback to `_favicon` or Globe.
-  - [ ] New Vitest test `src/components/__tests__/Favicon.test.tsx` passes.
+  - [x] `src` prop is used in the first attempt to render the image.
+  - [x] `_favicon` service URL is constructed without trailing slash bugs.
+  - [x] System URLs (chrome://) immediately fall back to Globe icon.
+  - [x] Image `onError` handler triggers fallback to `_favicon` or Globe.
+  - [x] New Vitest test `src/components/__tests__/Favicon.test.tsx` passes.
 
   **Commit**: YES
   - Message: `fix(ui): implement robust favicon fallback chain and fix net::ERR_FAILED`
