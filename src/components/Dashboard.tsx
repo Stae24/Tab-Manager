@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { GripVertical, Plus, FolderOpen, Save, Loader2, ChevronUp, ChevronDown, Search, ChevronDown as SortDown, X, ChevronUp as SortUp, Trash2, LayoutGrid } from 'lucide-react';
+import { GripVertical, Plus, FolderOpen, Save, Loader2, ChevronUp, ChevronDown, Search, ChevronDown as SortDown, X, ChevronUp as SortUp, Trash2, LayoutGrid, Group } from 'lucide-react';
 import {
   DndContext,
   closestCorners,
@@ -17,10 +17,10 @@ import {
   MeasuringStrategy,
   defaultDropAnimationSideEffects
 } from '@dnd-kit/core';
-import { 
-  SortableContext, 
-  sortableKeyboardCoordinates, 
-  verticalListSortingStrategy 
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { Island } from './Island';
 import { TabCard } from './TabCard';
@@ -78,10 +78,10 @@ const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) 
 
 const LivePanel: React.FC<{
   dividerPosition: number,
-  islands: any[],
+  islands: (IslandType | TabType)[],
   handleTabClick: (id: number | string) => void,
   moveToVault: (id: number | string) => void,
-  saveToVault: (island: any) => void,
+  saveToVault: (island: IslandType | TabType) => void,
   closeTab: (id: number | string) => void,
   onRenameGroup: (id: number | string, title: string) => void,
   onToggleCollapse: (id: number | string) => void,
@@ -90,13 +90,14 @@ const LivePanel: React.FC<{
   setSearchQuery: (query: string) => void,
   sortOption: 'browser-order' | 'alpha-title' | 'alpha-url',
   setSortOption: (option: 'browser-order' | 'alpha-title' | 'alpha-url') => void,
-  filteredTabs: any[],
+  filteredTabs: TabType[],
+  groupSearchResults: (tabs: TabType[]) => Promise<void>,
   deleteDuplicateTabs: () => Promise<void>,
   sortGroupsToTop: () => Promise<void>,
   showVault: boolean,
   isCreatingIsland: boolean,
   creatingTabId: number | string | null
-}> = ({ dividerPosition, islands, handleTabClick, moveToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, deleteDuplicateTabs, sortGroupsToTop, showVault, isCreatingIsland, creatingTabId }) => {
+}> = ({ dividerPosition, islands, handleTabClick, moveToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, groupSearchResults, deleteDuplicateTabs, sortGroupsToTop, showVault, isCreatingIsland, creatingTabId }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'live-panel-dropzone',
   });
@@ -167,7 +168,7 @@ const LivePanel: React.FC<{
       // Get current collapsed state from islands
       const island = islands.find(i => String(i.id) === String(id));
       // Only collapse if currently expanded
-      if (island && !island.collapsed) {
+      if (island && 'collapsed' in island && !island.collapsed) {
         onToggleCollapse(id);
       }
     }
@@ -180,7 +181,7 @@ const LivePanel: React.FC<{
       // Get current collapsed state from islands
       const island = islands.find(i => String(i.id) === String(id));
       // Only expand if currently collapsed
-      if (island && island.collapsed) {
+      if (island && 'collapsed' in island && island.collapsed) {
         onToggleCollapse(id);
       }
     }
@@ -194,6 +195,12 @@ const LivePanel: React.FC<{
     setIsCleaning(true);
     await deleteDuplicateTabs();
     setTimeout(() => setIsCleaning(false), 500);
+  };
+
+  const handleGroupResults = () => {
+    console.log('[Dashboard] Grouping search results...');
+    groupSearchResults(filteredTabs);
+    setSearchQuery('');
   };
 
   const sortOptions = [
@@ -269,7 +276,7 @@ const LivePanel: React.FC<{
                   <SortDown size={10} className={cn("transition-transform", showSortDropdown && "rotate-180")} />
                 </button>
                 {showSortDropdown && (
-                  <div 
+                  <div
                     className="absolute top-full right-0 mt-1 bg-gx-gray border border-gx-accent/20 rounded-lg shadow-xl overflow-hidden z-50 min-w-[160px]"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -313,7 +320,7 @@ const LivePanel: React.FC<{
                   title="Expand All"
                   className="p-1 hover:bg-gx-accent/20 hover:text-gx-accent rounded transition-all group"
                 >
-                <ChevronDown size={14} className="group-hover:scale-110 transition-transform" />
+                  <ChevronDown size={14} className="group-hover:scale-110 transition-transform" />
                 </button>
               </div>
             )}
@@ -352,7 +359,7 @@ const LivePanel: React.FC<{
 
             {/* Total count */}
             <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">
-              {searchQuery ? `${filteredTabs.length}` : (islands || []).reduce((acc, i: any) => acc + (i && i.tabs ? i.tabs.length : 1), 0)}
+              {searchQuery ? `${filteredTabs.length}` : (islands || []).reduce((acc, i) => acc + (i && 'tabs' in i && i.tabs ? i.tabs.length : 1), 0)}
             </span>
           </div>
         </div>
@@ -370,6 +377,20 @@ const LivePanel: React.FC<{
               <span className="text-[10px] text-gray-500 font-medium">
                 {filteredTabs.length} {filteredTabs.length === 1 ? 'tab' : 'tabs'} found
               </span>
+              <button
+                onClick={handleGroupResults}
+                disabled={filteredTabs.filter(t => !t.pinned).length < 2}
+                className={cn(
+                  "flex items-center gap-1.5 px-2 py-1 rounded border transition-all duration-300",
+                  "text-[10px] font-bold uppercase tracking-wider",
+                  "bg-gx-accent/20 border-gx-accent/30 text-gx-accent hover:bg-gx-accent/40",
+                  "disabled:opacity-30 disabled:cursor-not-allowed disabled:grayscale"
+                )}
+                title="Group search results"
+              >
+                <Group size={10} />
+                Group Results
+              </button>
               <span className="text-[10px] text-gray-600 font-black tracking-tighter bg-gx-gray/50 px-1.5 py-0.5 rounded border border-white/5">
                 Press ESC to clear
               </span>
@@ -386,12 +407,12 @@ const LivePanel: React.FC<{
               <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40">
                 <Search size={48} className="mb-4" />
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-center">
-                  No tabs found<br/>
+                  No tabs found<br />
                   for "{searchQuery}"
                 </p>
               </div>
             ) : (
-              filteredTabs.map((tab: any, index: number) => (
+              filteredTabs.map((tab: TabType, index: number) => (
                 <div
                   key={tab.id}
                   style={{
@@ -412,24 +433,24 @@ const LivePanel: React.FC<{
           </div>
         ) : (
           // Normal Mode: Show islands and standalone tabs
-            <>
-              <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-                {(islands || []).map((item: any, index: number) => {
-                  const isCurrentIsland = item && 'tabs' in item;
-                  const prevItem = islands?.[index - 1];
-                  const isPrevIsland = prevItem && 'tabs' in prevItem;
-                  const showGap = isCurrentIsland && isPrevIsland;
+          <>
+            <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
+              {(islands || []).map((item: IslandType | TabType, index: number) => {
+                const isCurrentIsland = item && 'tabs' in item;
+                const prevItem = islands?.[index - 1];
+                const isPrevIsland = prevItem && 'tabs' in prevItem;
+                const showGap = isCurrentIsland && isPrevIsland;
 
-                  return (
-                    <React.Fragment key={item.id}>
-                      {showGap && <DroppableGap index={index} />}
+                return (
+                  <React.Fragment key={item.id}>
+                    {showGap && <DroppableGap index={index} />}
                     {isCurrentIsland ? (
                       <Island
-                        island={item}
+                        island={item as IslandType}
                         onTabClick={(tab) => handleTabClick(tab.id)}
                         onNonDestructiveSave={() => saveToVault(item)}
                         onSave={() => moveToVault(item.id)}
-                        onDelete={() => item.tabs.forEach((t: any) => closeTab(t.id))}
+                        onDelete={() => (item as IslandType).tabs.forEach((t: TabType) => closeTab(t.id))}
                         onRename={(title) => onRenameGroup(item.id, title)}
                         onToggleCollapse={() => onToggleCollapse(item.id)}
                         onTabSave={(tab) => saveToVault(tab)}
@@ -438,7 +459,7 @@ const LivePanel: React.FC<{
                       />
                     ) : (
                       <TabCard
-                        tab={item}
+                        tab={item as TabType}
                         onClick={() => handleTabClick(item.id)}
                         onSave={() => saveToVault(item)}
                         onClose={() => closeTab(item.id)}
@@ -502,7 +523,7 @@ const LivePanel: React.FC<{
 
 const VaultPanel: React.FC<{
   dividerPosition: number,
-  vault: any[],
+  vault: (IslandType | TabType)[],
   removeFromVault: (id: number | string) => void,
   isDraggingLiveItem: boolean,
   createVaultGroup: () => void,
@@ -544,13 +565,13 @@ const VaultPanel: React.FC<{
   };
 
   return (
-    <div 
+    <div
       ref={setNodeRef}
       id="vault-dropzone"
       className={cn(
         "flex flex-col h-full overflow-hidden bg-gx-dark/60 relative transition-all duration-300",
         isOver && isDraggingLiveItem && "bg-gx-red/5 ring-4 ring-inset ring-gx-red/10"
-      )} 
+      )}
       style={{ width: `${100 - dividerPosition}%` }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gx-gray flex-shrink-0 bg-gx-dark/80 backdrop-blur-md z-20">
@@ -559,15 +580,15 @@ const VaultPanel: React.FC<{
           <h2 className="text-sm font-bold tracking-widest uppercase italic text-gx-red">Neural Vault</h2>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={sortVaultGroupsToTop} 
-            title="Sort Groups to Top" 
+          <button
+            onClick={sortVaultGroupsToTop}
+            title="Sort Groups to Top"
             className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all group"
           >
             <LayoutGrid size={14} className="group-hover:scale-110 transition-transform" />
           </button>
           <button onClick={createVaultGroup} title="Add Group" className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all">
-             <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
           </button>
           <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">{(vault || []).length} ARCHIVED</span>
         </div>
@@ -582,18 +603,19 @@ const VaultPanel: React.FC<{
           />
         )}
         <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-          {(vault || []).map((item, index) => {
+          {(vault || []).map((item: IslandType | TabType, index) => {
             const isCurrentIsland = 'tabs' in item;
             const prevItem = vault?.[index - 1];
             const isPrevIsland = prevItem && 'tabs' in prevItem;
             const showGap = isCurrentIsland && isPrevIsland;
+            const itemKey = 'savedAt' in item ? (item as any).savedAt : item.id;
 
             return (
-              <React.Fragment key={item.savedAt || item.id}>
+              <React.Fragment key={itemKey}>
                 {showGap && <DroppableGap index={index} />}
-                {'tabs' in item ? (
+                {isCurrentIsland ? (
                   <Island
-                    island={item}
+                    island={item as IslandType}
                     isVault={true}
                     onRestore={() => restoreFromVault(item.id)}
                     onDelete={() => removeFromVault(item.id)}
@@ -604,7 +626,7 @@ const VaultPanel: React.FC<{
                   />
                 ) : (
                   <TabCard
-                    tab={item}
+                    tab={item as TabType}
                     isVault={true}
                     onRestore={() => restoreFromVault(item.id)}
                     onClose={() => removeFromVault(item.id)}
@@ -614,27 +636,27 @@ const VaultPanel: React.FC<{
             );
           })}
         </SortableContext>
-        
+
         {(vault || []).length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-gray-600 opacity-20 group">
             <Save size={64} className="group-hover:scale-110 transition-transform duration-500" />
             <p className="text-[10px] font-black mt-6 italic uppercase tracking-[0.3em] text-center leading-loose">
-              Initiate data transfer<br/>to secure items
+              Initiate data transfer<br />to secure items
             </p>
           </div>
         )}
 
         {/* Bottom Drop Zone / Spacer */}
-        <div 
-            ref={setBottomRef} 
-            className={cn(
-                "h-24 w-full rounded-xl border-2 border-dashed border-transparent transition-all flex items-center justify-center shrink-0",
-                isBottomOver ? "border-gx-accent/30 bg-gx-accent/5" : "hover:border-gx-gray/30"
-            )}
+        <div
+          ref={setBottomRef}
+          className={cn(
+            "h-24 w-full rounded-xl border-2 border-dashed border-transparent transition-all flex items-center justify-center shrink-0",
+            isBottomOver ? "border-gx-accent/30 bg-gx-accent/5" : "hover:border-gx-gray/30"
+          )}
         >
-            <span className={cn("text-xs font-bold uppercase tracking-widest text-gx-gray opacity-0 transition-opacity", isBottomOver && "opacity-100")}>
-                Drop to Append
-            </span>
+          <span className={cn("text-xs font-bold uppercase tracking-widest text-gx-gray opacity-0 transition-opacity", isBottomOver && "opacity-100")}>
+            Drop to Append
+          </span>
         </div>
       </div>
     </div>
@@ -666,7 +688,8 @@ export const Dashboard: React.FC = () => {
     vaultQuota,
     quotaExceededPending,
     clearQuotaExceeded,
-    setVaultSyncEnabled
+    setVaultSyncEnabled,
+    groupSearchResults
   } = useStore();
 
   const [isResizing, setIsResizing] = useState(false);
@@ -678,11 +701,11 @@ export const Dashboard: React.FC = () => {
   const [sortOption, setSortOption] = useState<'browser-order' | 'alpha-title' | 'alpha-url'>('browser-order');
   const [isCreatingIsland, setIsCreatingIsland] = useState(false);
   const [creatingTabId, setCreatingTabId] = useState<number | string | null>(null);
-  const lastFilteredTabsRef = useRef<any[]>([]);
+  const lastFilteredTabsRef = useRef<TabType[]>([]);
 
   // Flatten all tabs from islands and standalone tabs for search mode
   const allTabs = useMemo(() => {
-    const tabs: any[] = [];
+    const tabs: TabType[] = [];
     (islands || []).forEach(item => {
       if (item && 'tabs' in item && item.tabs) {
         // It's an Island - extract all tabs
@@ -690,7 +713,7 @@ export const Dashboard: React.FC = () => {
         tabs.push(...item.tabs);
       } else if (item) {
         // It's a standalone Tab
-        tabs.push(item);
+        tabs.push(item as TabType);
       }
     });
     return tabs;
@@ -723,15 +746,15 @@ export const Dashboard: React.FC = () => {
     }
 
     // Stabilize reference if content hasn't changed to prevent entrance animation re-triggering
-    const isIdentical = 
+    const isIdentical =
       filtered.length === lastFilteredTabsRef.current.length &&
       filtered.every((tab, i) => {
         const prev = lastFilteredTabsRef.current[i];
-        return tab.id === prev.id && 
-               tab.title === prev.title && 
-               tab.url === prev.url &&
-               tab.active === prev.active &&
-               tab.discarded === prev.discarded;
+        return tab.id === prev.id &&
+          tab.title === prev.title &&
+          tab.url === prev.url &&
+          tab.active === prev.active &&
+          tab.discarded === prev.discarded;
       });
 
     if (isIdentical) {
@@ -743,8 +766,8 @@ export const Dashboard: React.FC = () => {
   }, [searchQuery, allTabs, sortOption]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { 
-      activationConstraint: { distance: 8 } 
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 }
     }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
@@ -805,15 +828,15 @@ export const Dashboard: React.FC = () => {
   const handleDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current;
     setActiveItem(data);
-    
+
     // Check if dragging a Group
     const isGroup = data && 'island' in data && data.type === 'island';
     setIsDraggingGroup(!!isGroup);
 
     // Check if dragging a Vault item (id starts with 'vault-')
-    const isVault = event.active.id.toString().startsWith('vault-') || 
-                    (data && data.island && data.island.id.toString().startsWith('vault-')) ||
-                    (data && data.tab && data.tab.id.toString().startsWith('vault-'));
+    const isVault = event.active.id.toString().startsWith('vault-') ||
+      (data && data.island && data.island.id.toString().startsWith('vault-')) ||
+      (data && data.tab && data.tab.id.toString().startsWith('vault-'));
     setIsDraggingVaultItem(isVault);
     useStore.getState().setIsUpdating(true);
   };
@@ -837,13 +860,13 @@ export const Dashboard: React.FC = () => {
     setActiveItem(null);
     setIsDraggingVaultItem(false);
     setIsDraggingGroup(false);
-    
+
     try {
       if (!over) return;
 
       const activeId = active.id;
       const overId = over.id;
-      
+
       // We MUST use the latest state from the store after optimistic moves
       const { islands: finalIslands, vault: finalVault } = useStore.getState();
 
@@ -851,11 +874,11 @@ export const Dashboard: React.FC = () => {
       const activeIdStr = activeId.toString();
       const overIdStr = overId.toString();
       const isVaultSource = activeIdStr.startsWith('vault-');
-      
+
       // Target is Vault if dropzone OR if the ID starts with 'vault-'
       // This covers all Vault items and the dropzone
       const isVaultTarget = overIdStr === 'vault-dropzone' || overIdStr === 'vault-bottom' || overIdStr.startsWith('vault-');
-      
+
       // SCENARIO 1: Internal Vault Move (Sort)
       if (isVaultSource && isVaultTarget) {
         await useStore.getState().reorderVault(finalVault);
@@ -866,7 +889,7 @@ export const Dashboard: React.FC = () => {
       if (!isVaultSource && isVaultTarget) {
         // Find item in islands to get ID, or just use activeId
         // Note: activeId is enough for moveToVault
-        
+
         if (activeId) {
           await moveToVault(activeId as any);
         }
@@ -905,10 +928,10 @@ export const Dashboard: React.FC = () => {
             await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
 
             console.log(`[ISLAND] Creating island for tab: ${tabId}`);
-            
+
             // Call createIsland with no title to ensure it remains "Untitled"
             const groupId = await createIsland([tabId], undefined, 'blue' as any);
-            
+
             if (groupId) {
               console.log(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
             } else {
@@ -938,7 +961,7 @@ export const Dashboard: React.FC = () => {
       if (!isVaultSource && !isVaultTarget && overIdStr !== 'create-island-dropzone') {
         // Show loading overlay for complex moves only
         setIsLoading(true);
-        
+
         try {
           // Internal Live Move
           let browserIndex = 0;
@@ -983,7 +1006,7 @@ export const Dashboard: React.FC = () => {
                     await chrome.tabs.group({ tabIds: tabId, groupId: numericIslandId });
                   }
                 } else {
-                  try { await chrome.tabs.ungroup(tabId); } catch(e) {}
+                  try { await chrome.tabs.ungroup(tabId); } catch (e) { }
                 }
               }
             }
@@ -998,7 +1021,7 @@ export const Dashboard: React.FC = () => {
       // (isVaultSource && !isVaultTarget)
       if (isVaultSource && !isVaultTarget) {
         setIsLoading(true);
-        
+
         try {
           if (activeId) {
             await restoreFromVault(activeId as any);
@@ -1016,10 +1039,10 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div 
-      id="dashboard-container" 
-      className={cn('flex flex-col select-none overflow-hidden fixed top-0 left-0 z-0 bg-[#050505] text-white', isDarkMode ? 'dark' : 'light')} 
-      style={{ 
+    <div
+      id="dashboard-container"
+      className={cn('flex flex-col select-none overflow-hidden fixed top-0 left-0 z-0 bg-[#050505] text-white', isDarkMode ? 'dark' : 'light')}
+      style={{
         transform: `scale(${appearanceSettings.uiScale})`,
         transformOrigin: 'top left',
         width: `${100 / appearanceSettings.uiScale}%`,
@@ -1027,12 +1050,12 @@ export const Dashboard: React.FC = () => {
       }}
     >
       <Sidebar />
-      <DndContext 
-        sensors={isRenaming ? [] : sensors} 
-        collisionDetection={closestCorners} 
-        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }} 
-        onDragStart={handleDragStart} 
-        onDragOver={handleDragOver} 
+      <DndContext
+        sensors={isRenaming ? [] : sensors}
+        collisionDetection={closestCorners}
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         modifiers={[scaleModifier]}
       >
@@ -1052,6 +1075,7 @@ export const Dashboard: React.FC = () => {
             sortOption={sortOption}
             setSortOption={setSortOption}
             filteredTabs={filteredTabs}
+            groupSearchResults={groupSearchResults}
             deleteDuplicateTabs={deleteDuplicateTabs}
             sortGroupsToTop={sortGroupsToTop}
             showVault={showVault}
