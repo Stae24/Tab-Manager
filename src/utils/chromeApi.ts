@@ -249,3 +249,99 @@ export const duplicateIsland = async (tabIds: number[], windowId?: number) => {
 
   return newTabIds;
 };
+
+export const consolidateAndGroupTabs = async (tabIds: number[], options: { color?: string }) => {
+  try {
+    const targetWindow = await withRetry(
+      () => chrome.windows.getLastFocused({ windowTypes: ['normal'] }),
+      'getLastFocused'
+    );
+    
+    if (!targetWindow.id) {
+      console.error('[GroupSearchResults] No target window found');
+      return;
+    }
+
+    const windowId = targetWindow.id;
+    console.log(`[GroupSearchResults] Target window: ${windowId}`);
+
+    const tabs = await Promise.all(
+      tabIds.map(id => chrome.tabs.get(id).catch(() => null))
+    );
+    
+    const restrictedUrlPatterns = ['chrome://', 'edge://', 'about:', 'opera:', 'chrome-extension:'];
+    
+    const validTabs = tabs.filter((t): t is chrome.tabs.Tab => {
+      if (!t || t.id === undefined) return false;
+      
+      if (t.pinned) {
+        console.log(`[GroupSearchResults] Skipping pinned tab ${t.id}: ${t.url}`);
+        return false;
+      }
+      
+      const isRestricted = restrictedUrlPatterns.some(pattern => t.url?.startsWith(pattern));
+      
+      if (isRestricted) {
+        console.log(`[GroupSearchResults] Skipping restricted tab ${t.id}: ${t.url}`);
+        return false;
+      }
+      
+      return true;
+    });
+
+    if (validTabs.length === 0) {
+      console.log('[GroupSearchResults] No valid tabs to process');
+      return;
+    }
+
+    const tabsToGroup: number[] = [];
+    
+    for (const tab of validTabs) {
+      if (tab.windowId !== windowId) {
+        try {
+          await withRetry(
+            () => chrome.tabs.move(tab.id as number, { windowId, index: -1 }),
+            `moveTab-${tab.id}`
+          );
+          console.log(`[GroupSearchResults] Moved tab ${tab.id} to window ${windowId}`);
+          tabsToGroup.push(tab.id as number);
+        } catch (error) {
+          console.error(`[GroupSearchResults] Failed to move tab ${tab.id}:`, error);
+        }
+      } else {
+        console.log(`[GroupSearchResults] Tab ${tab.id} already in target window ${windowId}`);
+        tabsToGroup.push(tab.id as number);
+      }
+    }
+
+    if (tabsToGroup.length >= 2) {
+      try {
+        const groupId = await withRetry(
+          () => chrome.tabs.group({ tabIds: tabsToGroup as [number, ...number[]] }),
+          'groupTabs'
+        );
+        
+        if (options.color && groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+          let groupColor = options.color;
+          
+          if (options.color === 'random') {
+            const availableColors = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
+            groupColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+          }
+          
+          await updateTabGroup(groupId, { color: groupColor as chrome.tabGroups.Color });
+          console.log(`[GroupSearchResults] Created group ${groupId} with color ${groupColor}`);
+        } else {
+          console.log(`[GroupSearchResults] Created group ${groupId}`);
+        }
+      } catch (error) {
+        console.error('[GroupSearchResults] Failed to group tabs:', error);
+      }
+    } else {
+      console.log(`[GroupSearchResults] Only ${tabsToGroup.length} tab(s) in target window, not grouping`);
+    }
+    
+  } catch (error) {
+    console.error('[GroupSearchResults] Consolidation failed:', error);
+  }
+};
