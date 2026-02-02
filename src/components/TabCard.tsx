@@ -5,19 +5,10 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '../utils/cn';
 import { discardTab, ungroupTab, closeTab, copyTabUrl, muteTab, unmuteTab, pinTab, unpinTab, duplicateTab } from '../utils/chromeApi';
 import { parseNumericId, useStore } from '../store/useStore';
+import type { Tab } from '../types/index';
 
 interface TabCardProps {
-  tab: {
-    id: number | string;
-    title: string;
-    favicon: string;
-    active: boolean;
-    discarded: boolean;
-    url?: string;
-    muted?: boolean;
-    pinned?: boolean;
-    audible?: boolean;
-  };
+  tab: Tab;
   onClick?: () => void;
   onClose?: () => void;
   onSave?: () => void;
@@ -160,8 +151,8 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
                 e.stopPropagation();
                 if (onClose) onClose();
                 else {
-                    const numericId = parseNumericId(tab.id);
-                    if (numericId !== -1) closeTab(numericId);
+                  const numericId = parseNumericId(tab.id);
+                  if (numericId !== -1) closeTab(numericId);
                 }
               }}
               className="p-1.5 rounded-lg hover:bg-gx-red/20 text-gray-500 hover:text-gx-red transition-all group/close"

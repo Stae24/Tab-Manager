@@ -134,7 +134,7 @@ describe('vaultStorage - loadVault', () => {
     const vault = [createMockVaultItem(1, 'Test Tab')];
     mockLocalStorage[LEGACY_VAULT_KEY] = vault;
     
-    const loaded = await loadVault({ syncEnabled: false });
+    const { vault: loaded } = await loadVault({ syncEnabled: false });
     
     expect(loaded).toEqual(vault);
   });
@@ -144,7 +144,7 @@ describe('vaultStorage - loadVault', () => {
     
     await saveVault(vault, { syncEnabled: true });
     
-    const loaded = await loadVault({ syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
     
     expect(loaded).toHaveLength(2);
     expect(loaded[0].title).toBe('Synced Tab');
@@ -152,7 +152,7 @@ describe('vaultStorage - loadVault', () => {
   });
 
   it('returns empty array when no data exists', async () => {
-    const loaded = await loadVault({ syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
     
     expect(loaded).toEqual([]);
   });
@@ -170,7 +170,7 @@ describe('vaultStorage - loadVault', () => {
     };
     mockSyncStorage[`${VAULT_CHUNK_PREFIX}0`] = 'corrupted_data';
     
-    const loaded = await loadVault({ syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
     
     expect(loaded).toEqual(backup);
   });
@@ -295,7 +295,7 @@ describe('vaultStorage - compression', () => {
     (vault[1] as any).url = 'https://example.com/path?query=value&foo=bar#anchor';
     
     await saveVault(vault, { syncEnabled: true });
-    const loaded = await loadVault({ syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
     
     expect(loaded[0].title).toBe('Special chars: 日本語 émojis 🎉');
     expect((loaded[1] as any).url).toBe('https://example.com/path?query=value&foo=bar#anchor');
@@ -326,7 +326,7 @@ describe('vaultStorage - chunking', () => {
     }
     
     await saveVault(largeVault, { syncEnabled: true });
-    const loaded = await loadVault({ syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
     
     expect(loaded).toHaveLength(50);
     expect(loaded[0].title).toBe('Chunked Tab 0');

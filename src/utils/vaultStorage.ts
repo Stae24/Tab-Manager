@@ -6,7 +6,8 @@ import type {
   VaultQuotaInfo,
   VaultMeta,
   MigrationResult,
-  QuotaWarningLevel
+  QuotaWarningLevel,
+  VaultLoadResult
 } from '../types/index';
 
 const SYNC_TOTAL_QUOTA = 102400;
@@ -159,10 +160,13 @@ export async function saveVault(
   }
 }
 
-export async function loadVault(config: VaultStorageConfig): Promise<VaultItem[]> {
+export async function loadVault(config: VaultStorageConfig): Promise<VaultLoadResult> {
   if (!config.syncEnabled) {
     const local = await chrome.storage.local.get([LEGACY_VAULT_KEY]);
-    return (local[LEGACY_VAULT_KEY] as VaultItem[]) || [];
+    return {
+      vault: (local[LEGACY_VAULT_KEY] as VaultItem[]) || [],
+      timestamp: 0 // Local storage doesn't use metadata timestamps
+    };
   }
   
   try {
@@ -170,7 +174,7 @@ export async function loadVault(config: VaultStorageConfig): Promise<VaultItem[]
     const meta = syncData[VAULT_META_KEY] as VaultMeta | undefined;
     
     if (!meta || meta.version !== STORAGE_VERSION) {
-      return [];
+      return { vault: [], timestamp: 0 };
     }
     
     const chunks: string[] = [];
@@ -180,7 +184,7 @@ export async function loadVault(config: VaultStorageConfig): Promise<VaultItem[]
       const chunk = syncData[chunkKeys[i]] as string | undefined;
       if (chunk === undefined) {
         console.error(`[VaultStorage] Missing chunk ${chunkKeys[i]}`);
-        return await loadFromBackup();
+        return { vault: await loadFromBackup(), timestamp: meta.timestamp };
       }
       chunks.push(chunk);
     }
@@ -190,19 +194,22 @@ export async function loadVault(config: VaultStorageConfig): Promise<VaultItem[]
     
     if (!jsonData) {
       console.error('[VaultStorage] Decompression failed');
-      return await loadFromBackup();
+      return { vault: await loadFromBackup(), timestamp: meta.timestamp };
     }
     
     const computedChecksum = await computeChecksum(jsonData);
     if (computedChecksum !== meta.checksum) {
       console.error('[VaultStorage] Checksum mismatch, data may be corrupted');
-      return await loadFromBackup();
+      return { vault: await loadFromBackup(), timestamp: meta.timestamp };
     }
     
-    return JSON.parse(jsonData) as VaultItem[];
+    return {
+      vault: JSON.parse(jsonData) as VaultItem[],
+      timestamp: meta.timestamp
+    };
   } catch (error) {
     console.error('[VaultStorage] Failed to load:', error);
-    return await loadFromBackup();
+    return { vault: await loadFromBackup(), timestamp: 0 };
   }
 }
 

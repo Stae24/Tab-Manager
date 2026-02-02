@@ -74,3 +74,8 @@ export interface MigrationResult {
   from?: 'sync_legacy' | 'local_legacy' | 'none';
   error?: string;
 }
+
+export interface VaultLoadResult {
+  vault: VaultItem[];
+  timestamp: number;
+}
