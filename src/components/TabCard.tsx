@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn, getBorderRadiusClass } from '../utils/cn';
 import { discardTab, ungroupTab, closeTab, copyTabUrl, muteTab, unmuteTab, pinTab, unpinTab, duplicateTab } from '../utils/chromeApi';
 import { parseNumericId, useStore } from '../store/useStore';
+import { Favicon } from './Favicon';
 import type { Tab } from '../types/index';
 
 interface TabCardProps {
@@ -129,7 +130,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
           </>
         )}
 
-        {tab.favicon && appearanceSettings.showFavicons && <img src={tab.favicon} alt="" className="w-4 h-4 pointer-events-none relative z-10" />}
+        {appearanceSettings.showFavicons && <Favicon src={tab.favicon} url={tab.url} className="w-4 h-4 pointer-events-none relative z-10" />}
         <span className="flex-1 text-xs font-medium truncate pointer-events-none relative z-10">{tab.title}</span>
         {tab.discarded && appearanceSettings.showFrozenIndicators && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
         {appearanceSettings.showAudioIndicators !== 'off' && (
