@@ -47,6 +47,6 @@ A Chrome Extension specifically optimized for Opera GX to manage tabs and Tab Is
 
 ## 5. Success Criteria
 - [x] User can drag a tab into the "New Island" zone and create a group.
-- [ ] Vault data syncs across devices using Chrome Sync.
+- [x] Vault data syncs across devices using Chrome Sync.
 - [x] UI scale and Theme settings persist.
 - [x] Extension functions as both a full page and a sidebar action.

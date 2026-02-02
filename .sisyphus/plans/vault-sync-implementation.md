@@ -10,5 +10,5 @@
 - **Quota Handling**: Add a check to prevent syncing if data exceeds 100KB.
 
 ## TODOs
-- [ ] 1. Switch Vault to `chrome.storage.sync`
-- [ ] 2. Verification of Sync functionality
+- [x] 1. Switch Vault to `chrome.storage.sync`
+- [x] 2. Verification of Sync functionality
