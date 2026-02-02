@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, Trash2, Save, LogOut, ExternalLink, Edit3, X
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TabCard } from './TabCard';
-import { cn, getIslandBorderColor } from '../utils/cn';
+import { cn, getIslandBorderColor, getBorderRadiusClass, getBottomBorderRadiusClass } from '../utils/cn';
 import { Island as IslandType, Tab } from '../types/index';
 import { ungroupTab, updateTabGroupCollapse, discardTabs, duplicateIsland } from '../utils/chromeApi';
 import { useStore, parseNumericId } from '../store/useStore';
@@ -42,13 +42,25 @@ export const Island: React.FC<IslandProps> = ({
   isVault,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const setIsRenaming = useStore(state => state.setIsRenaming);
+  const { appearanceSettings, setIsRenaming } = useStore();
   const [editTitle, setEditTitle] = useState(island.title);
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const borderColor = getIslandBorderColor(island.color);
+
+  const buttonPadding: Record<string, string> = {
+    small: 'p-0.5',
+    medium: 'p-1',
+    large: 'p-1.5',
+  };
+
+  const buttonIconSize: Record<string, number> = {
+    small: 12,
+    medium: 14,
+    large: 16,
+  };
 
   const {
     attributes,
@@ -66,7 +78,7 @@ export const Island: React.FC<IslandProps> = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging && !isOverlay ? 0.2 : 1,
+    opacity: isDragging && !isOverlay ? appearanceSettings.dragOpacity : 1,
     zIndex: isOverlay ? 9999 : undefined,
   };
 
@@ -151,9 +163,11 @@ export const Island: React.FC<IslandProps> = ({
         {...attributes}
         {...listeners}
         className={cn(
-          "relative flex items-center gap-2 px-3 py-2 bg-gx-gray/80 border-t-2 border-x-2 border-transparent cursor-grab active:cursor-grabbing",
-          island.collapsed && "rounded-b-lg border-b-2 shadow-lg",
-          isOverlay && "shadow-2xl ring-2 ring-gx-accent/50 bg-gx-dark rounded-lg border-b-2"
+          "relative flex items-center gap-2 bg-gx-gray/80 border-t-2 border-x-2 border-transparent cursor-grab active:cursor-grabbing",
+          getBorderRadiusClass(appearanceSettings.borderRadius),
+          appearanceSettings.compactGroupHeaders ? "px-2 py-1" : "px-3 py-2",
+          island.collapsed && cn(getBottomBorderRadiusClass(appearanceSettings.borderRadius), "border-b-2 shadow-lg"),
+          isOverlay && cn("shadow-2xl ring-2 ring-gx-accent/50 bg-gx-dark border-b-2", getBorderRadiusClass(appearanceSettings.borderRadius))
         )}
         style={{
           borderTopColor: borderColor,
@@ -170,9 +184,16 @@ export const Island: React.FC<IslandProps> = ({
       >
         <button
           onClick={handleToggleCollapse}
-          className="p-1 hover:bg-white/10 rounded pointer-events-auto relative z-10"
+          className={cn(
+            "hover:bg-white/10 rounded pointer-events-auto relative z-10",
+            buttonPadding[appearanceSettings.buttonSize]
+          )}
         >
-          {island.collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+          {island.collapsed ? (
+            <ChevronRight size={buttonIconSize[appearanceSettings.buttonSize]} />
+          ) : (
+            <ChevronDown size={buttonIconSize[appearanceSettings.buttonSize]} />
+          )}
         </button>
         {isEditing ? (
           <input
@@ -208,31 +229,52 @@ export const Island: React.FC<IslandProps> = ({
             title="Double-click to rename"
           >
             {island.title || "Untitled Group"}
+            {appearanceSettings.showTabCount && (island.tabs?.length || 0) > 0 && (
+              <span className="text-[10px] font-black text-white/30 ml-2 tracking-tighter">
+                {island.tabs.length}
+              </span>
+            )}
           </span>
         )}
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto relative z-10">
           {!isVault && !isOverlay && (
-            <button onClick={(e) => {
-              e.stopPropagation();
-              const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
-              if (ids.length > 0) ungroupTab(ids);
-            }} title="Ungroup All">
-              <LogOut size={14} className="text-gray-400 hover:text-white" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+                if (ids.length > 0) ungroupTab(ids);
+              }}
+              title="Ungroup All"
+              className={buttonPadding[appearanceSettings.buttonSize]}
+            >
+              <LogOut size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-white" />
             </button>
           )}
           {!isVault && onNonDestructiveSave && (
-            <button onClick={(e) => { e.stopPropagation(); onNonDestructiveSave(); }} title="Save to Vault (Keep Live)">
-              <Save size={14} className="text-gray-400 hover:text-gx-cyan" />
+            <button
+              onClick={(e) => { e.stopPropagation(); onNonDestructiveSave(); }}
+              title="Save to Vault (Keep Live)"
+              className={buttonPadding[appearanceSettings.buttonSize]}
+            >
+              <Save size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-gx-cyan" />
             </button>
           )}
           {isVault && onRestore && (
-            <button onClick={(e) => { e.stopPropagation(); onRestore(); }} title="Open in Current Window">
-              <ExternalLink size={14} className="text-gray-400 hover:text-gx-green" />
+            <button
+              onClick={(e) => { e.stopPropagation(); onRestore(); }}
+              title="Open in Current Window"
+              className={buttonPadding[appearanceSettings.buttonSize]}
+            >
+              <ExternalLink size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-gx-green" />
             </button>
           )}
           {onDelete && (
-            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} title={isVault ? "Delete from Vault" : "Delete"}>
-              <Trash2 size={14} className="text-gray-400 hover:text-gx-red" />
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              title={isVault ? "Delete from Vault" : "Delete"}
+              className={buttonPadding[appearanceSettings.buttonSize]}
+            >
+              <Trash2 size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-gx-red" />
             </button>
           )}
         </div>
@@ -307,7 +349,10 @@ export const Island: React.FC<IslandProps> = ({
 
       {!island.collapsed && !isOverlay && (
         <div
-          className="p-2 bg-gx-dark/30 rounded-b-lg border-x-2 border-b-2 border-transparent shadow-inner min-h-[40px]"
+          className={cn(
+            "p-2 bg-gx-dark/30 border-x-2 border-b-2 border-transparent shadow-inner min-h-[40px]",
+            getBottomBorderRadiusClass(appearanceSettings.borderRadius)
+          )}
           style={{ borderColor: `${borderColor}33`, borderBottomColor: borderColor }}
         >
           <div className="space-y-1 relative">
@@ -331,7 +376,13 @@ export const Island: React.FC<IslandProps> = ({
 
       {/* When in overlay, show tabs but without context */}
       {isOverlay && !island.collapsed && (
-        <div className="p-2 bg-gx-dark/30 rounded-b-lg border-x-2 border-b-2 border-transparent" style={{ borderColor: `${borderColor}33` }}>
+        <div
+          className={cn(
+            "p-2 bg-gx-dark/30 border-x-2 border-b-2 border-transparent",
+            getBottomBorderRadiusClass(appearanceSettings.borderRadius)
+          )}
+          style={{ borderColor: `${borderColor}33` }}
+        >
           <div className="space-y-1">
             {(island.tabs || []).map((tab) => (
               <TabCard

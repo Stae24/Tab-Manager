@@ -26,6 +26,7 @@ interface AppearanceSettings {
   showAudioIndicators: AudioIndicatorMode;
   showFrozenIndicators: boolean;
   showActiveIndicator: boolean;
+  showTabCount: boolean;
 
   // v1.2 - Polish
   accentColor: string;
@@ -55,6 +56,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   showAudioIndicators: 'both',
   showFrozenIndicators: true,
   showActiveIndicator: true,
+  showTabCount: true,
   accentColor: 'gx-accent',
   borderRadius: 'medium',
   compactGroupHeaders: false,

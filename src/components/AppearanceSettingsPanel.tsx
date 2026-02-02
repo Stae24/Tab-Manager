@@ -572,6 +572,43 @@ export const AppearanceSettingsPanel: React.FC<{
                   description="Highlight the currently active tab with a glow effect"
                 />
               </CollapsibleSection>
+
+              {/* Show Audio Indicators */}
+              <CollapsibleSection
+                id="audio-indicators"
+                title="Audio Indicators"
+                icon={Volume2}
+                isExpanded={expandedSections.has('audio-indicators')}
+                onToggle={() => toggleSection('audio-indicators')}
+              >
+                <DropdownSelect
+                  value={appearanceSettings.showAudioIndicators}
+                  onChange={(value) => setAppearanceSettings({ showAudioIndicators: value as AudioIndicatorMode })}
+                  options={[
+                    { value: 'off', label: 'Hidden', icon: VolumeX },
+                    { value: 'playing', label: 'Only when Playing', icon: Volume2 },
+                    { value: 'muted', label: 'Only when Muted', icon: VolumeX },
+                    { value: 'both', label: 'Show Both', icon: Volume2 },
+                  ]}
+                  label="Display Logic"
+                />
+              </CollapsibleSection>
+
+              {/* Show Frozen Indicators */}
+              <CollapsibleSection
+                id="frozen-indicators"
+                title="Frozen Indicators"
+                icon={Snowflake}
+                isExpanded={expandedSections.has('frozen-indicators')}
+                onToggle={() => toggleSection('frozen-indicators')}
+              >
+                <ToggleSwitch
+                  checked={appearanceSettings.showFrozenIndicators}
+                  onChange={(checked) => setAppearanceSettings({ showFrozenIndicators: checked })}
+                  label="Show Frozen Status"
+                  description="Show snowflake icon for discarded (sleeping) tabs"
+                />
+              </CollapsibleSection>
             </>
           )}
 
@@ -590,6 +627,21 @@ export const AppearanceSettingsPanel: React.FC<{
                   onChange={(checked) => setAppearanceSettings({ compactGroupHeaders: checked })}
                   label="Compact Headers"
                   description="Use smaller headers for tab groups to save space"
+                />
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                id="tab-count"
+                title="Tab Count"
+                icon={Type}
+                isExpanded={expandedSections.has('tab-count')}
+                onToggle={() => toggleSection('tab-count')}
+              >
+                <ToggleSwitch
+                  checked={appearanceSettings.showTabCount}
+                  onChange={(checked) => setAppearanceSettings({ showTabCount: checked })}
+                  label="Show Tab Count"
+                  description="Display the number of tabs in each group header"
                 />
               </CollapsibleSection>
             </>
@@ -746,6 +798,25 @@ export const AppearanceSettingsPanel: React.FC<{
                     { value: 'minimal', label: 'Minimal' },
                   ]}
                   label="Icon Style"
+                />
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                id="button-size"
+                title="Button Size"
+                icon={MousePointer}
+                isExpanded={expandedSections.has('button-size')}
+                onToggle={() => toggleSection('button-size')}
+              >
+                <DropdownSelect
+                  value={appearanceSettings.buttonSize}
+                  onChange={(value) => setAppearanceSettings({ buttonSize: value as ButtonSize })}
+                  options={[
+                    { value: 'small', label: 'Small' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'large', label: 'Large' },
+                  ]}
+                  label="UI Action Size"
                 />
               </CollapsibleSection>
             </>
