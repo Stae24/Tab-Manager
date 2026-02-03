@@ -530,19 +530,10 @@ export const AppearanceSettingsPanel: React.FC<{
         <div
           onMouseDown={handleResizeStart}
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize z-[60] flex items-center justify-center transition-all",
+            "absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-[60] transition-all",
             isResizing && "bg-gx-accent/20"
           )}
-        >
-          {/* Visual hover effect on the resize handle (accent color glow) */}
-          <div 
-            className={cn(
-              "w-0.5 h-16 rounded-full transition-all duration-200",
-              "bg-gray-600 hover:bg-gx-accent hover:shadow-[0_0_8px_rgba(127,34,254,0.8)]",
-              isResizing && "bg-gx-accent shadow-[0_0_8px_rgba(127,34,254,0.8)]"
-            )} 
-          />
-        </div>
+        />
 
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gx-gray bg-gx-gray/50">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gx-accent to-gx-red flex items-center justify-center shadow-lg shadow-gx-accent/30 flex-shrink-0">
