@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Search,
@@ -138,7 +139,7 @@ const SliderControl: React.FC<{
   );
 };
 
-// Custom Dropdown component
+// Custom Dropdown component with portal
 const DropdownSelect: React.FC<{
   value: string;
   onChange: (value: string) => void;
@@ -146,15 +147,70 @@ const DropdownSelect: React.FC<{
   label: string;
 }> = ({ value, onChange, options, label }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find(opt => opt.value === value);
+
+  const updatePosition = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          dropdownRef.current &&
+          !dropdownRef.current.contains(event.target as Node) &&
+          buttonRef.current &&
+          !buttonRef.current.contains(event.target as Node)
+        ) {
+          setIsOpen(false);
+        }
+      };
+
+      const handleScroll = () => {
+        updatePosition();
+      };
+
+      const handleResize = () => {
+        updatePosition();
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', handleResize);
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [isOpen, updatePosition]);
 
   return (
     <div className="space-y-2">
       <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase block">{label}</span>
       <div className="relative">
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          ref={buttonRef}
+          onClick={() => {
+            if (!isOpen) {
+              updatePosition();
+            }
+            setIsOpen(!isOpen);
+          }}
           className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gx-gray border border-white/5 rounded-lg hover:border-gx-accent/30 transition-all"
         >
           <div className="flex items-center gap-2">
@@ -163,28 +219,40 @@ const DropdownSelect: React.FC<{
           </div>
           <ChevronDown size={12} className={cn("text-gray-500 transition-transform", isOpen && "rotate-180")} />
         </button>
-        {isOpen && (
-          <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-gx-dark border border-gx-accent/20 rounded-lg shadow-xl overflow-hidden">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2.5 text-left transition-all",
-                  option.value === value
-                    ? "bg-gx-accent/10 text-gx-accent"
-                    : "text-gray-400 hover:bg-gx-accent/20 hover:text-gray-200"
-                )}
-              >
-                {option.icon && <option.icon size={14} className="opacity-80" />}
-                <span className="text-xs">{option.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        {isOpen &&
+          createPortal(
+            <div
+              ref={dropdownRef}
+              className="fixed z-[9999] bg-gx-dark border border-gx-accent/20 rounded-lg shadow-xl overflow-hidden"
+              style={{
+                top: position.top,
+                left: position.left,
+                width: position.width,
+                maxHeight: '300px',
+                overflowY: 'auto',
+              }}
+            >
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2.5 text-left transition-all",
+                    option.value === value
+                      ? "bg-gx-accent/10 text-gx-accent"
+                      : "text-gray-400 hover:bg-gx-accent/20 hover:text-gray-200"
+                  )}
+                >
+                  {option.icon && <option.icon size={14} className="opacity-80" />}
+                  <span className="text-xs">{option.label}</span>
+                </button>
+              ))}
+            </div>,
+            document.body
+          )}
       </div>
     </div>
   );
