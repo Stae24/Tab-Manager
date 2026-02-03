@@ -117,15 +117,15 @@ describe('Favicon Component', () => {
 
   it('falls back when fallback is enabled', () => {
     const url = 'https://example.com';
-    const { container } = render(<Favicon url={url} source="google" fallback="enabled" />);
-    
+    const { container } = render(<Favicon url={url} source="google" fallback="duckduckgo" />);
+
     let img = container.querySelector('img');
     expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));
-    
+
     fireEvent.error(img!);
     img = container.querySelector('img');
     expect(img).toHaveAttribute('src', expect.stringContaining('duckduckgo.com'));
-    
+
     fireEvent.error(img!);
     const svg = container.querySelector('svg');
     expect(svg).toHaveClass('lucide-globe');
@@ -133,7 +133,7 @@ describe('Favicon Component', () => {
 
   it('does not fall back when fallback is disabled', () => {
     const url = 'https://example.com';
-    const { container } = render(<Favicon url={url} source="google" fallback="disabled" />);
+    const { container } = render(<Favicon url={url} source="google" fallback="none" />);
     
     let img = container.querySelector('img');
     expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));

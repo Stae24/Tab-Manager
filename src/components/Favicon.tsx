@@ -88,15 +88,11 @@ const getFaviconUrl = (source: FaviconSource, effectiveUrl: string, size: string
   }
 };
 
-const getFallbackSource = (primary: FaviconSource): FaviconSource => {
-  const fallbacks: Record<FaviconSource, FaviconSource> = {
-    'chrome': 'google',
-    'google': 'duckduckgo',
-    'google-hd': 'google',
-    'duckduckgo': 'google',
-    'icon-horse': 'google',
-  };
-  return fallbacks[primary] || 'google';
+const getFallbackSource = (fallback: FaviconFallback, primary: FaviconSource): FaviconSource | null => {
+  if (fallback === 'none') {
+    return null;
+  }
+  return fallback;
 };
 
 export const Favicon: React.FC<FaviconProps> = ({ 
@@ -105,7 +101,7 @@ export const Favicon: React.FC<FaviconProps> = ({
   className, 
   onLoad,
   source = 'google',
-  fallback = 'enabled',
+  fallback = 'duckduckgo',
   size = '32'
 }) => {
   const [tier, setTier] = useState(0);
@@ -134,7 +130,7 @@ export const Favicon: React.FC<FaviconProps> = ({
       return null;
     }
 
-    const maxTier = fallback === 'enabled' ? 1 : 0;
+    const maxTier = fallback !== 'none' ? 1 : 0;
     if (tier > maxTier) {
       return null;
     }
@@ -143,9 +139,11 @@ export const Favicon: React.FC<FaviconProps> = ({
       return getFaviconUrl(source, effectiveUrl, size);
     }
 
-    if (tier === 1 && fallback === 'enabled') {
-      const fallbackSource = getFallbackSource(source);
-      return getFaviconUrl(fallbackSource, effectiveUrl, size);
+    if (tier === 1 && fallback !== 'none') {
+      const fallbackSource = getFallbackSource(fallback, source);
+      if (fallbackSource) {
+        return getFaviconUrl(fallbackSource, effectiveUrl, size);
+      }
     }
 
     return null;
@@ -157,7 +155,7 @@ export const Favicon: React.FC<FaviconProps> = ({
   };
 
   const handleError = () => {
-    const maxTier = fallback === 'enabled' ? 1 : 0;
+    const maxTier = fallback !== 'none' ? 1 : 0;
     setTier(prev => Math.min(prev + 1, maxTier + 1));
   };
 
