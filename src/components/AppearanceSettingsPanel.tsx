@@ -334,12 +334,133 @@ export const AppearanceSettingsPanel: React.FC<{
     setAppearanceSettings, 
     isDarkMode,
     vaultQuota,
-    setVaultSyncEnabled
+    setVaultSyncEnabled,
+    settingsPanelWidth,
+    setSettingsPanelWidth
   } = useStore();
   const [activeTab, setActiveTab] = useState<TabId>('display');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['display', 'tabs']));
   const [isClosing, setIsClosing] = useState(false);
+
+  const [isResizing, setIsResizing] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(settingsPanelWidth);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const resizeStartX = useRef<number>(0);
+  const resizeStartWidth = useRef<number>(settingsPanelWidth);
+  const isResizingRef = useRef(false);
+  const currentWidthRef = useRef<number>(settingsPanelWidth);
+
+  const [showLabels, setShowLabels] = useState(true);
+  const [shouldWrapTabs, setShouldWrapTabs] = useState(false);
+  const [shouldWrapIcons, setShouldWrapIcons] = useState(false);
+
+  useEffect(() => {
+    if (!isResizing) {
+      setPanelWidth(settingsPanelWidth);
+    }
+  }, [settingsPanelWidth, isResizing]);
+
+  useEffect(() => {
+    const fitPanelToWindow = () => {
+      const windowWidth = window.innerWidth;
+      const minGap = 50;
+      const maxAllowedWidth = windowWidth - minGap;
+      
+      if (panelWidth > maxAllowedWidth) {
+        const newWidth = Math.max(320, maxAllowedWidth);
+        setPanelWidth(newWidth);
+        setSettingsPanelWidth(newWidth);
+      }
+    };
+
+    if (isOpen) {
+      fitPanelToWindow();
+    }
+  }, [isOpen, panelWidth, setSettingsPanelWidth]);
+
+  useEffect(() => {
+    const handleWindowResize = () => {
+      const windowWidth = window.innerWidth;
+      const minGap = 50;
+      const maxAllowedWidth = windowWidth - minGap;
+      
+      if (panelWidth > maxAllowedWidth) {
+        const newWidth = Math.max(320, maxAllowedWidth);
+        setPanelWidth(newWidth);
+        setSettingsPanelWidth(newWidth);
+      }
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
+  }, [panelWidth, setSettingsPanelWidth]);
+
+  useEffect(() => {
+    if (panelWidth >= 550) {
+      setShowLabels(true);
+      setShouldWrapTabs(false);
+      setShouldWrapIcons(false);
+    } else if (panelWidth >= 380) {
+      setShowLabels(true);
+      setShouldWrapTabs(true);
+      setShouldWrapIcons(false);
+    } else if (panelWidth >= 250) {
+      setShowLabels(false);
+      setShouldWrapTabs(false);
+      setShouldWrapIcons(false);
+    } else {
+      setShowLabels(false);
+      setShouldWrapTabs(false);
+      setShouldWrapIcons(true);
+    }
+  }, [panelWidth]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    isResizingRef.current = true;
+    setIsResizing(true);
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = panelWidth;
+    currentWidthRef.current = panelWidth;
+    
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+    
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ew-resize';
+  };
+
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (!isResizingRef.current) return;
+    
+    const deltaX = resizeStartX.current - e.clientX;
+    const newWidth = resizeStartWidth.current + deltaX;
+    
+    const clampedWidth = Math.max(320, Math.min(800, newWidth));
+    
+    const maxAllowedWidth = window.innerWidth - 50;
+    const finalWidth = Math.min(clampedWidth, maxAllowedWidth);
+    
+    setPanelWidth(finalWidth);
+    currentWidthRef.current = finalWidth;
+  }, []);
+
+  const handleResizeEnd = useCallback(() => {
+    if (!isResizingRef.current) return;
+    
+    isResizingRef.current = false;
+    setIsResizing(false);
+    setSettingsPanelWidth(currentWidthRef.current);
+    
+    document.removeEventListener('mousemove', handleResizeMove);
+    document.removeEventListener('mouseup', handleResizeEnd);
+    
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+  }, [setSettingsPanelWidth, handleResizeMove]);
 
   const tabs = [
     { id: 'display' as TabId, label: 'Display', icon: Monitor },
@@ -387,15 +508,17 @@ export const AppearanceSettingsPanel: React.FC<{
         onClick={handleClose}
       />
 
-      {/* Slide-over Panel */}
+      {/* Slide-over Panel with resize handle */}
       <div
+        ref={panelRef}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "fixed right-0 top-0 w-[480px] bg-gx-dark border-l border-gx-gray z-50 flex flex-col transition-transform duration-300 ease-out shadow-2xl",
+          "fixed right-0 top-0 bg-gx-dark border-l border-gx-gray z-50 flex flex-col transition-transform duration-300 ease-out shadow-2xl",
           !isOpen && "translate-x-full",
           isClosing && "transition-transform duration-200"
         )}
         style={{
+          width: `${panelWidth}px`,
           transform: isOpen 
             ? `scale(${appearanceSettings.settingsScale})` 
             : `scale(${appearanceSettings.settingsScale}) translateX(100%)`,
@@ -403,32 +526,30 @@ export const AppearanceSettingsPanel: React.FC<{
           height: `${100 / appearanceSettings.settingsScale}%`
         }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gx-gray bg-gx-gray/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gx-accent to-gx-red flex items-center justify-center shadow-lg shadow-gx-accent/30">
-              <Settings className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-black text-white tracking-tighter uppercase">
-                Appearance
-              </h1>
-              <p className="text-[10px] text-gray-500 font-mono tracking-widest">
-                GX EDITION
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-gx-red/20 text-gray-400 hover:text-gx-red transition-all"
-          >
-            <X size={18} />
-          </button>
+        {/* Resize handle on the left edge */}
+        <div
+          onMouseDown={handleResizeStart}
+          className={cn(
+            "absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize z-[60] flex items-center justify-center transition-all",
+            isResizing && "bg-gx-accent/20"
+          )}
+        >
+          {/* Visual hover effect on the resize handle (accent color glow) */}
+          <div 
+            className={cn(
+              "w-0.5 h-16 rounded-full transition-all duration-200",
+              "bg-gray-600 hover:bg-gx-accent hover:shadow-[0_0_8px_rgba(127,34,254,0.8)]",
+              isResizing && "bg-gx-accent shadow-[0_0_8px_rgba(127,34,254,0.8)]"
+            )} 
+          />
         </div>
 
-        {/* Search Bar */}
-        <div className="px-5 py-4 border-b border-gx-gray">
-          <div className="relative group">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gx-gray bg-gx-gray/50">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gx-accent to-gx-red flex items-center justify-center shadow-lg shadow-gx-accent/30 flex-shrink-0">
+            <Settings className="w-5 h-5 text-white" />
+          </div>
+
+          <div className="flex-1 relative group">
             <Search className={cn(
               "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors",
               searchQuery ? "text-gx-accent" : "text-gray-500 group-focus-within:text-gx-accent"
@@ -452,26 +573,114 @@ export const AppearanceSettingsPanel: React.FC<{
               </button>
             )}
           </div>
+
+          <button
+            onClick={handleClose}
+            className="p-2 rounded-lg hover:bg-gx-red/20 text-gray-400 hover:text-gx-red transition-all flex-shrink-0"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="px-5 py-2 border-b border-gx-gray bg-gx-gray/30">
-          <div className="flex gap-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold tracking-wider",
-                  activeTab === tab.id
-                    ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
-                    : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
-                )}
-              >
-                <tab.icon size={14} />
-                <span className="uppercase">{tab.label}</span>
-              </button>
-            ))}
+        {/* Responsive Tabs Section */}
+        <div className="px-5 py-3 border-b border-gx-gray bg-gx-gray/30">
+          <div className={cn(
+            "flex justify-center gap-1",
+            shouldWrapTabs || shouldWrapIcons ? "flex-col" : "flex-row",
+            shouldWrapIcons && "flex-wrap"
+          )}>
+            {!shouldWrapTabs && !shouldWrapIcons ? (
+              <div className="flex justify-center gap-1 w-full">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold tracking-wider whitespace-nowrap",
+                      activeTab === tab.id
+                        ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
+                        : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
+                    )}
+                  >
+                    <tab.icon size={14} />
+                    <span className="uppercase">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : shouldWrapTabs && showLabels ? (
+              <>
+                <div className="flex justify-center gap-1">
+                  {tabs.slice(0, 3).map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold tracking-wider whitespace-nowrap",
+                        activeTab === tab.id
+                          ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
+                          : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
+                      )}
+                    >
+                      <tab.icon size={14} />
+                      <span className="uppercase">{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-center gap-1">
+                  {tabs.slice(3, 5).map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold tracking-wider whitespace-nowrap",
+                        activeTab === tab.id
+                          ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
+                          : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
+                      )}
+                    >
+                      <tab.icon size={14} />
+                      <span className="uppercase">{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : !showLabels && !shouldWrapIcons ? (
+              <div className="flex justify-center gap-1 w-full">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    title={tab.label}
+                    className={cn(
+                      "flex items-center justify-center w-10 h-10 rounded-lg transition-all",
+                      activeTab === tab.id
+                        ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
+                        : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
+                    )}
+                  >
+                  <tab.icon size={18} />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-center gap-1 w-full">
+              {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    title={tab.label}
+                    className={cn(
+                      "flex items-center justify-center w-9 h-9 rounded-lg transition-all",
+                      activeTab === tab.id
+                        ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
+                        : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
+                    )}
+                  >
+                    <tab.icon size={16} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -499,35 +708,35 @@ export const AppearanceSettingsPanel: React.FC<{
                 />
               </CollapsibleSection>
 
-          {/* UI Scale */}
-          <CollapsibleSection
-            id="ui-scale"
-            title="UI Scale"
-            icon={ZoomIn}
-            isExpanded={expandedSections.has('ui-scale')}
-            onToggle={() => toggleSection('ui-scale')}
-          >
-            <div className="space-y-4">
-              <SliderControl
-                value={appearanceSettings.uiScale}
-                onChange={(value) => setAppearanceSettings({ uiScale: value })}
-                min={0.5}
-                max={2}
-                step={0.05}
-                label="Interface Scale"
-                displayValue={`${Math.round(appearanceSettings.uiScale * 100)}%`}
-              />
-              <SliderControl
-                value={appearanceSettings.settingsScale}
-                onChange={(value) => setAppearanceSettings({ settingsScale: value })}
-                min={0.5}
-                max={2}
-                step={0.05}
-                label="Settings Panel Scale"
-                displayValue={`${Math.round(appearanceSettings.settingsScale * 100)}%`}
-              />
-            </div>
-          </CollapsibleSection>
+              {/* UI Scale */}
+              <CollapsibleSection
+                id="ui-scale"
+                title="UI Scale"
+                icon={ZoomIn}
+                isExpanded={expandedSections.has('ui-scale')}
+                onToggle={() => toggleSection('ui-scale')}
+              >
+                <div className="space-y-4">
+                  <SliderControl
+                    value={appearanceSettings.uiScale}
+                    onChange={(value) => setAppearanceSettings({ uiScale: value })}
+                    min={0.5}
+                    max={2}
+                    step={0.05}
+                    label="Interface Scale"
+                    displayValue={`${Math.round(appearanceSettings.uiScale * 100)}%`}
+                  />
+                  <SliderControl
+                    value={appearanceSettings.settingsScale}
+                    onChange={(value) => setAppearanceSettings({ settingsScale: value })}
+                    min={0.5}
+                    max={2}
+                    step={0.05}
+                    label="Settings Panel Scale"
+                    displayValue={`${Math.round(appearanceSettings.settingsScale * 100)}%`}
+                  />
+                </div>
+              </CollapsibleSection>
 
               {/* Accent Color */}
               <CollapsibleSection
