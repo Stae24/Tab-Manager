@@ -51,7 +51,7 @@ async function getVaultChunkKeys(): Promise<string[]> {
 }
 
 export async function getVaultQuota(): Promise<VaultQuotaInfo> {
-  const settingsKeys = ['appearanceSettings', 'dividerPosition', 'showVault', 'vaultSyncEnabled'];
+  const settingsKeys = ['appearanceSettings', 'dividerPosition', 'showVault', 'vaultSyncEnabled', 'settingsPanelWidth'];
   const [settingsBytes, vaultKeys] = await Promise.all([
     chrome.storage.sync.getBytesInUse(settingsKeys),
     getVaultChunkKeys()
