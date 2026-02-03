@@ -205,7 +205,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
         {appearanceSettings.showFavicons && (
           <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center relative z-10">
             {hasStartedLoading ? (
-              <Favicon src={tab.favicon} url={tab.url} className="w-4 h-4 pointer-events-none" />
+              <Favicon src={tab.favicon} url={tab.url} className="w-4 h-4 pointer-events-none" source={appearanceSettings.faviconSource} fallback={appearanceSettings.faviconFallback} size={appearanceSettings.faviconSize} />
             ) : (
               <div className="w-4 h-4" />
             )}

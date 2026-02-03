@@ -12,6 +12,9 @@ export type BorderRadius = 'none' | 'small' | 'medium' | 'large' | 'full';
 export type ButtonSize = 'small' | 'medium' | 'large';
 export type IconPack = 'gx' | 'default' | 'minimal';
 export type MenuPosition = 'left' | 'center' | 'right';
+export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | 'icon-horse';
+export type FaviconFallback = 'enabled' | 'disabled';
+export type FaviconSize = '16' | '32' | '64' | '128';
 
 interface AppearanceSettings {
   // v1 - Essential
@@ -43,6 +46,10 @@ interface AppearanceSettings {
 
   // v2.1 - Storage
   vaultSyncEnabled: boolean;
+
+  faviconSource: FaviconSource;
+  faviconFallback: FaviconFallback;
+  faviconSize: FaviconSize;
 }
 
 // Export default appearance settings for reset functionality
@@ -67,6 +74,9 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   loadingSpinnerStyle: 'pulse',
   menuPosition: 'left',
   vaultSyncEnabled: true,
+  faviconSource: 'google',
+  faviconFallback: 'enabled',
+  faviconSize: '32',
 };
 
 interface TabState {

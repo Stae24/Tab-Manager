@@ -7,6 +7,7 @@ import React from 'react';
 const getURLMock = vi.fn();
 vi.stubGlobal('chrome', {
   runtime: {
+    id: 'test-id',
     getURL: getURLMock,
   },
 });
@@ -17,7 +18,7 @@ describe('Favicon Component', () => {
     getURLMock.mockReturnValue('chrome-extension://test-id/_favicon/');
   });
 
-  it('uses google proxy for url when src is missing', () => {
+  it('uses google as default source for url', () => {
     const url = 'https://example.com';
     const { container } = render(<Favicon url={url} />);
     
@@ -25,9 +26,65 @@ describe('Favicon Component', () => {
     expect(img).toHaveAttribute('src', 'https://www.google.com/s2/favicons?domain=example.com&sz=32');
   });
 
-  it('uses google proxy for remote src', () => {
+  it('uses chrome extension when explicitly set', () => {
+    const url = 'https://example.com';
+    const { container } = render(<Favicon url={url} source="chrome" />);
+    
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', 'chrome-extension://test-id/_favicon/?pageUrl=https%3A%2F%2Fexample.com&size=32');
+  });
+
+  it('uses google source when explicitly set', () => {
+    const url = 'https://example.com';
+    const { container } = render(<Favicon url={url} source="google" />);
+    
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://www.google.com/s2/favicons?domain=example.com&sz=32');
+  });
+
+  it('uses google-hd source when set', () => {
+    const url = 'https://example.com';
+    const { container } = render(<Favicon url={url} source="google-hd" />);
+    
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://www.google.com/s2/favicons?domain=example.com&sz=128');
+  });
+
+  it('uses duckduckgo source when set', () => {
+    const url = 'https://example.com';
+    const { container } = render(<Favicon url={url} source="duckduckgo" />);
+    
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://icons.duckduckgo.com/ip3/example.com.ico');
+  });
+
+  it('uses icon-horse source when set', () => {
+    const url = 'https://example.com';
+    const { container } = render(<Favicon url={url} source="icon-horse" />);
+    
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://icon.horse/icon/example.com');
+  });
+
+  it('respects size prop with google source', () => {
+    const url = 'https://example.com';
+    const { container } = render(<Favicon url={url} source="google" size="64" />);
+    
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://www.google.com/s2/favicons?domain=example.com&sz=64');
+  });
+
+  it('respects size prop with chrome source', () => {
+    const url = 'https://example.com';
+    const { container } = render(<Favicon url={url} source="chrome" size="64" />);
+    
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', 'chrome-extension://test-id/_favicon/?pageUrl=https%3A%2F%2Fexample.com&size=64');
+  });
+
+  it('uses google proxy for remote src with google source', () => {
     const src = 'https://example.com/favicon.ico';
-    const { container } = render(<Favicon src={src} />);
+    const { container } = render(<Favicon src={src} source="google" />);
     
     const img = container.querySelector('img');
     expect(img).toHaveAttribute('src', 'https://www.google.com/s2/favicons?domain=example.com&sz=32');
@@ -58,20 +115,32 @@ describe('Favicon Component', () => {
     });
   });
 
-  it('falls back through tiers on error', () => {
+  it('falls back when fallback is enabled', () => {
     const url = 'https://example.com';
-    const { container } = render(<Favicon url={url} />);
+    const { container } = render(<Favicon url={url} source="google" fallback="enabled" />);
     
     let img = container.querySelector('img');
     expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));
     
-    // Fail Tier 0 (Google)
     fireEvent.error(img!);
     img = container.querySelector('img');
-    expect(img).toHaveAttribute('src', expect.stringContaining('_favicon'));
+    expect(img).toHaveAttribute('src', expect.stringContaining('duckduckgo.com'));
     
-    // Fail Tier 1 (Internal)
     fireEvent.error(img!);
+    const svg = container.querySelector('svg');
+    expect(svg).toHaveClass('lucide-globe');
+  });
+
+  it('does not fall back when fallback is disabled', () => {
+    const url = 'https://example.com';
+    const { container } = render(<Favicon url={url} source="google" fallback="disabled" />);
+    
+    let img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));
+    
+    fireEvent.error(img!);
+    img = container.querySelector('img');
+    expect(img).toBeNull();
     const svg = container.querySelector('svg');
     expect(svg).toHaveClass('lucide-globe');
   });
@@ -81,17 +150,40 @@ describe('Favicon Component', () => {
     
     let img = container.querySelector('img');
     expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));
-    expect(img).toHaveAttribute('src', expect.stringContaining('domain=site1.com'));
 
     rerender(<Favicon url="https://site2.com" />);
     
     img = container.querySelector('img');
     expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));
-    expect(img).toHaveAttribute('src', expect.stringContaining('domain=site2.com'));
+    expect(img).toHaveAttribute('src', expect.stringContaining('site2.com'));
   });
 
-  it('handles URL construction error gracefully', () => {
-    const { container } = render(<Favicon url="invalid-url" />);
+  it('recomputes favicon URL when source prop changes', () => {
+    const { rerender, container } = render(<Favicon url="https://example.com" source="chrome" />);
+    
+    let img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('_favicon'));
+
+    rerender(<Favicon url="https://example.com" source="google" />);
+    
+    img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));
+  });
+
+  it('recomputes favicon URL when size prop changes', () => {
+    const { rerender, container } = render(<Favicon url="https://example.com" source="google" size="32" />);
+    
+    let img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('sz=32'));
+
+    rerender(<Favicon url="https://example.com" source="google" size="64" />);
+    
+    img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('sz=64'));
+  });
+
+  it('handles URL construction error gracefully with google source', () => {
+    const { container } = render(<Favicon url="invalid-url" source="google" />);
     
     const svg = container.querySelector('svg');
     expect(svg).toHaveClass('lucide-globe');

@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
-import type { ThemeMode, AnimationIntensity, AudioIndicatorMode, BorderRadius, ButtonSize, IconPack, MenuPosition } from '../store/useStore';
+import type { ThemeMode, AnimationIntensity, AudioIndicatorMode, BorderRadius, ButtonSize, IconPack, MenuPosition, FaviconSource, FaviconFallback, FaviconSize } from '../store/useStore';
 
 type TabId = 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced';
 
@@ -555,6 +555,37 @@ export const AppearanceSettingsPanel: React.FC<{
                   label="Show Tab Favicons"
                   description="Display website icons next to tab titles"
                 />
+                <div className="mt-4 space-y-4">
+                  <DropdownSelect
+                    value={appearanceSettings.faviconSource}
+                    onChange={(value) => setAppearanceSettings({ faviconSource: value as FaviconSource })}
+                    options={[
+                      { value: 'google', label: 'Google (32px)' },
+                      { value: 'google-hd', label: 'Google HD (128px)' },
+                      { value: 'duckduckgo', label: 'DuckDuckGo' },
+                      { value: 'icon-horse', label: 'Icon Horse' },
+                      { value: 'chrome', label: 'Chrome Extension' },
+                    ]}
+                    label="Primary Source"
+                  />
+                  <DropdownSelect
+                    value={appearanceSettings.faviconSize}
+                    onChange={(value) => setAppearanceSettings({ faviconSize: value as FaviconSize })}
+                    options={[
+                      { value: '16', label: '16px (Small)' },
+                      { value: '32', label: '32px (Normal)' },
+                      { value: '64', label: '64px (Large)' },
+                      { value: '128', label: '128px (Extra Large)' },
+                    ]}
+                    label="Icon Size"
+                  />
+                  <ToggleSwitch
+                    checked={appearanceSettings.faviconFallback === 'enabled'}
+                    onChange={(checked) => setAppearanceSettings({ faviconFallback: checked ? 'enabled' : 'disabled' })}
+                    label="Enable Fallback"
+                    description="Use secondary source if primary fails"
+                  />
+                </div>
               </CollapsibleSection>
 
               {/* Show Active Indicator */}
