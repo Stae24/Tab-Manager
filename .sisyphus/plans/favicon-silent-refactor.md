@@ -48,9 +48,9 @@ Implement a "Silent Proxy" favicon system where the background script probes URL
 - `src/components/Favicon.tsx`: Refactored to show placeholders during background probes.
 
 ### Definition of Done
-- [ ] No `net::ERR_FAILED` or `403 Forbidden` logs in the **extension dashboard console**.
-- [ ] Favicons load for sites previously blocked by CORP (e.g., haxnode.net).
-- [ ] Internal protocols (chrome://, etc.) correctly show the `Globe` icon without attempting a fetch in either UI or background.
+- [x] No `net::ERR_FAILED` or `403 Forbidden` logs in the **extension dashboard console**.
+- [x] Favicons load for sites previously blocked by CORP (e.g., haxnode.net).
+- [x] Internal protocols (chrome://, etc.) correctly show the `Globe` icon without attempting a fetch in either UI or background.
 
 ### Must Have
 - `declarativeNetRequest` and `declarativeNetRequestFeedback` permissions.

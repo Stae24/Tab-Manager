@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Globe } from 'lucide-react';
 import { cn } from '../utils/cn';
 
@@ -20,95 +20,59 @@ const RESTRICTED_PROTOCOLS = [
 ];
 
 export const Favicon: React.FC<FaviconProps> = ({ src, url, className }) => {
-  const [displaySrc, setDisplaySrc] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [tier, setTier] = useState(0);
+  const effectiveUrl = url || src;
 
   useEffect(() => {
-    let isMounted = true;
-
-    const resolveFavicon = async () => {
-      setDisplaySrc(null);
-
-      if (src?.startsWith('data:')) {
-        if (isMounted) {
-          setDisplaySrc(src);
-          setLoading(false);
-        }
-        return;
-      }
-
-      const isRestricted = url ? RESTRICTED_PROTOCOLS.some(p => url.startsWith(p)) : false;
-      if (isRestricted || (!src && !url)) {
-        if (isMounted) {
-          setDisplaySrc(null);
-          setLoading(false);
-        }
-        return;
-      }
-
-      setLoading(true);
-
-      let targetUrl = src;
-
-      if (!targetUrl && url) {
-        try {
-          const base = chrome.runtime.getURL("/_favicon/").replace(/\/$/, "");
-          const faviconUrl = new URL(base + "/");
-          faviconUrl.searchParams.set("pageUrl", url);
-          faviconUrl.searchParams.set("size", "32");
-          targetUrl = faviconUrl.toString();
-        } catch (e) {
-          if (isMounted) {
-            setDisplaySrc(null);
-            setLoading(false);
-          }
-          return;
-        }
-      }
-
-      if (!targetUrl) {
-        if (isMounted) {
-          setDisplaySrc(null);
-          setLoading(false);
-        }
-        return;
-      }
-
-      try {
-        const response = await chrome.runtime.sendMessage({
-          type: 'FETCH_FAVICON',
-          url: targetUrl
-        });
-
-        if (isMounted) {
-          if (response?.success && response?.dataUrl) {
-            setDisplaySrc(response.dataUrl);
-          } else {
-            setDisplaySrc(null);
-          }
-          setLoading(false);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setDisplaySrc(null);
-          setLoading(false);
-        }
-      }
-    };
-
-    resolveFavicon();
-
-    return () => {
-      isMounted = false;
-    };
+    setTier(0);
   }, [src, url]);
 
-  if (loading || !displaySrc) {
+  const finalSrc = useMemo(() => {
+    if (src?.startsWith('data:')) {
+      return src;
+    }
+
+    if (!effectiveUrl || tier === 2) {
+      return null;
+    }
+
+    const isRestricted = RESTRICTED_PROTOCOLS.some(p => effectiveUrl.startsWith(p));
+    if (isRestricted) {
+      return null;
+    }
+
+    if (tier === 0) {
+      try {
+        const hostname = new URL(effectiveUrl).hostname;
+        return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    if (tier === 1) {
+      try {
+        const faviconUrl = new URL(`chrome-extension://${chrome.runtime.id}/_favicon/`);
+        faviconUrl.searchParams.set("pageUrl", effectiveUrl);
+        faviconUrl.searchParams.set("size", "32");
+        return faviconUrl.toString();
+      } catch (e) {
+        return null;
+      }
+    }
+
+    return null;
+  }, [src, url, effectiveUrl, tier]);
+
+  const handleError = () => {
+    setTier(prev => Math.min(prev + 1, 2));
+  };
+
+  if (!finalSrc) {
     return (
       <Globe 
         className={cn(
-          "text-gray-500 transition-opacity duration-300", 
-          loading ? "animate-pulse opacity-50" : "opacity-100",
+          "text-gray-500 transition-opacity duration-300 opacity-100",
           className
         )} 
         size={16} 
@@ -118,11 +82,12 @@ export const Favicon: React.FC<FaviconProps> = ({ src, url, className }) => {
 
   return (
     <img
-      src={displaySrc}
+      src={finalSrc}
       alt=""
       className={cn("transition-opacity duration-300 opacity-100", className)}
-      onError={() => setDisplaySrc(null)}
+      onError={handleError}
       loading="lazy"
+      referrerPolicy="no-referrer"
     />
   );
 };

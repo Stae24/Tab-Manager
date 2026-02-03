@@ -1,58 +1,42 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { Favicon } from '../Favicon';
 import React from 'react';
 
-const sendMessageMock = vi.fn();
+const getURLMock = vi.fn();
 vi.stubGlobal('chrome', {
   runtime: {
-    getURL: vi.fn((path: string) => `chrome-extension://id${path}`),
-    sendMessage: sendMessageMock,
+    getURL: getURLMock,
   },
 });
 
 describe('Favicon Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    sendMessageMock.mockResolvedValue({ success: true, dataUrl: 'data:image/png;base64,mock' });
+    getURLMock.mockReturnValue('chrome-extension://test-id/_favicon/');
   });
 
-  it('uses background proxy for remote src', async () => {
-    const src = 'https://example.com/favicon.ico';
-    const { container } = render(<Favicon src={src} />);
-    
-    expect(sendMessageMock).toHaveBeenCalledWith({
-      type: 'FETCH_FAVICON',
-      url: src
-    });
-
-    await waitFor(() => {
-      const img = container.querySelector('img');
-      expect(img).toHaveAttribute('src', 'data:image/png;base64,mock');
-    });
-  });
-
-  it('uses background proxy for url when src is missing', async () => {
+  it('uses google proxy for url when src is missing', () => {
     const url = 'https://example.com';
     const { container } = render(<Favicon url={url} />);
     
-    expect(sendMessageMock).toHaveBeenCalledWith({
-      type: 'FETCH_FAVICON',
-      url: expect.stringContaining('pageUrl=https%3A%2F%2Fexample.com')
-    });
-
-    await waitFor(() => {
-      const img = container.querySelector('img');
-      expect(img).toHaveAttribute('src', 'data:image/png;base64,mock');
-    });
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://www.google.com/s2/favicons?domain=example.com&sz=32');
   });
 
-  it('renders data URI immediately without proxy', () => {
+  it('uses google proxy for remote src', () => {
+    const src = 'https://example.com/favicon.ico';
+    const { container } = render(<Favicon src={src} />);
+    
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://www.google.com/s2/favicons?domain=example.com&sz=32');
+  });
+
+  it('renders data URI immediately without _favicon service', () => {
     const dataUri = 'data:image/png;base64,immediate';
     const { container } = render(<Favicon src={dataUri} />);
     
-    expect(sendMessageMock).not.toHaveBeenCalled();
     const img = container.querySelector('img');
     expect(img).toHaveAttribute('src', dataUri);
   });
@@ -70,31 +54,55 @@ describe('Favicon Component', () => {
       const { container } = render(<Favicon url={url} />);
       const svg = container.querySelector('svg');
       expect(svg).toHaveClass('lucide-globe');
-      expect(sendMessageMock).not.toHaveBeenCalled();
+      expect(container.querySelector('img')).toBeNull();
     });
   });
 
-  it('shows Globe if proxy fails', async () => {
-    sendMessageMock.mockResolvedValue({ success: false });
-    const { container } = render(<Favicon src="https://fail.com/icon.png" />);
+  it('falls back through tiers on error', () => {
+    const url = 'https://example.com';
+    const { container } = render(<Favicon url={url} />);
     
-    await waitFor(() => {
-      const svg = container.querySelector('svg');
-      expect(svg).toHaveClass('lucide-globe');
-    });
+    let img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));
+    
+    // Fail Tier 0 (Google)
+    fireEvent.error(img!);
+    img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('_favicon'));
+    
+    // Fail Tier 1 (Internal)
+    fireEvent.error(img!);
+    const svg = container.querySelector('svg');
+    expect(svg).toHaveClass('lucide-globe');
   });
 
-  it('resets and refetches when props change', async () => {
+  it('recomputes favicon URL when props change', () => {
     const { rerender, container } = render(<Favicon src="https://site1.com/icon.png" />);
-    await waitFor(() => expect(container.querySelector('img')).toBeInTheDocument());
-    expect(sendMessageMock).toHaveBeenCalledTimes(1);
-
-    sendMessageMock.mockResolvedValue({ success: true, dataUrl: 'data:image/png;base64,site2' });
-    rerender(<Favicon src="https://site2.com/icon.png" />);
     
-    await waitFor(() => {
-      expect(container.querySelector('img')).toHaveAttribute('src', 'data:image/png;base64,site2');
-    });
-    expect(sendMessageMock).toHaveBeenCalledTimes(2);
+    let img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));
+    expect(img).toHaveAttribute('src', expect.stringContaining('domain=site1.com'));
+
+    rerender(<Favicon url="https://site2.com" />);
+    
+    img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('google.com'));
+    expect(img).toHaveAttribute('src', expect.stringContaining('domain=site2.com'));
+  });
+
+  it('handles URL construction error gracefully', () => {
+    const { container } = render(<Favicon url="invalid-url" />);
+    
+    const svg = container.querySelector('svg');
+    expect(svg).toHaveClass('lucide-globe');
+    expect(container.querySelector('img')).toBeNull();
+  });
+
+  it('shows Globe when no url provided', () => {
+    const { container } = render(<Favicon />);
+    
+    const svg = container.querySelector('svg');
+    expect(svg).toHaveClass('lucide-globe');
+    expect(container.querySelector('img')).toBeNull();
   });
 });
