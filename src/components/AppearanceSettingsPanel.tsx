@@ -353,7 +353,6 @@ export const AppearanceSettingsPanel: React.FC<{
 
   const [showLabels, setShowLabels] = useState(true);
   const [shouldWrapTabs, setShouldWrapTabs] = useState(false);
-  const [shouldWrapIcons, setShouldWrapIcons] = useState(false);
 
   useEffect(() => {
     if (!isResizing) {
@@ -400,19 +399,9 @@ export const AppearanceSettingsPanel: React.FC<{
     if (panelWidth >= 550) {
       setShowLabels(true);
       setShouldWrapTabs(false);
-      setShouldWrapIcons(false);
-    } else if (panelWidth >= 380) {
+    } else {
       setShowLabels(true);
       setShouldWrapTabs(true);
-      setShouldWrapIcons(false);
-    } else if (panelWidth >= 250) {
-      setShowLabels(false);
-      setShouldWrapTabs(false);
-      setShouldWrapIcons(false);
-    } else {
-      setShowLabels(false);
-      setShouldWrapTabs(false);
-      setShouldWrapIcons(true);
     }
   }, [panelWidth]);
 
@@ -577,10 +566,9 @@ export const AppearanceSettingsPanel: React.FC<{
         <div className="px-5 py-3 border-b border-gx-gray bg-gx-gray/30">
           <div className={cn(
             "flex justify-center gap-1",
-            shouldWrapTabs || shouldWrapIcons ? "flex-col" : "flex-row",
-            shouldWrapIcons && "flex-wrap"
+            shouldWrapTabs ? "flex-col" : "flex-row"
           )}>
-            {!shouldWrapTabs && !shouldWrapIcons ? (
+            {!shouldWrapTabs ? (
               <div className="flex justify-center gap-1 w-full">
                 {tabs.map((tab) => (
                   <button
@@ -598,7 +586,7 @@ export const AppearanceSettingsPanel: React.FC<{
                   </button>
                 ))}
               </div>
-            ) : shouldWrapTabs && showLabels ? (
+            ) : (
               <>
                 <div className="flex justify-center gap-1">
                   {tabs.slice(0, 3).map((tab) => (
@@ -635,42 +623,6 @@ export const AppearanceSettingsPanel: React.FC<{
                   ))}
                 </div>
               </>
-            ) : !showLabels && !shouldWrapIcons ? (
-              <div className="flex justify-center gap-1 w-full">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    title={tab.label}
-                    className={cn(
-                      "flex items-center justify-center w-10 h-10 rounded-lg transition-all",
-                      activeTab === tab.id
-                        ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
-                        : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
-                    )}
-                  >
-                  <tab.icon size={18} />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-center gap-1 w-full">
-              {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    title={tab.label}
-                    className={cn(
-                      "flex items-center justify-center w-9 h-9 rounded-lg transition-all",
-                      activeTab === tab.id
-                        ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
-                        : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
-                    )}
-                  >
-                    <tab.icon size={16} />
-                  </button>
-                ))}
-              </div>
             )}
           </div>
         </div>

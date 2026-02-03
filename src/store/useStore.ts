@@ -94,6 +94,7 @@ interface TabState {
   isRenaming: boolean;
   isRefreshing: boolean;
   showAppearancePanel: boolean;
+  settingsPanelWidth: number;
 
   // Quota State
   vaultQuota: VaultQuotaInfo | null;
@@ -111,6 +112,7 @@ interface TabState {
   setDividerPosition: (pos: number) => void;
   setShowVault: (show: boolean) => void;
   setShowAppearancePanel: (show: boolean) => void;
+  setSettingsPanelWidth: (width: number) => void;
 
   // Vault Actions
   moveToVault: (id: UniversalId) => Promise<void>;
@@ -214,6 +216,7 @@ export const useStore = create<TabState>((set, get) => ({
   isRenaming: false,
   isRefreshing: false,
   showAppearancePanel: false,
+  settingsPanelWidth: 480,
   vaultQuota: null,
   quotaExceededPending: null,
   lastVaultTimestamp: 0,
@@ -221,6 +224,12 @@ export const useStore = create<TabState>((set, get) => ({
   setIsUpdating: (isUpdating) => set({ isUpdating }),
   setIsRenaming: (isRenaming) => set({ isRenaming }),
   setShowAppearancePanel: (showAppearancePanel) => set({ showAppearancePanel }),
+
+  setSettingsPanelWidth: (width) => {
+    const clampedWidth = Math.max(320, Math.min(800, width));
+    set({ settingsPanelWidth: clampedWidth });
+    syncSettings({ settingsPanelWidth: clampedWidth });
+  },
 
   refreshVaultQuota: async () => {
     const quota = await getVaultQuota();
@@ -947,7 +956,7 @@ export const useStore = create<TabState>((set, get) => ({
 
 // Cross-Window Sync Initialization
 const init = async () => {
-  const sync = await chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault']);
+  const sync = await chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault', 'settingsPanelWidth']);
 
   const state = useStore.getState();
 
@@ -956,6 +965,7 @@ const init = async () => {
   }
   if (sync.dividerPosition) state.setDividerPosition(Number(sync.dividerPosition));
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
+  if (sync.settingsPanelWidth !== undefined) state.setSettingsPanelWidth(Number(sync.settingsPanelWidth));
 
   const syncEnabled = (sync.appearanceSettings as AppearanceSettings)?.vaultSyncEnabled ?? defaultAppearanceSettings.vaultSyncEnabled;
 
@@ -977,6 +987,7 @@ const init = async () => {
       }
       if (changes.showVault) state.setShowVault(Boolean(changes.showVault.newValue));
       if (changes.dividerPosition) state.setDividerPosition(Number(changes.dividerPosition.newValue));
+      if (changes.settingsPanelWidth) state.setSettingsPanelWidth(Number(changes.settingsPanelWidth.newValue));
 
       if (changes.vault_meta) {
         const incomingTimestamp = (changes.vault_meta.newValue as { timestamp?: number })?.timestamp ?? 0;
