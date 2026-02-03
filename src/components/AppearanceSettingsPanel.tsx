@@ -647,11 +647,18 @@ export const AppearanceSettingsPanel: React.FC<{
                     ]}
                     label="Icon Size"
                   />
-                  <ToggleSwitch
-                    checked={appearanceSettings.faviconFallback === 'enabled'}
-                    onChange={(checked) => setAppearanceSettings({ faviconFallback: checked ? 'enabled' : 'disabled' })}
-                    label="Enable Fallback"
-                    description="Use secondary source if primary fails"
+                  <DropdownSelect
+                    value={appearanceSettings.faviconFallback}
+                    onChange={(value) => setAppearanceSettings({ faviconFallback: value as FaviconFallback })}
+                    options={[
+                      { value: 'none', label: 'None (disabled)' },
+                      ...(appearanceSettings.faviconSource !== 'google' ? [{ value: 'google', label: 'Google (32px)' }] : []),
+                      ...(appearanceSettings.faviconSource !== 'google-hd' ? [{ value: 'google-hd', label: 'Google HD (128px)' }] : []),
+                      ...(appearanceSettings.faviconSource !== 'duckduckgo' ? [{ value: 'duckduckgo', label: 'DuckDuckGo' }] : []),
+                      ...(appearanceSettings.faviconSource !== 'icon-horse' ? [{ value: 'icon-horse', label: 'Icon Horse' }] : []),
+                      ...(appearanceSettings.faviconSource !== 'chrome' ? [{ value: 'chrome', label: 'Chrome Extension' }] : []),
+                    ]}
+                    label="Fallback Source"
                   />
                 </div>
               </CollapsibleSection>

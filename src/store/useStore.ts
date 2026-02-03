@@ -13,7 +13,7 @@ export type ButtonSize = 'small' | 'medium' | 'large';
 export type IconPack = 'gx' | 'default' | 'minimal';
 export type MenuPosition = 'left' | 'center' | 'right';
 export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | 'icon-horse';
-export type FaviconFallback = 'enabled' | 'disabled';
+export type FaviconFallback = FaviconSource | 'none';
 export type FaviconSize = '16' | '32' | '64' | '128';
 
 interface AppearanceSettings {
@@ -75,7 +75,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   menuPosition: 'left',
   vaultSyncEnabled: true,
   faviconSource: 'google',
-  faviconFallback: 'enabled',
+  faviconFallback: 'duckduckgo',
   faviconSize: '32',
 };
 
@@ -93,6 +93,7 @@ interface TabState {
   pendingRefresh: boolean;
   isRenaming: boolean;
   isRefreshing: boolean;
+  showAppearancePanel: boolean;
 
   // Quota State
   vaultQuota: VaultQuotaInfo | null;
@@ -109,6 +110,7 @@ interface TabState {
   toggleTheme: () => void;
   setDividerPosition: (pos: number) => void;
   setShowVault: (show: boolean) => void;
+  setShowAppearancePanel: (show: boolean) => void;
 
   // Vault Actions
   moveToVault: (id: UniversalId) => Promise<void>;
@@ -211,12 +213,14 @@ export const useStore = create<TabState>((set, get) => ({
   pendingRefresh: false,
   isRenaming: false,
   isRefreshing: false,
+  showAppearancePanel: false,
   vaultQuota: null,
   quotaExceededPending: null,
   lastVaultTimestamp: 0,
 
   setIsUpdating: (isUpdating) => set({ isUpdating }),
   setIsRenaming: (isRenaming) => set({ isRenaming }),
+  setShowAppearancePanel: (showAppearancePanel) => set({ showAppearancePanel }),
 
   refreshVaultQuota: async () => {
     const quota = await getVaultQuota();

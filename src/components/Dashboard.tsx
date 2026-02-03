@@ -702,7 +702,8 @@ export const Dashboard: React.FC = () => {
     quotaExceededPending,
     clearQuotaExceeded,
     setVaultSyncEnabled,
-    groupSearchResults
+    groupSearchResults,
+    showAppearancePanel
   } = useStore();
 
   const [isResizing, setIsResizing] = useState(false);
@@ -1097,7 +1098,13 @@ export const Dashboard: React.FC = () => {
           />
           {showVault && (
             <>
-              <div onMouseDown={handleMouseDown} className="w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-col-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative">
+              <div 
+                onMouseDown={showAppearancePanel ? undefined : handleMouseDown} 
+                className={cn(
+                  "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-col-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative",
+                  showAppearancePanel && "pointer-events-none opacity-0"
+                )}
+              >
                 <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
                 <GripVertical className="w-4 h-4 text-gx-gray group-hover:text-white transition-colors" />
               </div>

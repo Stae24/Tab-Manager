@@ -5,10 +5,9 @@ import { cn } from '../utils/cn';
 import { AppearanceSettingsPanel } from './AppearanceSettingsPanel';
 
 export const Sidebar: React.FC = () => {
-  const { isDarkMode, toggleTheme, appearanceSettings, setAppearanceSettings, islands, vault, showVault, setShowVault } = useStore();
+  const { isDarkMode, toggleTheme, appearanceSettings, setAppearanceSettings, islands, vault, showVault, setShowVault, showAppearancePanel, setShowAppearancePanel } = useStore();
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
-  const [showAppearancePanel, setShowAppearancePanel] = useState(false);
   const appearancePanelRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
