@@ -6,6 +6,7 @@ import { cn, getBorderRadiusClass } from '../utils/cn';
 import { discardTab, ungroupTab, closeTab, copyTabUrl, muteTab, unmuteTab, pinTab, unpinTab, duplicateTab } from '../utils/chromeApi';
 import { parseNumericId, useStore } from '../store/useStore';
 import { Favicon } from './Favicon';
+import { useScrollContainer } from '../contexts/ScrollContainerContext';
 import type { Tab } from '../types/index';
 
 interface TabCardProps {
@@ -24,7 +25,12 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [priority, setPriority] = useState<number | null>(null);
+  const [hasStartedLoading, setHasStartedLoading] = useState(false);
   const { appearanceSettings } = useStore();
+  const { containerRef } = useScrollContainer();
+
   const {
     attributes,
     listeners,
@@ -65,7 +71,67 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
     zIndex: isOverlay ? 9999 : undefined,
   };
 
+  useEffect(() => {
+    if (isOverlay || !appearanceSettings.showFavicons) {
+      setPriority(0);
+      setHasStartedLoading(true);
+      return;
+    }
+
+    const visibleObserver = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setPriority(0);
+      }
+    }, { 
+      threshold: 0.01,
+      root: containerRef?.current || null
+    });
+
+    const nearObserver = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        const rect = entry.boundingClientRect;
+        const viewportHeight = window.innerHeight;
+        let distance = 0;
+        if (rect.top > viewportHeight) {
+          distance = rect.top - viewportHeight;
+        } else if (rect.bottom < 0) {
+          distance = Math.abs(rect.bottom);
+        }
+        const p = Math.ceil(distance / 100);
+        setPriority(prev => (prev === 0 ? 0 : p));
+      }
+    }, { 
+      rootMargin: '500px',
+      root: containerRef?.current || null
+    });
+
+    if (cardRef.current) {
+      visibleObserver.observe(cardRef.current);
+      nearObserver.observe(cardRef.current);
+    }
+
+    return () => {
+      visibleObserver.disconnect();
+      nearObserver.disconnect();
+    };
+  }, [isOverlay, appearanceSettings.showFavicons]);
+
+  useEffect(() => {
+    if (priority === 0) {
+      setHasStartedLoading(true);
+    } else if (priority !== null && priority > 0) {
+      const isDataSaver = (navigator as any).connection?.saveData === true;
+      if (isDataSaver) return;
+
+      const timer = setTimeout(() => {
+        setHasStartedLoading(true);
+      }, priority * 50);
+      return () => clearTimeout(timer);
+    }
+  }, [priority]);
+
   // Close menu when clicking outside
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -82,8 +148,14 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
     };
   }, [showMenu]);
 
+  const combinedRef = (node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    cardRef.current = node;
+  };
+
   return (
-    <div className="relative" ref={setNodeRef} style={style}>
+    <div className="relative" ref={combinedRef} style={style}>
+
       <div
         {...listeners}
         {...attributes}
@@ -130,7 +202,15 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
           </>
         )}
 
-        {appearanceSettings.showFavicons && <Favicon src={tab.favicon} url={tab.url} className="w-4 h-4 pointer-events-none relative z-10" />}
+        {appearanceSettings.showFavicons && (
+          <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center relative z-10">
+            {hasStartedLoading ? (
+              <Favicon src={tab.favicon} url={tab.url} className="w-4 h-4 pointer-events-none" />
+            ) : (
+              <div className="w-4 h-4" />
+            )}
+          </div>
+        )}
         <span className="flex-1 text-xs font-medium truncate pointer-events-none relative z-10">{tab.title}</span>
         {tab.discarded && appearanceSettings.showFrozenIndicators && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
         {appearanceSettings.showAudioIndicators !== 'off' && (

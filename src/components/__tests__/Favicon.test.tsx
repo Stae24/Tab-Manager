@@ -105,4 +105,26 @@ describe('Favicon Component', () => {
     expect(svg).toHaveClass('lucide-globe');
     expect(container.querySelector('img')).toBeNull();
   });
+
+  it('handles opacity transition on load', () => {
+    const { container } = render(<Favicon url="https://example.com" />);
+    const img = container.querySelector('img');
+    expect(img).toHaveClass('opacity-0');
+    
+    fireEvent.load(img!);
+    expect(img).toHaveClass('opacity-100');
+  });
+
+  it('respects saveData and shows Globe', () => {
+    vi.stubGlobal('navigator', {
+      connection: { saveData: true }
+    });
+
+    const { container } = render(<Favicon url="https://example.com" />);
+    const svg = container.querySelector('svg');
+    expect(svg).toHaveClass('lucide-globe');
+    expect(container.querySelector('img')).toBeNull();
+
+    vi.unstubAllGlobals();
+  });
 });

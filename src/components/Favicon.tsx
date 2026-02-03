@@ -6,6 +6,7 @@ interface FaviconProps {
   src?: string;
   url?: string;
   className?: string;
+  onLoad?: () => void;
 }
 
 const RESTRICTED_PROTOCOLS = [
@@ -19,9 +20,14 @@ const RESTRICTED_PROTOCOLS = [
   'view-source:',
 ];
 
-export const Favicon: React.FC<FaviconProps> = ({ src, url, className }) => {
+export const Favicon: React.FC<FaviconProps> = ({ src, url, className, onLoad }) => {
   const [tier, setTier] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
   const effectiveUrl = url || src;
+
+  const isDataSaver = useMemo(() => {
+    return (navigator as any).connection?.saveData === true;
+  }, []);
 
   useEffect(() => {
     setTier(0);
@@ -32,7 +38,7 @@ export const Favicon: React.FC<FaviconProps> = ({ src, url, className }) => {
       return src;
     }
 
-    if (!effectiveUrl || tier === 2) {
+    if (!effectiveUrl || tier === 2 || isDataSaver) {
       return null;
     }
 
@@ -64,6 +70,11 @@ export const Favicon: React.FC<FaviconProps> = ({ src, url, className }) => {
     return null;
   }, [src, url, effectiveUrl, tier]);
 
+  const handleLoad = () => {
+    setIsLoaded(true);
+    onLoad?.();
+  };
+
   const handleError = () => {
     setTier(prev => Math.min(prev + 1, 2));
   };
@@ -84,7 +95,8 @@ export const Favicon: React.FC<FaviconProps> = ({ src, url, className }) => {
     <img
       src={finalSrc}
       alt=""
-      className={cn("transition-opacity duration-300 opacity-100", className)}
+      className={cn("transition-opacity duration-300", isLoaded ? "opacity-100" : "opacity-0", className)}
+      onLoad={handleLoad}
       onError={handleError}
       loading="lazy"
       referrerPolicy="no-referrer"

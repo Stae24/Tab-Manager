@@ -25,6 +25,8 @@ import {
 import { Island } from './Island';
 import { TabCard } from './TabCard';
 import { Sidebar } from './Sidebar';
+import { ScrollContainerProvider } from '../contexts/ScrollContainerContext';
+
 import { QuotaWarningBanner } from './QuotaWarningBanner';
 import { QuotaExceededModal, QuotaExceededAction } from './QuotaExceededModal';
 import { useStore, parseNumericId } from '../store/useStore';
@@ -112,8 +114,10 @@ const LivePanel: React.FC<{
 
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Droppable gap component for between items
+
   const DroppableGap: React.FC<{ index: number; isLast?: boolean }> = ({ index, isLast }) => {
     const { active } = useDndContext();
     const { setNodeRef, gapRef, isOver, expanded } = useProximityGap(
@@ -542,7 +546,10 @@ const VaultPanel: React.FC<{
     id: 'vault-bottom',
   });
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   // Droppable gap component for between two islands
+
   const DroppableGap: React.FC<{ index: number }> = ({ index }) => {
     const { active } = useDndContext();
     const { setNodeRef, gapRef, isOver, expanded } = useProximityGap(`vault-gap-${index}`, active, false);
@@ -594,71 +601,77 @@ const VaultPanel: React.FC<{
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none">
-        {vaultQuota && vaultQuota.warningLevel !== 'none' && (
-          <QuotaWarningBanner
-            warningLevel={vaultQuota.warningLevel}
-            percentage={vaultQuota.percentage}
-            onManageStorage={onManageStorage}
-          />
-        )}
-        <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-          {(vault || []).map((item: IslandType | TabType, index) => {
-            const isCurrentIsland = 'tabs' in item;
-            const prevItem = vault?.[index - 1];
-            const isPrevIsland = prevItem && 'tabs' in prevItem;
-            const showGap = isCurrentIsland && isPrevIsland;
-            const itemKey = 'savedAt' in item ? (item as any).savedAt : item.id;
-
-            return (
-              <React.Fragment key={itemKey}>
-                {showGap && <DroppableGap index={index} />}
-                {isCurrentIsland ? (
-                  <Island
-                    island={item as IslandType}
-                    isVault={true}
-                    onRestore={() => restoreFromVault(item.id)}
-                    onDelete={() => removeFromVault(item.id)}
-                    onRename={(title) => onRenameGroup(item.id, title)}
-                    onToggleCollapse={() => onToggleCollapse(item.id)}
-                    onTabRestore={(tab) => restoreFromVault(tab.id)}
-                    onTabClose={(id) => removeFromVault(id)}
-                  />
-                ) : (
-                  <TabCard
-                    tab={item as TabType}
-                    isVault={true}
-                    onRestore={() => restoreFromVault(item.id)}
-                    onClose={() => removeFromVault(item.id)}
-                  />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </SortableContext>
-
-        {(vault || []).length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-gray-600 opacity-20 group">
-            <Save size={64} className="group-hover:scale-110 transition-transform duration-500" />
-            <p className="text-[10px] font-black mt-6 italic uppercase tracking-[0.3em] text-center leading-loose">
-              Initiate data transfer<br />to secure items
-            </p>
-          </div>
-        )}
-
-        {/* Bottom Drop Zone / Spacer */}
-        <div
-          ref={setBottomRef}
-          className={cn(
-            "h-24 w-full rounded-xl border-2 border-dashed border-transparent transition-all flex items-center justify-center shrink-0",
-            isBottomOver ? "border-gx-accent/30 bg-gx-accent/5" : "hover:border-gx-gray/30"
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none"
+      >
+        <ScrollContainerProvider containerRef={scrollRef}>
+          {vaultQuota && vaultQuota.warningLevel !== 'none' && (
+            <QuotaWarningBanner
+              warningLevel={vaultQuota.warningLevel}
+              percentage={vaultQuota.percentage}
+              onManageStorage={onManageStorage}
+            />
           )}
-        >
-          <span className={cn("text-xs font-bold uppercase tracking-widest text-gx-gray opacity-0 transition-opacity", isBottomOver && "opacity-100")}>
-            Drop to Append
-          </span>
-        </div>
+          <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
+            {(vault || []).map((item: IslandType | TabType, index) => {
+              const isCurrentIsland = 'tabs' in item;
+              const prevItem = vault?.[index - 1];
+              const isPrevIsland = prevItem && 'tabs' in prevItem;
+              const showGap = isCurrentIsland && isPrevIsland;
+              const itemKey = 'savedAt' in item ? (item as any).savedAt : item.id;
+
+              return (
+                <React.Fragment key={itemKey}>
+                  {showGap && <DroppableGap index={index} />}
+                  {isCurrentIsland ? (
+                    <Island
+                      island={item as IslandType}
+                      isVault={true}
+                      onRestore={() => restoreFromVault(item.id)}
+                      onDelete={() => removeFromVault(item.id)}
+                      onRename={(title) => onRenameGroup(item.id, title)}
+                      onToggleCollapse={() => onToggleCollapse(item.id)}
+                      onTabRestore={(tab) => restoreFromVault(tab.id)}
+                      onTabClose={(id) => removeFromVault(id)}
+                    />
+                  ) : (
+                    <TabCard
+                      tab={item as TabType}
+                      isVault={true}
+                      onRestore={() => restoreFromVault(item.id)}
+                      onClose={() => removeFromVault(item.id)}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </SortableContext>
+
+          {(vault || []).length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-gray-600 opacity-20 group">
+              <Save size={64} className="group-hover:scale-110 transition-transform duration-500" />
+              <p className="text-[10px] font-black mt-6 italic uppercase tracking-[0.3em] text-center leading-loose">
+                Initiate data transfer<br />to secure items
+              </p>
+            </div>
+          )}
+
+          {/* Bottom Drop Zone / Spacer */}
+          <div
+            ref={setBottomRef}
+            className={cn(
+              "h-24 w-full rounded-xl border-2 border-dashed border-transparent transition-all flex items-center justify-center shrink-0",
+              isBottomOver ? "border-gx-accent/30 bg-gx-accent/5" : "hover:border-gx-gray/30"
+            )}
+          >
+            <span className={cn("text-xs font-bold uppercase tracking-widest text-gx-gray opacity-0 transition-opacity", isBottomOver && "opacity-100")}>
+              Drop to Append
+            </span>
+          </div>
+        </ScrollContainerProvider>
       </div>
+
     </div>
   );
 };
