@@ -270,7 +270,7 @@ export const consolidateAndGroupTabs = async (tabIds: number[], options: { color
       tabIds.map(id => chrome.tabs.get(id).catch(() => null))
     );
     
-    const restrictedUrlPatterns = ['chrome://', 'edge://', 'about:', 'opera:', 'chrome-extension:'];
+    const restrictedUrlPatterns = ['about:', 'chrome-extension:'];
     
     const validTabs = tabs.filter((t): t is chrome.tabs.Tab => {
       if (!t || t.id === undefined) return false;

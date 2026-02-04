@@ -136,6 +136,7 @@ interface TabState {
   deleteDuplicateTabs: () => Promise<void>;
   sortGroupsToTop: () => Promise<void>;
   groupSearchResults: (tabs: Tab[]) => Promise<void>;
+  groupUngroupedTabs: () => Promise<void>;
 }
 
 
@@ -948,6 +949,27 @@ export const useStore = create<TabState>((set, get) => ({
       const numericIds = tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
       await consolidateAndGroupTabs(numericIds, { color: 'random' });
       await syncLiveTabs();
+    } finally {
+      setIsUpdating(false);
+    }
+  },
+
+  groupUngroupedTabs: async () => {
+    const { setIsUpdating, syncLiveTabs, islands } = get();
+    setIsUpdating(true);
+    try {
+      const ungroupedTabIds = islands
+        .filter((item): item is Tab => !('tabs' in item))
+        .filter(tab => !tab.pinned)
+        .map(tab => parseNumericId(tab.id))
+        .filter(id => id !== -1);
+      
+      if (ungroupedTabIds.length >= 2) {
+        await consolidateAndGroupTabs(ungroupedTabIds, { color: 'random' });
+        await syncLiveTabs();
+      }
+    } catch (error) {
+      console.error('[Store] Failed to group ungrouped tabs:', error);
     } finally {
       setIsUpdating(false);
     }
