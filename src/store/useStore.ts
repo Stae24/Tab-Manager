@@ -191,16 +191,34 @@ const persistVault = async (vault: VaultItem[], syncEnabled: boolean): Promise<V
 };
 
 // Helper to extract numeric ID from prefixed strings
-export const parseNumericId = (id: UniqueIdentifier): number => {
+export const parseNumericId = (id: UniqueIdentifier): number | null => {
+  if (id === null || id === undefined) return null;
   const idStr = String(id);
-  // Match the last sequence of digits in the string
-  const match = idStr.match(/(\d+)$/);
-  if (!match) return -1;
-  const num = Number(match[1]);
-  // Chrome tab group IDs must be positive integers (1 or greater)
-  // We also check for safe integer and 32-bit limit to avoid Chrome API errors
-  if (isNaN(num) || num <= 0 || !Number.isSafeInteger(num) || num > 2147483647) return -1;
-  return num;
+
+  // Search for the first valid numeric segment
+  const segments = idStr.split('-');
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments[i];
+    if (/^\d+$/.test(s)) {
+      // Check if it was preceded by an empty segment (e.g., --1) which indicates a negative number
+      if (i > 0 && segments[i - 1] === '') continue;
+
+      const num = Number(s);
+      // Chrome API constraints: 1 to 2^31-1 (32-bit signed int limit)
+      if (num > 0 && Number.isSafeInteger(num) && num <= 2147483647) {
+        return num;
+      }
+    }
+  }
+
+  // Log failure to aid debugging, especially for "live-" prefixed IDs which should always have a numeric component
+  if (idStr.startsWith('live-')) {
+    console.error(`[Store] Failed to parse mandatory numeric ID from live item: ${idStr}`);
+  } else {
+    console.debug(`[Store] No numeric ID found in: ${idStr}`);
+  }
+
+  return null;
 };
 
 export const isTab = (item: unknown): item is Tab => {
@@ -676,7 +694,7 @@ export const useStore = create<TabState>((set, get) => ({
       // If it already has an original ID, keep it, otherwise use the numeric part of current ID
       const numericId = parseNumericId(i.id);
       // Ensure originalId is preserved or generated from current state
-      i.originalId = i.originalId ?? (numericId > 0 ? numericId : i.id);
+      i.originalId = i.originalId ?? (numericId !== null ? numericId : i.id);
       i.id = `vault-${i.id}-${timestamp}`;
 
       if (isIsland(i)) {
@@ -694,14 +712,14 @@ export const useStore = create<TabState>((set, get) => ({
     // 2. Close in Chrome
     if (isIsland(item)) {
       // It's a group - close all tabs in it
-      const tabIds = item.tabs.map((t: Tab) => parseNumericId(t.id)).filter((id: number) => id > 0);
+      const tabIds = item.tabs.map((t: Tab) => parseNumericId(t.id)).filter((id): id is number => id !== null);
       if (tabIds.length > 0) {
         await chrome.tabs.remove(tabIds);
       }
     } else {
       // Single tab
       const numericId = parseNumericId(item.id);
-      if (numericId > 0) {
+      if (numericId !== null) {
         await closeTab(numericId);
       }
     }
@@ -714,7 +732,7 @@ export const useStore = create<TabState>((set, get) => ({
 
     const transformId = (i: any) => {
       const numericId = parseNumericId(i.id);
-      i.originalId = i.originalId ?? (numericId > 0 ? numericId : i.id);
+      i.originalId = i.originalId ?? (numericId !== null ? numericId : i.id);
       i.id = `vault-${i.id}-${timestamp}`;
       if (isIsland(i)) {
         i.tabs.forEach(transformId);
@@ -818,7 +836,7 @@ export const useStore = create<TabState>((set, get) => ({
     } else {
       // Live panel group rename
       const numericId = parseNumericId(id);
-      if (numericId > 0) {
+      if (numericId !== null) {
         await updateTabGroup(numericId, { title: newTitle });
       }
     }
@@ -845,7 +863,7 @@ export const useStore = create<TabState>((set, get) => ({
     const numericId = parseNumericId(id);
 
     // Only process Live groups (not Vault items)
-    if (idStr.startsWith('vault-') || numericId <= 0) return;
+    if (idStr.startsWith('vault-') || numericId === null) return;
 
     // Find the island and get its current collapsed state
     const targetIsland = islands.find(i => String(i.id) === idStr && 'tabs' in i);
@@ -1003,7 +1021,7 @@ export const useStore = create<TabState>((set, get) => ({
       let currentIdx = 0;
       for (const item of sorted) {
         const numericId = parseNumericId(item.id);
-        if (numericId === -1) {
+        if (numericId === null) {
           currentIdx += isIsland(item) ? item.tabs.length : 1;
           continue;
         }
@@ -1050,7 +1068,7 @@ export const useStore = create<TabState>((set, get) => ({
     const { setIsUpdating, syncLiveTabs } = get();
     setIsUpdating(true);
     try {
-      const numericIds = tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+      const numericIds = tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
       await consolidateAndGroupTabs(numericIds, { color: 'random' });
       await syncLiveTabs();
     } finally {
@@ -1066,7 +1084,7 @@ export const useStore = create<TabState>((set, get) => ({
         .filter((item): item is Tab => !('tabs' in item))
         .filter(tab => !tab.pinned)
         .map(tab => parseNumericId(tab.id))
-        .filter(id => id !== -1);
+        .filter((id): id is number => id !== null);
       
       if (ungroupedTabIds.length >= 2) {
         await consolidateAndGroupTabs(ungroupedTabIds, { color: 'random' });

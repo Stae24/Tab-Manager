@@ -98,9 +98,10 @@ export const Island: React.FC<IslandProps> = ({
       onToggleCollapse();
     } else {
       const numericId = parseNumericId(island.id);
-      if (numericId > 0) {
+      if (numericId !== null) {
         updateTabGroupCollapse(numericId, !island.collapsed);
       }
+
     }
   };
 
@@ -132,23 +133,24 @@ export const Island: React.FC<IslandProps> = ({
   // Ungroup all tabs
   const handleUngroupAll = () => {
     setShowMenu(false);
-    const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+    const ids = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
     if (ids.length > 0) ungroupTab(ids);
   };
 
   // Freeze all tabs
   const handleFreezeAll = () => {
     setShowMenu(false);
-    const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+    const ids = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
     if (ids.length > 0) discardTabs(ids);
   };
 
   // Duplicate group
   const handleDuplicate = () => {
     setShowMenu(false);
-    const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+    const ids = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
     if (ids.length > 0) duplicateIsland(ids);
   };
+
 
   return (
     <div
@@ -241,7 +243,7 @@ export const Island: React.FC<IslandProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const ids = island.tabs.map(t => parseNumericId(t.id)).filter(id => id !== -1);
+                const ids = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
                 if (ids.length > 0) ungroupTab(ids);
               }}
               title="Ungroup All"
