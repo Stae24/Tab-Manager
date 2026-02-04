@@ -3,10 +3,11 @@ import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2, Link, Volume
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn, getBorderRadiusClass } from '../utils/cn';
-import { discardTab, ungroupTab, closeTab, copyTabUrl, muteTab, unmuteTab, pinTab, unpinTab, duplicateTab } from '../utils/chromeApi';
+import { tabService } from '../services/tabService';
 import { parseNumericId, useStore } from '../store/useStore';
 import { Favicon } from './Favicon';
 import { useScrollContainer } from '../contexts/ScrollContainerContext';
+import { INTERSECTION_OBSERVER_MARGIN_PX, TAB_LOAD_DELAY_BASE_MS } from '../constants';
 import type { Tab } from '../types/index';
 
 interface TabCardProps {
@@ -21,7 +22,13 @@ interface TabCardProps {
   isLoading?: boolean;
 }
 
-export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave, onRestore, isOverlay, disabled, isVault, isLoading }) => {
+interface NavigatorWithConnection extends Navigator {
+  connection?: {
+    saveData: boolean;
+  };
+}
+
+export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClose, onSave, onRestore, isOverlay, disabled, isVault, isLoading }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -101,7 +108,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
         setPriority(prev => (prev === 0 ? 0 : p));
       }
     }, { 
-      rootMargin: '500px',
+      rootMargin: `${INTERSECTION_OBSERVER_MARGIN_PX}px`,
       root: containerRef?.current || null
     });
 
@@ -120,12 +127,12 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
     if (priority === 0) {
       setHasStartedLoading(true);
     } else if (priority !== null && priority > 0) {
-      const isDataSaver = (navigator as any).connection?.saveData === true;
+      const isDataSaver = (navigator as NavigatorWithConnection).connection?.saveData === true;
       if (isDataSaver) return;
 
       const timer = setTimeout(() => {
         setHasStartedLoading(true);
-      }, priority * 50);
+      }, priority * TAB_LOAD_DELAY_BASE_MS);
       return () => clearTimeout(timer);
     }
   }, [priority]);
@@ -262,7 +269,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
                 if (onClose) onClose();
                 else {
                   const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) closeTab(numericId);
+                  if (numericId !== null) tabService.closeTab(numericId);
                 }
               }}
               className={cn(
@@ -298,7 +305,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
               <button
                 onClick={() => {
                   const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) discardTab(numericId);
+                  if (numericId !== null) tabService.discardTab(numericId);
                   setShowMenu(false);
                 }}
                 className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
@@ -308,7 +315,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
               <button
                 onClick={() => {
                   const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) ungroupTab(numericId);
+                  if (numericId !== null) tabService.ungroupTab(numericId);
                   setShowMenu(false);
                 }}
                 className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
@@ -319,8 +326,8 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
                 onClick={() => {
                   const numericId = parseNumericId(tab.id);
                   if (numericId !== null) {
-                    if (tab.pinned) unpinTab(numericId);
-                    else pinTab(numericId);
+                    if (tab.pinned) tabService.unpinTab(numericId);
+                    else tabService.pinTab(numericId);
                   }
                   setShowMenu(false);
                 }}
@@ -332,8 +339,8 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
                 onClick={() => {
                   const numericId = parseNumericId(tab.id);
                   if (numericId !== null) {
-                    if (tab.muted) unmuteTab(numericId);
-                    else muteTab(numericId);
+                    if (tab.muted) tabService.unmuteTab(numericId);
+                    else tabService.muteTab(numericId);
                   }
                   setShowMenu(false);
                 }}
@@ -344,7 +351,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
               <button
                 onClick={() => {
                   const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) duplicateTab(numericId);
+                  if (numericId !== null) tabService.duplicateTab(numericId);
                   setShowMenu(false);
                 }}
                 className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
@@ -354,7 +361,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
               <button
                 onClick={() => {
                   const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) copyTabUrl(numericId);
+                  if (numericId !== null) tabService.copyTabUrl(numericId);
                   setShowMenu(false);
                 }}
                 className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
@@ -373,7 +380,7 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
               if (onClose) onClose();
               else {
                 const numericId = parseNumericId(tab.id);
-                if (numericId !== null) closeTab(numericId);
+                if (numericId !== null) tabService.closeTab(numericId);
               }
               setShowMenu(false);
             }}
@@ -385,4 +392,4 @@ export const TabCard: React.FC<TabCardProps> = ({ tab, onClick, onClose, onSave,
       )}
     </div>
   );
-};
+});

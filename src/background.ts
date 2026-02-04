@@ -1,3 +1,5 @@
+import { ISLAND_CREATION_REFRESH_DELAY_MS, REFRESH_UI_DELAY_MS } from './constants';
+
 chrome.action.onClicked.addListener(() => {
   chrome.tabs.create({ url: 'index.html' });
 });
@@ -20,13 +22,17 @@ function notifyUI() {
       if (!islandCreationInProgress) {
         chrome.runtime.sendMessage({ type: 'REFRESH_TABS' }).catch(() => {});
       }
-    }, 400);
+    }, ISLAND_CREATION_REFRESH_DELAY_MS);
     return;
   }
   chrome.runtime.sendMessage({ type: 'REFRESH_TABS' }).catch(() => {});
 }
 
-export function messageListener(message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
+export function messageListener(
+  message: { type: string; tabId?: number }, 
+  _sender: chrome.runtime.MessageSender, 
+  sendResponse: (response?: { success: boolean }) => void
+) {
   if (message.type === 'START_ISLAND_CREATION') {
     islandCreationInProgress = true;
     sendResponse({ success: true });
@@ -35,7 +41,7 @@ export function messageListener(message: any, sender: chrome.runtime.MessageSend
   
   if (message.type === 'END_ISLAND_CREATION') {
     islandCreationInProgress = false;
-    setTimeout(() => notifyUI(), 100);
+    setTimeout(() => notifyUI(), REFRESH_UI_DELAY_MS);
     sendResponse({ success: true });
     return false;
   }

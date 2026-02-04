@@ -7,6 +7,7 @@ import { cn, getIslandBorderColor, getBorderRadiusClass, getBottomBorderRadiusCl
 import { Island as IslandType, Tab, UniversalId } from '../types/index';
 import { ungroupTab, updateTabGroupCollapse, discardTabs, duplicateIsland } from '../utils/chromeApi';
 import { useStore, parseNumericId } from '../store/useStore';
+import { VIRTUAL_ROW_ESTIMATE_SIZE } from '../constants';
 
 interface IslandProps {
   island: IslandType;
@@ -25,7 +26,7 @@ interface IslandProps {
   isVault?: boolean;
 }
 
-export const Island: React.FC<IslandProps> = ({
+export const Island: React.FC<IslandProps> = React.memo(({
   island,
   onTabClick,
   onDelete,
@@ -352,7 +353,7 @@ export const Island: React.FC<IslandProps> = ({
       {!island.collapsed && !isOverlay && (
         <div
           className={cn(
-            "p-2 bg-gx-dark/30 border-x-2 border-b-2 border-transparent shadow-inner min-h-[40px]",
+            `p-2 bg-gx-dark/30 border-x-2 border-b-2 border-transparent shadow-inner min-h-[${VIRTUAL_ROW_ESTIMATE_SIZE}px]`,
             getBottomBorderRadiusClass(appearanceSettings.borderRadius)
           )}
           style={{ borderColor: `${borderColor}33`, borderBottomColor: borderColor }}
@@ -402,4 +403,4 @@ export const Island: React.FC<IslandProps> = ({
       )}
     </div>
   );
-};
+});

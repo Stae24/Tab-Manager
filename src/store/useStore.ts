@@ -1,11 +1,14 @@
 import { create } from 'zustand';
-import { loadVault, migrateFromLegacy, getVaultQuota } from '../utils/vaultStorage';
+import { vaultService } from '../services/vaultService';
+import { quotaService } from '../services/quotaService';
+import { settingsService } from '../services/settingsService';
 import { isAppearanceSettings, isVaultItems, defaultAppearanceSettings } from './utils';
 
 import { createTabSlice } from './slices/useTabSlice';
 import { createVaultSlice } from './slices/useVaultSlice';
 import { createUISlice } from './slices/useUISlice';
 import { createAppearanceSlice } from './slices/useAppearanceSlice';
+import { createCommandSlice } from './slices/useCommandSlice';
 import { StoreState } from './types';
 
 // Re-export types for public API consistency
@@ -32,11 +35,12 @@ export const useStore = create<StoreState>()((...a) => ({
   ...createVaultSlice(...a),
   ...createUISlice(...a),
   ...createAppearanceSlice(...a),
+  ...createCommandSlice(...a),
 }));
 
 // Cross-Window Sync Initialization
 const init = async () => {
-  const sync = await chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault', 'settingsPanelWidth']);
+  const sync = await settingsService.loadSettings();
 
   const state = useStore.getState();
 
@@ -51,18 +55,18 @@ const init = async () => {
     ? sync.appearanceSettings.vaultSyncEnabled
     : defaultAppearanceSettings.vaultSyncEnabled;
 
-  const migrationResult = await migrateFromLegacy({ syncEnabled });
+  const migrationResult = await vaultService.migrateFromLegacy({ syncEnabled });
   if (migrationResult.migrated) {
     console.log('[VaultStorage] Migration complete:', migrationResult);
   }
 
-  const { vault, timestamp } = await loadVault({ syncEnabled });
+  const { vault, timestamp } = await vaultService.loadVault({ syncEnabled });
   useStore.setState({ vault, lastVaultTimestamp: timestamp });
 
-  const quota = await getVaultQuota();
+  const quota = await quotaService.getVaultQuota();
   useStore.setState({ vaultQuota: quota });
 
-  chrome.storage.onChanged.addListener(async (changes, area) => {
+  settingsService.watchSettings(async (changes, area) => {
     if (area === 'sync') {
       if (changes.appearanceSettings && isAppearanceSettings(changes.appearanceSettings.newValue)) {
         state.setAppearanceSettings(changes.appearanceSettings.newValue);
@@ -77,9 +81,9 @@ const init = async () => {
         // Only reload if incoming version is newer (timestamp-based conflict resolution)
         if (incomingTimestamp > currentTimestamp && !useStore.getState().isUpdating) {
           const currentSettings = useStore.getState().appearanceSettings;
-          const { vault: reloadedVault } = await loadVault({ syncEnabled: currentSettings.vaultSyncEnabled });
+          const { vault: reloadedVault } = await vaultService.loadVault({ syncEnabled: currentSettings.vaultSyncEnabled });
           useStore.setState({ vault: reloadedVault, lastVaultTimestamp: incomingTimestamp });
-          const quota = await getVaultQuota();
+          const quota = await quotaService.getVaultQuota();
           useStore.setState({ vaultQuota: quota });
         }
       }
@@ -91,7 +95,7 @@ const init = async () => {
       if (changes.vault && isVaultItems(changes.vault.newValue) && !useStore.getState().appearanceSettings.vaultSyncEnabled) {
         if (!useStore.getState().isUpdating) {
           useStore.setState({ vault: changes.vault.newValue });
-          const quota = await getVaultQuota();
+          const quota = await quotaService.getVaultQuota();
           useStore.setState({ vaultQuota: quota });
         }
       }

@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { REFRESH_TABS_DEBOUNCE_MS } from '../constants';
 
 export const useTabSync = () => {
-  const refreshTimeout = useRef<any>(null);
+
+  const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRefresh = useRef(false);
 
   useEffect(() => {
@@ -10,7 +12,7 @@ export const useTabSync = () => {
     useStore.getState().syncLiveTabs();
 
     // Listen for updates from background script
-    const listener = (message: any) => {
+    const listener = (message: { type: string }) => {
       if (message.type === 'REFRESH_TABS') {
         const { isUpdating, syncLiveTabs } = useStore.getState();
 
@@ -24,7 +26,7 @@ export const useTabSync = () => {
           refreshTimeout.current = setTimeout(() => {
             pendingRefresh.current = false;
             syncLiveTabs();
-          }, 200);
+          }, REFRESH_TABS_DEBOUNCE_MS);
         } else {
           syncLiveTabs();
         }

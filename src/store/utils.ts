@@ -1,9 +1,17 @@
 import { UniqueIdentifier } from '@dnd-kit/core';
-import { Island, Tab, VaultItem, AppearanceSettings } from '../types/index';
+import { Island, Tab, VaultItem, AppearanceSettings, LiveItem } from '../types/index';
+import { 
+  DEBOUNCE_DEFAULT_MS, 
+  CHROME_32BIT_INT_MAX, 
+  DEFAULT_DRAG_OPACITY, 
+  MAX_SYNC_RETRIES, 
+  INITIAL_SYNC_BACKOFF, 
+  SYNC_SETTINGS_DEBOUNCE_MS 
+} from '../constants';
 
-export const debounce = (fn: Function, ms = 500) => {
+export const debounce = <T extends (...args: any[]) => any>(fn: T, ms = DEBOUNCE_DEFAULT_MS) => {
   let timeoutId: ReturnType<typeof setTimeout>;
-  return function (this: any, ...args: any[]) {
+  return function (this: unknown, ...args: Parameters<T>) {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn.apply(this, args), ms);
   };
@@ -24,7 +32,7 @@ export const parseNumericId = (id: UniqueIdentifier): number | null => {
 
       const num = Number(s);
       // Chrome API constraints: 1 to 2^31-1 (32-bit signed int limit)
-      if (num > 0 && Number.isSafeInteger(num) && num <= 2147483647) {
+      if (num > 0 && Number.isSafeInteger(num) && num <= CHROME_32BIT_INT_MAX) {
         return num;
       }
     }
@@ -42,7 +50,7 @@ export const parseNumericId = (id: UniqueIdentifier): number | null => {
 
 export const isTab = (item: unknown): item is Tab => {
   if (!item || typeof item !== 'object') return false;
-  const t = item as any;
+  const t = item as Partial<Tab>;
   return (
     (typeof t.id === 'string' || typeof t.id === 'number') &&
     typeof t.title === 'string' &&
@@ -58,7 +66,7 @@ export const isTab = (item: unknown): item is Tab => {
 
 export const isIsland = (item: unknown): item is Island => {
   if (!item || typeof item !== 'object') return false;
-  const i = item as any;
+  const i = item as Partial<Island>;
   return (
     (typeof i.id === 'string' || typeof i.id === 'number') &&
     typeof i.title === 'string' &&
@@ -71,7 +79,7 @@ export const isIsland = (item: unknown): item is Island => {
 
 export const isVaultItem = (item: unknown): item is VaultItem => {
   if (!item || typeof item !== 'object') return false;
-  const v = item as any;
+  const v = item as Partial<VaultItem>;
   return (
     typeof v.savedAt === 'number' &&
     (typeof v.originalId === 'string' || typeof v.originalId === 'number') &&
@@ -85,51 +93,51 @@ export const isVaultItems = (items: unknown): items is VaultItem[] => {
 
 export const isAppearanceSettings = (settings: unknown): settings is AppearanceSettings => {
   if (!settings || typeof settings !== 'object') return false;
-  const s = settings as any;
+  const s = settings as Partial<AppearanceSettings>;
   
   return (
-    ['dark', 'light', 'system'].includes(s.theme) &&
+    !!s.theme && ['dark', 'light', 'system'].includes(s.theme) &&
     typeof s.uiScale === 'number' &&
     typeof s.settingsScale === 'number' &&
-    ['minified', 'compact', 'normal', 'spacious'].includes(s.tabDensity) &&
-    ['full', 'subtle', 'off'].includes(s.animationIntensity) &&
+    !!s.tabDensity && ['minified', 'compact', 'normal', 'spacious'].includes(s.tabDensity) &&
+    !!s.animationIntensity && ['full', 'subtle', 'off'].includes(s.animationIntensity) &&
     typeof s.showFavicons === 'boolean' &&
-    ['off', 'playing', 'muted', 'both'].includes(s.showAudioIndicators) &&
+    !!s.showAudioIndicators && ['off', 'playing', 'muted', 'both'].includes(s.showAudioIndicators) &&
     typeof s.showFrozenIndicators === 'boolean' &&
     typeof s.showActiveIndicator === 'boolean' &&
     typeof s.showTabCount === 'boolean' &&
     typeof s.accentColor === 'string' &&
-    ['none', 'small', 'medium', 'large', 'full'].includes(s.borderRadius) &&
+    !!s.borderRadius && ['none', 'small', 'medium', 'large', 'full'].includes(s.borderRadius) &&
     typeof s.compactGroupHeaders === 'boolean' &&
-    ['small', 'medium', 'large'].includes(s.buttonSize) &&
-    ['gx', 'default', 'minimal'].includes(s.iconPack) &&
+    !!s.buttonSize && ['small', 'medium', 'large'].includes(s.buttonSize) &&
+    !!s.iconPack && ['gx', 'default', 'minimal'].includes(s.iconPack) &&
     typeof s.dragOpacity === 'number' &&
-    ['pulse', 'dots', 'bars', 'ring'].includes(s.loadingSpinnerStyle) &&
-    ['left', 'center', 'right'].includes(s.menuPosition) &&
+    !!s.loadingSpinnerStyle && ['pulse', 'dots', 'bars', 'ring'].includes(s.loadingSpinnerStyle) &&
+    !!s.menuPosition && ['left', 'center', 'right'].includes(s.menuPosition) &&
     typeof s.vaultSyncEnabled === 'boolean' &&
-    ['chrome', 'google', 'google-hd', 'duckduckgo', 'icon-horse'].includes(s.faviconSource) &&
-    ['chrome', 'google', 'google-hd', 'duckduckgo', 'icon-horse', 'none'].includes(s.faviconFallback) &&
-    ['16', '32', '64', '128'].includes(s.faviconSize) &&
+    !!s.faviconSource && ['chrome', 'google', 'google-hd', 'duckduckgo', 'icon-horse'].includes(s.faviconSource) &&
+    !!s.faviconFallback && ['chrome', 'google', 'google-hd', 'duckduckgo', 'icon-horse', 'none'].includes(s.faviconFallback) &&
+    !!s.faviconSize && ['16', '32', '64', '128'].includes(s.faviconSize) &&
     typeof s.sortGroupsByCount === 'boolean' &&
     typeof s.sortVaultGroupsByCount === 'boolean'
   );
 };
 
 // Tactical Item Discovery
-export const findItemInList = (list: any[], id: UniqueIdentifier) => {
+export const findItemInList = (list: (LiveItem | VaultItem)[], id: UniqueIdentifier) => {
   const idStr = String(id);
 
   // Check root level first
   const rootIndex = list.findIndex(i => i && String(i.id) == idStr);
   if (rootIndex !== -1) {
-    return { item: list[rootIndex], containerId: 'root', index: rootIndex };
+    return { item: list[rootIndex], containerId: 'root' as const, index: rootIndex };
   }
 
   // Check nested levels (tabs inside groups)
   for (const entry of list) {
-    if (entry && (entry as any).tabs && Array.isArray((entry as any).tabs)) {
-      const tabs = (entry as any).tabs;
-      const tabIndex = tabs.findIndex((t: any) => String(t.id) == idStr);
+    if (entry && 'tabs' in entry && Array.isArray(entry.tabs)) {
+      const tabs = entry.tabs;
+      const tabIndex = tabs.findIndex((t: Tab) => String(t.id) == idStr);
       if (tabIndex !== -1) {
         return { item: tabs[tabIndex], containerId: entry.id, index: tabIndex };
       }
@@ -156,7 +164,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   buttonSize: 'medium',
   iconPack: 'gx',
   customFontFamily: undefined,
-  dragOpacity: 0.5,
+  dragOpacity: DEFAULT_DRAG_OPACITY,
   loadingSpinnerStyle: 'pulse',
   menuPosition: 'left',
   vaultSyncEnabled: true,
@@ -167,14 +175,18 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   sortVaultGroupsByCount: true,
 };
 
-const MAX_SYNC_RETRIES = 3;
-const INITIAL_SYNC_BACKOFF = 1000;
+export type SyncState = Partial<{
+  appearanceSettings: AppearanceSettings;
+  dividerPosition: number;
+  showVault: boolean;
+  settingsPanelWidth: number;
+}>;
 
-export const performSync = async (settings: any, retryCount = 0) => {
+export const performSync = async (settings: SyncState, retryCount = 0) => {
   try {
     await chrome.storage.sync.set(settings);
-  } catch (error: any) {
-    const message = error?.message || String(error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     const isQuotaError = message.includes('QUOTA_EXCEEDED');
     const isThrottled = message.includes('MAX_WRITE_OPERATIONS') || message.includes('throttled');
     
@@ -187,6 +199,7 @@ export const performSync = async (settings: any, retryCount = 0) => {
   }
 };
 
-export const syncSettings = debounce((settings: any) => {
+export const syncSettings = debounce((settings: SyncState) => {
   performSync(settings);
-}, 5000);
+}, SYNC_SETTINGS_DEBOUNCE_MS);
+

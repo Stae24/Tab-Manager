@@ -70,6 +70,10 @@ describe('Sidebar Export Revocation', () => {
       showAppearancePanel: false,
       setShowAppearancePanel: vi.fn(),
       appearanceSettings: mockAppearanceSettings,
+      undoStack: [],
+      redoStack: [],
+      undo: vi.fn(),
+      redo: vi.fn(),
     }));
     
     vi.useFakeTimers();

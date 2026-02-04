@@ -17,8 +17,11 @@ import {
   DragOverEvent,
   UniqueIdentifier,
   MeasuringStrategy,
-  defaultDropAnimationSideEffects
+  defaultDropAnimationSideEffects,
+  Active,
+  Modifier
 } from '@dnd-kit/core';
+
 import {
   SortableContext,
   sortableKeyboardCoordinates,
@@ -31,15 +34,30 @@ import { ScrollContainerProvider } from '../contexts/ScrollContainerContext';
 
 import { QuotaWarningBanner } from './QuotaWarningBanner';
 import { QuotaExceededModal, QuotaExceededAction } from './QuotaExceededModal';
-import { useStore, parseNumericId } from '../store/useStore';
+import { useStore, parseNumericId, findItemInList } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { closeTab, moveIsland, createIsland } from '../utils/chromeApi';
-import { Island as IslandType, Tab as TabType, VaultQuotaInfo, UniversalId } from '../types/index';
+import { Island as IslandType, Tab as TabType, VaultQuotaInfo, UniversalId, LiveItem } from '../types/index';
 import ErrorBoundary from './ErrorBoundary';
+import { MoveTabCommand } from '../store/commands/MoveTabCommand';
+import { MoveIslandCommand } from '../store/commands/MoveIslandCommand';
+import { 
+  BASE_FONT_SIZE, 
+  DND_ACTIVATION_DISTANCE, 
+  DIVIDER_POSITION_MIN, 
+  DIVIDER_POSITION_MAX, 
+  POST_ISLAND_CREATION_DELAY_MS,
+  VIRTUAL_ROW_ESTIMATE_SIZE,
+  VIRTUAL_ROW_OVERSCAN,
+  VIRTUAL_ROW_GAP_PX,
+  CLEANUP_ANIMATION_DELAY_MS
+} from '../constants';
+
 
 
 // Proximity tracking hook for droppable gaps
-export const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) => {
+export const useProximityGap = (gapId: string, active: Active | null, isDraggingGroup?: boolean) => {
+
   const { setNodeRef, isOver } = useDroppable({ id: gapId });
   const gapRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -65,7 +83,7 @@ export const useProximityGap = (gapId: string, active: any, isDraggingGroup?: bo
       if (!gapRef.current) return;
 
       const gapRect = gapRef.current.getBoundingClientRect();
-      const baseRem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const baseRem = parseFloat(getComputedStyle(document.documentElement).fontSize) || BASE_FONT_SIZE;
       const pointerY = e.clientY;
 
       // Distance from gap's current top (fixed reference for this frame)
@@ -91,7 +109,12 @@ export const useProximityGap = (gapId: string, active: any, isDraggingGroup?: bo
   return { setNodeRef, gapRef, isOver, expanded };
 };
 
+type DashboardRow = 
+  | { type: 'gap'; id: string; index: number }
+  | { type: 'item'; id: UniversalId; item: IslandType | TabType };
+
 const LivePanel: React.FC<{
+
   dividerPosition: number,
   islands: (IslandType | TabType)[],
   handleTabClick: (id: UniversalId) => void,
@@ -130,9 +153,18 @@ const LivePanel: React.FC<{
   const [isCleaning, setIsCleaning] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const totalCount = useMemo(() => {
+    if (searchQuery) return filteredTabs.length;
+    return (islands || []).reduce((acc, i) => {
+      if (!i) return acc;
+      if ('tabs' in i && i.tabs) return acc + i.tabs.length;
+      return acc + 1;
+    }, 0);
+  }, [searchQuery, filteredTabs, islands]);
+
   const rowItems = useMemo(() => {
     if (searchQuery) return [];
-    const rows: any[] = [];
+    const rows: DashboardRow[] = [];
     (islands || []).forEach((item: IslandType | TabType, index: number) => {
       const isCurrentIsland = item && 'tabs' in item;
       const prevItem = islands?.[index - 1];
@@ -150,18 +182,167 @@ const LivePanel: React.FC<{
   const virtualizer = useVirtualizer({
     count: rowItems.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => VIRTUAL_ROW_ESTIMATE_SIZE,
     getItemKey: (index) => rowItems[index].id,
-    overscan: 10,
+    overscan: VIRTUAL_ROW_OVERSCAN,
   });
 
   const searchVirtualizer = useVirtualizer({
     count: searchQuery ? filteredTabs.length : 0,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => VIRTUAL_ROW_ESTIMATE_SIZE,
     getItemKey: (index) => filteredTabs[index].id,
-    overscan: 10,
+    overscan: VIRTUAL_ROW_OVERSCAN,
   });
+
+  const renderSearchList = () => {
+    if (filteredTabs.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40">
+          <Search size={48} className="mb-4" />
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-center">
+            No tabs found<br />
+            for "{searchQuery}"
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        key="search-results-list" 
+        className="search-mode-enter relative"
+        style={{ height: `${searchVirtualizer.getTotalSize()}px`, width: '100%' }}
+      >
+        {searchVirtualizer.getVirtualItems().map((virtualRow) => {
+          const tab = filteredTabs[virtualRow.index];
+          return (
+            <div
+              key={virtualRow.key}
+              data-index={virtualRow.index}
+              ref={searchVirtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+                paddingBottom: `${VIRTUAL_ROW_GAP_PX}px`,
+              }}
+              className="search-mode-enter"
+            >
+              <TabCard
+                tab={tab}
+                onClick={() => handleTabClick(tab.id)}
+                onSave={() => saveToVault(tab)}
+                disabled={!!searchQuery}
+                isLoading={isCreatingIsland && creatingTabId === tab.id}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderLiveList = () => {
+    return (
+      <>
+        <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
+          <div
+            className="relative"
+            style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%' }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const row = rowItems[virtualRow.index];
+              
+              return (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`,
+                    paddingBottom: `${VIRTUAL_ROW_GAP_PX}px`,
+                  }}
+                >
+                  {row.type === 'gap' ? (
+                    <DroppableGap index={row.index} />
+                  ) : (
+                    row.item && 'tabs' in row.item ? (
+                      <Island
+                        island={row.item as IslandType}
+                        onTabClick={(tab) => handleTabClick(tab.id)}
+                        onNonDestructiveSave={() => saveToVault(row.item)}
+                        onSave={() => moveToVault(row.item.id)}
+                        onDelete={() => (row.item as IslandType).tabs.forEach((t: TabType) => closeTab(t.id))}
+                        onRename={(title) => onRenameGroup(row.item.id, title)}
+                        onToggleCollapse={() => onToggleCollapse(row.item.id)}
+                        onTabSave={(tab) => saveToVault(tab)}
+                        onTabClose={(id) => closeTab(id as number)}
+                        disabled={!!searchQuery}
+                      />
+                    ) : (
+                      <TabCard
+                        tab={row.item as TabType}
+                        onClick={() => handleTabClick(row.item.id)}
+                        onSave={() => saveToVault(row.item)}
+                        onClose={() => closeTab(row.item.id)}
+                        disabled={!!searchQuery}
+                        isLoading={isCreatingIsland && creatingTabId === row.item.id}
+                      />
+                    )
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </SortableContext>
+
+        <div
+          ref={setBottomRef}
+          className="h-24 w-full"
+        />
+
+        <div
+          ref={setCreateRef}
+          id="new-island-dropzone"
+          className={cn(
+            "p-10 border-2 border-dashed border-gx-gray/50 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group flex-shrink-0 cursor-pointer",
+            isCreatingIsland && "border-gx-cyan bg-gx-cyan/5 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse-glow",
+            !isCreatingIsland && isCreateOver && !isDraggingGroup && "border-gx-accent bg-gx-accent/10",
+            !isCreatingIsland && !isCreateOver && "hover:border-gx-accent/50 hover:bg-gx-accent/5",
+            isDraggingGroup && "opacity-30 cursor-not-allowed grayscale"
+          )}
+        >
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+            isCreatingIsland
+              ? "bg-gx-cyan/20 animate-spin-slow"
+              : "bg-gx-gray group-hover:bg-gx-accent/20"
+          )}>
+            {isCreatingIsland ? (
+              <Loader2 className="w-5 h-5 text-gx-cyan" />
+            ) : (
+              <Plus className="w-5 h-5 text-gray-500 group-hover:text-gx-accent transition-colors" />
+            )}
+          </div>
+          <span className={cn(
+            "text-[10px] font-black uppercase tracking-[0.2em] transition-colors",
+            isCreatingIsland
+              ? "text-gx-cyan animate-pulse"
+              : "text-gray-500 group-hover:text-gray-400"
+          )}>
+            {isCreatingIsland ? "Creating Island..." : "Tactical Island creation"}
+          </span>
+        </div>
+      </>
+    );
+  };
 
   const ungroupedCount = useMemo(() => {
     const restrictedPatterns = ['about:', 'chrome-extension:'];
@@ -253,7 +434,7 @@ const LivePanel: React.FC<{
   const handleDeleteDuplicates = async () => {
     setIsCleaning(true);
     await deleteDuplicateTabs();
-    setTimeout(() => setIsCleaning(false), 500);
+    setTimeout(() => setIsCleaning(false), CLEANUP_ANIMATION_DELAY_MS);
   };
 
   const handleGroupResults = () => {
@@ -509,7 +690,7 @@ const LivePanel: React.FC<{
                       left: 0,
                       width: '100%',
                       transform: `translateY(${virtualRow.start}px)`,
-                      paddingBottom: '8px',
+                      paddingBottom: `${VIRTUAL_ROW_GAP_PX}px`,
                     }}
                     className="search-mode-enter"
                   >
@@ -546,7 +727,7 @@ const LivePanel: React.FC<{
                         left: 0,
                         width: '100%',
                         transform: `translateY(${virtualRow.start}px)`,
-                        paddingBottom: '8px',
+                        paddingBottom: `${VIRTUAL_ROW_GAP_PX}px`,
                       }}
                     >
                       {row.type === 'gap' ? (
@@ -656,7 +837,7 @@ const VaultPanel: React.FC<{
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const rowItems = useMemo(() => {
-    const rows: any[] = [];
+    const rows: DashboardRow[] = [];
     (vault || []).forEach((item: IslandType | TabType, index: number) => {
       const isCurrentIsland = 'tabs' in item;
       const prevItem = vault?.[index - 1];
@@ -674,9 +855,9 @@ const VaultPanel: React.FC<{
   const virtualizer = useVirtualizer({
     count: rowItems.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => VIRTUAL_ROW_ESTIMATE_SIZE,
     getItemKey: (index) => rowItems[index].id,
-    overscan: 10,
+    overscan: VIRTUAL_ROW_OVERSCAN,
   });
 
   // Droppable gap component for between two islands
@@ -699,6 +880,73 @@ const VaultPanel: React.FC<{
           expanded && "h-[2.375rem]"
         )}
       />
+    );
+  };
+
+  const renderVaultList = () => {
+    return (
+      <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
+        <div
+          className="relative"
+          style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%' }}
+        >
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const row = rowItems[virtualRow.index];
+            
+            return (
+              <div
+                key={virtualRow.key}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                  paddingBottom: `${VIRTUAL_ROW_GAP_PX}px`,
+                }}
+              >
+                {row.type === 'gap' ? (
+                  <DroppableGap index={row.index} />
+                ) : (
+                  'tabs' in row.item ? (
+                    <Island
+                      island={row.item as IslandType}
+                      isVault={true}
+                      onRestore={() => restoreFromVault(row.item.id)}
+                      onDelete={() => removeFromVault(row.item.id)}
+                      onRename={(title) => onRenameGroup(row.item.id, title)}
+                      onToggleCollapse={() => onToggleCollapse(row.item.id)}
+                      onTabRestore={(tab) => restoreFromVault(tab.id)}
+                      onTabClose={(id) => removeFromVault(id)}
+                    />
+                  ) : (
+                    <TabCard
+                      tab={row.item as TabType}
+                      isVault={true}
+                      onRestore={() => restoreFromVault(row.item.id)}
+                      onClose={() => removeFromVault(row.item.id)}
+                    />
+                  )
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </SortableContext>
+    );
+  };
+
+  const renderEmptyState = () => {
+    if ((vault || []).length !== 0) return null;
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-gray-600 opacity-20 group">
+        <Save size={64} className="group-hover:scale-110 transition-transform duration-500" />
+        <p className="text-[10px] font-black mt-6 italic uppercase tracking-[0.3em] text-center leading-loose">
+          Initiate data transfer<br />to secure items
+        </p>
+      </div>
     );
   };
 
@@ -744,68 +992,10 @@ const VaultPanel: React.FC<{
               onManageStorage={onManageStorage}
             />
           )}
-          <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-            <div
-              className="relative"
-              style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%' }}
-            >
-              {virtualizer.getVirtualItems().map((virtualRow) => {
-                const row = rowItems[virtualRow.index];
-                const item = row.item;
-                
-                return (
-                  <div
-                    key={virtualRow.key}
-                    data-index={virtualRow.index}
-                    ref={virtualizer.measureElement}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      transform: `translateY(${virtualRow.start}px)`,
-                      paddingBottom: '8px',
-                    }}
-                  >
-                    {row.type === 'gap' ? (
-                      <DroppableGap index={row.index} />
-                    ) : (
-                      'tabs' in item ? (
-                        <Island
-                          island={item as IslandType}
-                          isVault={true}
-                          onRestore={() => restoreFromVault(item.id)}
-                          onDelete={() => removeFromVault(item.id)}
-                          onRename={(title) => onRenameGroup(item.id, title)}
-                          onToggleCollapse={() => onToggleCollapse(item.id)}
-                          onTabRestore={(tab) => restoreFromVault(tab.id)}
-                          onTabClose={(id) => removeFromVault(id)}
-                        />
-                      ) : (
-                        <TabCard
-                          tab={item as TabType}
-                          isVault={true}
-                          onRestore={() => restoreFromVault(item.id)}
-                          onClose={() => removeFromVault(item.id)}
-                        />
-                      )
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </SortableContext>
+          
+          {renderVaultList()}
+          {renderEmptyState()}
 
-          {(vault || []).length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-gray-600 opacity-20 group">
-              <Save size={64} className="group-hover:scale-110 transition-transform duration-500" />
-              <p className="text-[10px] font-black mt-6 italic uppercase tracking-[0.3em] text-center leading-loose">
-                Initiate data transfer<br />to secure items
-              </p>
-            </div>
-          )}
-
-          {/* Bottom Drop Zone / Spacer */}
           <div
             ref={setBottomRef}
             className={cn(
@@ -823,6 +1013,17 @@ const VaultPanel: React.FC<{
     </div>
   );
 };
+
+type DragData = 
+  | { type: 'island'; island: IslandType }
+  | { type: 'tab'; tab: TabType };
+
+const DragOverlayContent = React.memo(({ activeItem }: { activeItem: DragData }) => {
+  if (activeItem.type === 'island') {
+    return <Island island={activeItem.island} isOverlay />;
+  }
+  return <TabCard tab={activeItem.tab} isOverlay />;
+});
 
 export const Dashboard: React.FC = () => {
   const isDarkMode = useStore(state => state.isDarkMode);
@@ -852,22 +1053,29 @@ export const Dashboard: React.FC = () => {
   const groupSearchResults = useStore(state => state.groupSearchResults);
   const groupUngroupedTabs = useStore(state => state.groupUngroupedTabs);
   const showAppearancePanel = useStore(state => state.showAppearancePanel);
+  const executeCommand = useStore(state => state.executeCommand);
 
   const [isResizing, setIsResizing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeItem, setActiveItem] = useState<any>(null);
+  const [activeItem, setActiveItem] = useState<DragData | null>(null);
   const [isDraggingVaultItem, setIsDraggingVaultItem] = useState(false);
   const [isDraggingGroup, setIsDraggingGroup] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<'browser-order' | 'alpha-title' | 'alpha-url'>('browser-order');
   const [isCreatingIsland, setIsCreatingIsland] = useState(false);
   const [creatingTabId, setCreatingTabId] = useState<UniversalId | null>(null);
+  const [dragStartInfo, setDragStartInfo] = useState<{
+    index: number;
+    containerId: UniqueIdentifier;
+    groupId: number;
+    windowId: number;
+  } | null>(null);
   const lastFilteredTabsRef = useRef<TabType[]>([]);
 
   // Flatten all tabs from islands and standalone tabs for search mode
   const allTabs = useMemo(() => {
     const tabs: TabType[] = [];
-    (islands || []).forEach(item => {
+    (islands || []).forEach((item: LiveItem) => {
       if (item && 'tabs' in item && item.tabs) {
         // It's an Island - extract all tabs
         // We use the direct tab references to maintain stability
@@ -928,12 +1136,12 @@ export const Dashboard: React.FC = () => {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 }
+      activationConstraint: { distance: DND_ACTIVATION_DISTANCE }
     }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const scaleModifier = useCallback(({ transform }: any) => {
+  const scaleModifier: Modifier = useCallback(({ transform }) => {
     return {
       ...transform,
       x: transform.x / appearanceSettings.uiScale,
@@ -959,7 +1167,7 @@ export const Dashboard: React.FC = () => {
       const x = e.clientX;
       const width = window.innerWidth;
       const percentage = (x / width) * 100;
-      setDividerPosition(Math.max(20, Math.min(80, percentage)));
+      setDividerPosition(Math.max(DIVIDER_POSITION_MIN, Math.min(DIVIDER_POSITION_MAX, percentage)));
     };
     const handleMouseUp = () => setIsResizing(false);
     if (isResizing) {
@@ -987,17 +1195,29 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    const data = event.active.data.current;
-    setActiveItem(data);
+    const data = event.active.data.current as DragData | undefined;
+    if (data) setActiveItem(data);
 
-    // Check if dragging a Group
+    const { islands, vault } = useStore.getState();
+    const found = findItemInList(islands, event.active.id) || findItemInList(vault, event.active.id);
+    if (found) {
+      const { item, index, containerId } = found;
+      setDragStartInfo({
+        index,
+        containerId,
+        groupId: (item as TabType).groupId ?? -1,
+        windowId: (item as TabType).windowId ?? -1
+      });
+    }
+
     const isGroup = data && 'island' in data && data.type === 'island';
     setIsDraggingGroup(!!isGroup);
 
     // Check if dragging a Vault item (id starts with 'vault-')
     const isVault = event.active.id.toString().startsWith('vault-') ||
-      (data && data.island && data.island.id.toString().startsWith('vault-')) ||
-      (data && data.tab && data.tab.id.toString().startsWith('vault-'));
+      (data?.type === 'island' && data.island.id.toString().startsWith('vault-')) ||
+      (data?.type === 'tab' && data.tab.id.toString().startsWith('vault-'));
+
     setIsDraggingVaultItem(isVault);
     useStore.getState().setIsUpdating(true);
   };
@@ -1013,7 +1233,8 @@ export const Dashboard: React.FC = () => {
     // This prevents glitches and ensures handleDragEnd receives the correct event data
     if (overId === 'create-island-dropzone') return;
 
-    moveItemOptimistically(activeId as any, overId as any);
+    moveItemOptimistically(activeId, overId);
+
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -1052,10 +1273,11 @@ export const Dashboard: React.FC = () => {
         // Note: activeId is enough for moveToVault
 
         if (activeId) {
-          await moveToVault(activeId as any);
+          await moveToVault(activeId);
         }
         return;
       }
+
 
       // SCENARIO 5: Create New Group from Tab (Live -> Create Zone)
       if (overIdStr === 'create-island-dropzone' && !isVaultSource) {
@@ -1065,54 +1287,56 @@ export const Dashboard: React.FC = () => {
             const numeric = parseNumericId(activeId);
             if (numeric !== -1) return numeric;
           }
-          const data = event.active.data?.current;
+          const data = event.active.data?.current as DragData | undefined;
           if (data?.type === 'tab' && data.tab?.id) return parseNumericId(data.tab.id);
-          if (activeItem?.tab?.id) return parseNumericId(activeItem.tab.id);
+          if (activeItem?.type === 'tab' && activeItem.tab?.id) return parseNumericId(activeItem.tab.id);
           return null;
         };
 
         const tabId = resolveTabId();
 
-        if (tabId) {
-          try {
-            const tab = await chrome.tabs.get(tabId);
-            if (tab.pinned) {
-              console.warn('[ISLAND] Cannot create island from pinned tab');
-              return;
-            }
-
-            // Set island creation state (lightweight, just for UI indicators)
-            setIsCreatingIsland(true);
-            setCreatingTabId(tabId);
-
-            // Signal background to defer refreshes during group creation
-            await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
-
-            console.log(`[ISLAND] Creating island for tab: ${tabId}`);
-
-            // Call createIsland with no title to ensure it remains "Untitled"
-            const groupId = await createIsland([tabId], undefined, 'blue' as any);
-
-            if (groupId) {
-              console.log(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
-            } else {
-              console.error(`[FAILED] createIsland returned null for tab: ${tabId}`);
-            }
-
-            // Signal end of island creation to background (triggers refresh)
-            await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
-
-            // Brief delay for visual feedback completion (ensures pulse completes before refresh)
-            await new Promise(r => setTimeout(r, 300));
-          } catch (e) {
-            console.error('[ISLAND] Tab no longer exists or access denied', e);
-            await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
-          } finally {
-            setIsCreatingIsland(false);
-            setCreatingTabId(null);
-          }
-        } else {
+        if (!tabId) {
           console.error(`[FAILED] Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
+          return;
+        }
+
+        try {
+          const tab = await chrome.tabs.get(tabId);
+          if (tab.pinned) {
+            console.warn('[ISLAND] Cannot create island from pinned tab');
+            return;
+          }
+
+          // Set island creation state (lightweight, just for UI indicators)
+          setIsCreatingIsland(true);
+          setCreatingTabId(tabId);
+
+          // Signal background to defer refreshes during group creation
+          await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
+
+          console.log(`[ISLAND] Creating island for tab: ${tabId}`);
+
+          // Call createIsland with no title to ensure it remains "Untitled"
+          const groupId = await createIsland([tabId], undefined, 'blue' as chrome.tabGroups.Color);
+
+          if (groupId) {
+            console.log(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
+          } else {
+            console.error(`[FAILED] createIsland returned null for tab: ${tabId}`);
+          }
+
+          // Signal end of island creation to background (triggers refresh)
+          await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
+
+          // Brief delay for visual feedback completion (ensures pulse completes before refresh)
+          await new Promise(r => setTimeout(r, POST_ISLAND_CREATION_DELAY_MS));
+        } catch (e) {
+
+          console.error('[ISLAND] Tab no longer exists or access denied', e);
+          await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
+        } finally {
+          setIsCreatingIsland(false);
+          setCreatingTabId(null);
         }
         return;
       }
@@ -1126,53 +1350,58 @@ export const Dashboard: React.FC = () => {
         try {
           // Internal Live Move
           let browserIndex = 0;
-          let targetItem: any = null;
-          let targetIslandId: number | null = null;
+          let targetItem: LiveItem | null = null;
+          let targetIslandId: UniversalId | null = null;
           let isMovingGroup = false;
 
           for (const item of finalIslands) {
-            const itemAny = item as any;
-            if (itemAny.id == activeId) {
-              targetItem = itemAny;
-              const island = item as IslandType;
-              isMovingGroup = island.tabs !== undefined;
+            if (item.id == activeId) {
+              targetItem = item;
+              isMovingGroup = 'tabs' in item;
               break;
             }
-            if (itemAny.tabs) {
-              const nested = itemAny.tabs.find((t: any) => t.id == activeId);
+            if ('tabs' in item && item.tabs) {
+              const nested = item.tabs.find((t: TabType) => t.id == activeId);
               if (nested) {
                 targetItem = nested;
-                targetIslandId = itemAny.id;
-                browserIndex += itemAny.tabs.indexOf(nested);
+                targetIslandId = item.id;
+                browserIndex += item.tabs.indexOf(nested);
                 break;
               }
-              browserIndex += itemAny.tabs.length;
+              browserIndex += item.tabs.length;
             } else {
               browserIndex += 1;
             }
           }
 
-          if (targetItem) {
-            if (isMovingGroup) {
-              // Use moveIsland (chrome.tabGroups.move) to move the entire group atomically.
-              // This prevents the group from being ungrouped or split during the move.
-              const numericGroupId = parseNumericId(targetItem.id);
-              if (numericGroupId !== null) {
-                await moveIsland(numericGroupId, browserIndex);
-              }
-            } else {
-              const tabId = parseNumericId(activeId);
-              if (tabId !== null) {
-                await chrome.tabs.move(tabId, { index: browserIndex });
-                if (targetIslandId) {
-                  const numericIslandId = parseNumericId(targetIslandId);
-                  if (numericIslandId !== null) {
-                    await chrome.tabs.group({ tabIds: tabId, groupId: numericIslandId });
-                  }
-                } else {
-                  try { await chrome.tabs.ungroup(tabId); } catch (e) { }
-                }
-              }
+          if (!targetItem) return;
+
+          if (isMovingGroup) {
+            const numericGroupId = parseNumericId(targetItem.id);
+            if (numericGroupId !== null && dragStartInfo) {
+              const command = new MoveIslandCommand({
+                islandId: numericGroupId,
+                fromIndex: dragStartInfo.index,
+                toIndex: browserIndex,
+                fromWindowId: dragStartInfo.windowId,
+                toWindowId: dragStartInfo.windowId
+              });
+              await executeCommand(command);
+            }
+          } else {
+            const tabId = parseNumericId(activeId);
+            if (tabId !== null && dragStartInfo) {
+              const toGroupId = targetIslandId ? parseNumericId(targetIslandId) : -1;
+              const command = new MoveTabCommand({
+                tabId,
+                fromIndex: dragStartInfo.index,
+                toIndex: browserIndex,
+                fromGroupId: dragStartInfo.groupId,
+                toGroupId: toGroupId ?? -1,
+                fromWindowId: dragStartInfo.windowId,
+                toWindowId: dragStartInfo.windowId
+              });
+              await executeCommand(command);
             }
           }
 
@@ -1181,6 +1410,7 @@ export const Dashboard: React.FC = () => {
         }
         return;
       }
+
 
       // SCENARIO 4: Restore (Vault -> Live)
       // (isVaultSource && !isVaultTarget)
@@ -1189,13 +1419,14 @@ export const Dashboard: React.FC = () => {
 
         try {
           if (activeId) {
-            await restoreFromVault(activeId as any);
+            await restoreFromVault(activeId);
           }
         } finally {
           setIsLoading(false);
         }
         return;
       }
+
     } finally {
       // Orchestrate drag-end state and refresh logic
       useStore.getState().setIsUpdating(false);
@@ -1277,7 +1508,7 @@ export const Dashboard: React.FC = () => {
             )}
           </div>
           <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.1' } } }) }}>
-            {activeItem ? (activeItem.type === 'island' ? <Island island={activeItem.island} isOverlay /> : <TabCard tab={activeItem.tab} isOverlay />) : null}
+            {activeItem ? <DragOverlayContent activeItem={activeItem} /> : null}
           </DragOverlay>
         </DndContext>
       </ErrorBoundary>

@@ -664,11 +664,11 @@ services/
 - **Reference**: `src/utils/chromeApi.ts` (existing API wrappers)
 
 **Acceptance Criteria**:
-- [ ] Service layer created with 4 services
-- [ ] Store actions delegate to services
-- [ ] Services are independently testable
-- [ ] Mock services work in tests
-- [ ] bun test src/services/__tests__/ → PASS
+- [x] Service layer created with 4 services
+- [x] Store actions delegate to services
+- [x] Services are independently testable
+- [x] Mock services work in tests
+- [x] bun test src/services/__tests__/ → PASS
 
 #### Task 3.3: Implement Command Pattern for Actions
 **Priority**: P2.3 (Medium)
@@ -699,11 +699,11 @@ const executeCommand = useStore(state => state.executeCommand);
 - **Reference**: `src/components/Island.tsx:1` (current action usage)
 
 **Acceptance Criteria**:
-- [ ] Command interface defined
-- [ ] MoveTabCommand implemented with undo
-- [ ] Command queue in store
-- [ ] Undo/redo UI in Sidebar
-- [ ] bun test src/store/__tests__/commands.test.ts → PASS
+- [x] Command interface defined
+- [x] MoveTabCommand implemented with undo
+- [x] Command queue in store
+- [x] Undo/redo UI in Sidebar
+- [x] bun test src/store/__tests__/commands.test.ts → PASS
 
 #### Task 3.4: Extract Magic Numbers to Constants
 **Priority**: P2.4 (Medium)
@@ -728,10 +728,10 @@ export const ISLAND_CREATION_DELAY_MS = 100;
 - **Reference**: Multiple files (magic numbers locations)
 
 **Acceptance Criteria**:
-- [ ] constants.ts created with all magic numbers
-- [ ] All usages replaced with constants
-- [ ] tsc --noEmit passes
-- [ ] bun test src/__tests__/constants.test.ts → PASS
+- [x] constants.ts created with all magic numbers
+- [x] All usages replaced with constants
+- [x] tsc --noEmit passes
+- [x] bun test src/__tests__/constants.test.ts → PASS
 
 #### Task 3.5: Replace Nested Ternaries with Early Returns
 **Priority**: P2.5 (Medium)
@@ -747,9 +747,9 @@ export const ISLAND_CREATION_DELAY_MS = 100;
 - **Reference**: `src/components/Dashboard.tsx` (nested ternaries)
 
 **Acceptance Criteria**:
-- [ ] Dashboard.tsx readability improved
-- [ ] Cognitive complexity reduced
-- [ ] bun test src/components/__tests__/Dashboard.test.ts → PASS
+- [x] Dashboard.tsx readability improved
+- [x] Cognitive complexity reduced
+- [x] bun test src/components/__tests__/Dashboard.test.ts → PASS
 
 #### Task 3.6: Fix Implicit Any Types
 **Priority**: P2.6 (Medium)
@@ -773,10 +773,10 @@ const useProximityGap = (gapId: string, active: UniqueIdentifier | null, isDragg
 - **Reference**: `src/components/Dashboard.tsx:38`, `src/store/useStore.ts` (any types)
 
 **Acceptance Criteria**:
-- [ ] No implicit any types remain
-- [ ] tsc --noEmit passes with strict mode
-- [ ] IDE autocomplete works correctly
-- [ ] bun test → PASS
+- [x] No implicit any types remain
+- [x] tsc --noEmit passes with strict mode
+- [x] IDE autocomplete works correctly
+- [x] bun test → PASS
 
 #### Task 3.7: Memoize Drag Overlay
 **Priority**: P2.7 (Medium)
@@ -792,10 +792,10 @@ const useProximityGap = (gapId: string, active: UniqueIdentifier | null, isDragg
 - **Reference**: `src/components/Dashboard.tsx` (DragOverlay usage)
 
 **Acceptance Criteria**:
-- [ ] DragOverlay content memoized
-- [ ] Frame drops eliminated during drag
-- [ ] Performance test shows improvement
-- [ ] bun test → PASS
+- [x] DragOverlay content memoized
+- [x] Frame drops eliminated during drag
+- [x] Performance test shows improvement
+- [x] bun test → PASS
 
 #### Task 3.8: Add Optional Chaining for Nullable Access
 **Priority**: P2.8 (Medium)
