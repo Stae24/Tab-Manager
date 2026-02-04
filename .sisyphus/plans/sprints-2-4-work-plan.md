@@ -127,12 +127,12 @@ export class ErrorBoundary extends React.Component<
 - **Reference**: `src/App.tsx:1` (App root), `src/components/Dashboard.tsx:1` (main DnD context)
 
 **Acceptance Criteria**:
-- [ ] ErrorBoundary component created: `src/components/ErrorBoundary.tsx`
-- [ ] DefaultErrorUI with recovery options implemented
-- [ ] App.tsx wrapped with ErrorBoundary
-- [ ] DnD-specific ErrorBoundary around Drag contexts
-- [ ] Tests verify error catching and recovery
-- [ ] bun test src/components/__tests__/ErrorBoundary.test.ts → PASS
+- [x] ErrorBoundary component created: `src/components/ErrorBoundary.tsx`
+- [x] DefaultErrorUI with recovery options implemented
+- [x] App.tsx wrapped with ErrorBoundary
+- [x] DnD-specific ErrorBoundary around Drag contexts
+- [x] Tests verify error catching and recovery
+- [x] bun test src/components/__tests__/ErrorBoundary.test.ts → PASS
 
 **Agent-Executed QA Scenarios**:
 ```
