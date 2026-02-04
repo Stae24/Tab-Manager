@@ -5,7 +5,15 @@ import { cn } from '../utils/cn';
 import { AppearanceSettingsPanel } from './AppearanceSettingsPanel';
 
 export const Sidebar: React.FC = () => {
-  const { isDarkMode, toggleTheme, appearanceSettings, setAppearanceSettings, islands, vault, showVault, setShowVault, showAppearancePanel, setShowAppearancePanel } = useStore();
+  const isDarkMode = useStore(state => state.isDarkMode);
+  const toggleTheme = useStore(state => state.toggleTheme);
+  const islands = useStore(state => state.islands);
+  const vault = useStore(state => state.vault);
+  const showVault = useStore(state => state.showVault);
+  const setShowVault = useStore(state => state.setShowVault);
+  const showAppearancePanel = useStore(state => state.showAppearancePanel);
+  const setShowAppearancePanel = useStore(state => state.setShowAppearancePanel);
+  
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const appearancePanelRef = useRef<HTMLDivElement>(null);

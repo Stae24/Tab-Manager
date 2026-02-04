@@ -258,11 +258,11 @@ const showVault = useStore(state => state.showVault);
 - **Reference**: `src/store/useStore.ts:1` (store structure)
 
 **Acceptance Criteria**:
-- [ ] Sidebar.tsx converted to selective subscriptions
-- [ ] AppearanceSettingsPanel.tsx converted to selective subscriptions
-- [ ] Dashboard.tsx converted to selective subscriptions
-- [ ] React DevTools Profiler shows reduced re-render count
-- [ ] bun test src/__tests__/useStore.test.ts → PASS
+- [x] Sidebar.tsx converted to selective subscriptions
+- [x] AppearanceSettingsPanel.tsx converted to selective subscriptions
+- [x] Dashboard.tsx converted to selective subscriptions
+- [x] React DevTools Profiler shows reduced re-render count
+- [x] bun test src/__tests__/useStore.test.ts → PASS
 
 **Agent-Executed QA Scenarios**:
 ```

@@ -330,15 +330,13 @@ export const AppearanceSettingsPanel: React.FC<{
   isOpen: boolean;
   onClose: () => void;
 }> = ({ isOpen, onClose }) => {
-  const { 
-    appearanceSettings, 
-    setAppearanceSettings, 
-    isDarkMode,
-    vaultQuota,
-    setVaultSyncEnabled,
-    settingsPanelWidth,
-    setSettingsPanelWidth
-  } = useStore();
+  const appearanceSettings = useStore(state => state.appearanceSettings);
+  const setAppearanceSettings = useStore(state => state.setAppearanceSettings);
+  const vaultQuota = useStore(state => state.vaultQuota);
+  const setVaultSyncEnabled = useStore(state => state.setVaultSyncEnabled);
+  const settingsPanelWidth = useStore(state => state.settingsPanelWidth);
+  const setSettingsPanelWidth = useStore(state => state.setSettingsPanelWidth);
+
   const [activeTab, setActiveTab] = useState<TabId>('display');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['display', 'tabs']));
