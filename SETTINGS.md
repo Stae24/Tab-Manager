@@ -196,6 +196,18 @@ A comprehensive list of customizable settings for the Island Manager Chrome exte
 - **Default:** `on`
 - **Description:** Start in rename mode when creating a new group.
 
+### Sort Groups by Tab Count
+- **Setting:** `sortGroupsByCount`
+- **Type:** Toggle (on/off)
+- **Default:** `on`
+- **Description:** When using "Sort Groups to Top", sort groups from most tabs to least tabs.
+
+### Sort Vault Groups by Tab Count
+- **Setting:** `sortVaultGroupsByCount`
+- **Type:** Toggle (on/off)
+- **Default:** `on`
+- **Description:** When using "Sort Vault Groups to Top", sort groups from most tabs to least tabs.
+
 ---
 
 ## Vault Settings

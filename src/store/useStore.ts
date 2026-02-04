@@ -50,6 +50,9 @@ interface AppearanceSettings {
   faviconSource: FaviconSource;
   faviconFallback: FaviconFallback;
   faviconSize: FaviconSize;
+
+  sortGroupsByCount: boolean;
+  sortVaultGroupsByCount: boolean;
 }
 
 // Export default appearance settings for reset functionality
@@ -77,6 +80,8 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   faviconSource: 'google',
   faviconFallback: 'duckduckgo',
   faviconSize: '32',
+  sortGroupsByCount: true,
+  sortVaultGroupsByCount: true,
 };
 
 interface TabState {
@@ -889,11 +894,15 @@ export const useStore = create<TabState>((set, get) => ({
       return;
     }
 
-    const { islands, setIsUpdating, syncLiveTabs } = get();
+    const { islands, appearanceSettings, setIsUpdating, syncLiveTabs } = get();
 
     const pinned = islands.filter(i => !isIsland(i) && (i as Tab).pinned);
-    const groups = islands.filter(isIsland);
+    let groups = islands.filter(isIsland);
     const loose = islands.filter(i => !isIsland(i) && !(i as Tab).pinned);
+
+    if (appearanceSettings.sortGroupsByCount) {
+      groups = [...groups].sort((a, b) => b.tabs.length - a.tabs.length);
+    }
 
     const sorted = [...pinned, ...groups, ...loose];
     if (sorted.every((item, idx) => item.id === islands[idx]?.id)) return;
@@ -930,15 +939,19 @@ export const useStore = create<TabState>((set, get) => ({
   },
 
   sortVaultGroupsToTop: async () => {
-    const { vault } = get();
+    const { vault, appearanceSettings } = get();
     const pinned = vault.filter(i => !isIsland(i) && (i as any).pinned);
-    const groups = vault.filter(isIsland);
+    const vaultGroups = vault.filter(isIsland) as (Island & { savedAt: number; originalId: UniversalId; })[];
+    let groups = [...vaultGroups];
     const loose = vault.filter(i => !isIsland(i) && !(i as any).pinned);
+
+    if (appearanceSettings.sortVaultGroupsByCount) {
+      groups = groups.sort((a, b) => b.tabs.length - a.tabs.length);
+    }
 
     const sorted = [...pinned, ...groups, ...loose];
     if (sorted.every((item, idx) => item.id === vault[idx]?.id)) return;
 
-    // Use reorderVault to ensure persistence and quota refresh
     await get().reorderVault(sorted);
   },
 
