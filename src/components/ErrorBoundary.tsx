@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Terminal, LogOut } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { logger } from '../utils/logger';
 
 interface Props {
   children?: ReactNode;
@@ -26,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(`[ErrorBoundary:${this.props.name || 'Global'}]`, error, errorInfo);
+    logger.error(`[ErrorBoundary:${this.props.name || 'Global'}]`, error, errorInfo);
     this.setState({ errorInfo });
   }
 

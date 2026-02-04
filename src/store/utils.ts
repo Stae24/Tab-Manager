@@ -1,5 +1,6 @@
 import { UniqueIdentifier } from '@dnd-kit/core';
 import { Island, Tab, VaultItem, AppearanceSettings, LiveItem } from '../types/index';
+import { logger } from '../utils/logger';
 import { 
   DEBOUNCE_DEFAULT_MS, 
   CHROME_32BIT_INT_MAX, 
@@ -40,9 +41,9 @@ export const parseNumericId = (id: UniqueIdentifier): number | null => {
 
   // Log failure to aid debugging, especially for "live-" prefixed IDs which should always have a numeric component
   if (idStr.startsWith('live-')) {
-    console.error(`[Store] Failed to parse mandatory numeric ID from live item: ${idStr}`);
+    logger.error(`[Store] Failed to parse mandatory numeric ID from live item: ${idStr}`);
   } else {
-    console.debug(`[Store] No numeric ID found in: ${idStr}`);
+    logger.debug(`[Store] No numeric ID found in: ${idStr}`);
   }
 
   return null;
@@ -190,7 +191,7 @@ export const performSync = async (settings: SyncState, retryCount = 0) => {
     const isQuotaError = message.includes('QUOTA_EXCEEDED');
     const isThrottled = message.includes('MAX_WRITE_OPERATIONS') || message.includes('throttled');
     
-    console.error(`[SyncSettings] Failed to sync settings (attempt ${retryCount + 1}):`, error);
+    logger.error(`[SyncSettings] Failed to sync settings (attempt ${retryCount + 1}):`, error);
     
     if (retryCount < MAX_SYNC_RETRIES && (isQuotaError || isThrottled)) {
       const delay = INITIAL_SYNC_BACKOFF * Math.pow(2, retryCount);

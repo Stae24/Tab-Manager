@@ -1,5 +1,6 @@
 import { Tab, Island, LiveItem } from '../types/index';
 import { MAX_SYNC_RETRIES, TAB_ACTION_RETRY_DELAY_BASE } from '../constants';
+import { logger } from '../utils/logger';
 
 const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = MAX_SYNC_RETRIES): Promise<T> => {
   let lastError: unknown;
@@ -17,7 +18,7 @@ const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = M
       
       if (isRetryable && attempt < maxAttempts) {
         const delay = TAB_ACTION_RETRY_DELAY_BASE * Math.pow(2, attempt - 1);
-        console.warn(`[${label}] Attempt ${attempt} failed. Retrying in ${delay}ms...`, msg);
+        logger.warn(`[${label}] Attempt ${attempt} failed. Retrying in ${delay}ms...`, msg);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -91,7 +92,7 @@ export const tabService = {
         'moveIsland'
       );
     } catch (error) {
-      console.error(`[moveIsland] Failed to move group ${groupId} to index ${index} (window ${windowId}):`, error);
+      logger.error(`[moveIsland] Failed to move group ${groupId} to index ${index} (window ${windowId}):`, error);
       throw error;
     }
   },
@@ -103,7 +104,7 @@ export const tabService = {
         'moveTab'
       );
     } catch (error) {
-      console.error(`[moveTab] Failed to move tab ${tabId} to index ${index} (window ${windowId}):`, error);
+      logger.error(`[moveTab] Failed to move tab ${tabId} to index ${index} (window ${windowId}):`, error);
       throw error;
     }
   },
@@ -146,7 +147,7 @@ export const tabService = {
       const finalTabIds = sameWindowTabs.map(t => t.id as number);
 
       if (finalTabIds.length === 0) {
-          console.warn(`[createIsland] No tabs found for target window ${targetWindowId}`);
+          logger.warn(`[createIsland] No tabs found for target window ${targetWindowId}`);
           return null;
       }
       
@@ -162,7 +163,7 @@ export const tabService = {
             finalTabIds.push(newTab.id);
           }
         } catch (e) {
-          console.warn('[createIsland] Could not create companion tab:', e);
+          logger.warn('[createIsland] Could not create companion tab:', e);
         }
       }
 
@@ -180,7 +181,7 @@ export const tabService = {
       
       return groupId;
     } catch (error) {
-      console.error('[createIsland] Grouping failed:', error);
+      logger.error('[createIsland] Grouping failed:', error);
       return null;
     }
   },
@@ -192,7 +193,7 @@ export const tabService = {
         'ungroupTab'
       );
     } catch (error) {
-      console.error(`[ungroupTab] Failed to ungroup tabs:`, error);
+      logger.error(`[ungroupTab] Failed to ungroup tabs:`, error);
       throw error;
     }
   },
@@ -209,7 +210,7 @@ export const tabService = {
               if (msg.includes('saved') || msg.includes('editable')) {
                 reject(new Error(msg));
               } else {
-                console.error(`[updateTabGroup] Error updating group ${groupId}:`, msg);
+                logger.error(`[updateTabGroup] Error updating group ${groupId}:`, msg);
                 resolve(false);
               }
             } else {
@@ -221,9 +222,9 @@ export const tabService = {
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg.includes('saved') || msg.includes('editable')) {
-        console.warn(`[updateTabGroup] Group ${groupId} is not editable (likely saved):`, msg);
+        logger.warn(`[updateTabGroup] Group ${groupId} is not editable (likely saved):`, msg);
       } else {
-        console.error(`[updateTabGroup] Fatal error updating group ${groupId}:`, error);
+        logger.error(`[updateTabGroup] Fatal error updating group ${groupId}:`, error);
       }
       return false;
     }
@@ -311,7 +312,7 @@ export const tabService = {
       );
       
       if (!targetWindow.id) {
-        console.error('[GroupSearchResults] No target window found');
+        logger.error('[GroupSearchResults] No target window found');
         return;
       }
 
@@ -344,7 +345,7 @@ export const tabService = {
             );
             tabsToGroup.push(tab.id as number);
           } catch (error) {
-            console.error(`[GroupSearchResults] Failed to move tab ${tab.id}:`, error);
+            logger.error(`[GroupSearchResults] Failed to move tab ${tab.id}:`, error);
           }
         } else {
           tabsToGroup.push(tab.id as number);
@@ -400,11 +401,11 @@ export const tabService = {
             await tabService.updateTabGroup(groupId, { color: groupColor as chrome.tabGroups.Color });
           }
         } catch (error) {
-          console.error('[GroupSearchResults] Failed to group tabs:', error);
+          logger.error('[GroupSearchResults] Failed to group tabs:', error);
         }
       }
     } catch (error) {
-      console.error('[GroupSearchResults] Consolidation failed:', error);
+      logger.error('[GroupSearchResults] Consolidation failed:', error);
     }
   }
 };
