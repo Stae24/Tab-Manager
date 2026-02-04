@@ -35,15 +35,24 @@ import { closeTab, moveIsland, createIsland } from '../utils/chromeApi';
 import { Island as IslandType, Tab as TabType, VaultQuotaInfo } from '../types/index';
 
 // Proximity tracking hook for droppable gaps
-const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) => {
+export const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) => {
   const { setNodeRef, isOver } = useDroppable({ id: gapId });
   const gapRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const handlerRef = useRef<((e: PointerEvent) => void) | null>(null);
 
   useEffect(() => {
+    const cleanup = () => {
+      if (handlerRef.current) {
+        document.removeEventListener('pointermove', handlerRef.current);
+        handlerRef.current = null;
+      }
+    };
+
     if (!active || !gapRef.current || isDraggingGroup) {
       setExpanded(false);
-      return;
+      cleanup();
+      return cleanup;
     }
 
     // Track pointer movement for proximity detection
@@ -68,11 +77,11 @@ const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) 
       setExpanded((expandUp || expandDown) && isWithinHorizontal);
     };
 
+    cleanup();
+    handlerRef.current = handlePointerMove;
     document.addEventListener('pointermove', handlePointerMove);
 
-    return () => {
-      document.removeEventListener('pointermove', handlePointerMove);
-    };
+    return cleanup;
   }, [active, isDraggingGroup]);
 
   return { setNodeRef, gapRef, isOver, expanded };
