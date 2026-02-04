@@ -125,11 +125,14 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
 };
 
 // Tactical Item Discovery
-export const findItemInList = (list: (LiveItem | VaultItem)[], id: UniqueIdentifier) => {
+export const findItemInList = <T extends LiveItem | VaultItem>(
+  list: T[], 
+  id: UniqueIdentifier
+): { item: T | Tab; containerId: UniqueIdentifier | 'root'; index: number } | null => {
   const idStr = String(id);
 
   // Check root level first
-  const rootIndex = list.findIndex(i => i && String(i.id) == idStr);
+  const rootIndex = list.findIndex(i => i && String(i.id) === idStr);
   if (rootIndex !== -1) {
     return { item: list[rootIndex], containerId: 'root' as const, index: rootIndex };
   }
@@ -137,14 +140,23 @@ export const findItemInList = (list: (LiveItem | VaultItem)[], id: UniqueIdentif
   // Check nested levels (tabs inside groups)
   for (const entry of list) {
     if (entry && 'tabs' in entry && Array.isArray(entry.tabs)) {
-      const tabs = entry.tabs;
-      const tabIndex = tabs.findIndex((t: Tab) => String(t.id) == idStr);
+      const tabs = entry.tabs as Tab[];
+      const tabIndex = tabs.findIndex((t: Tab) => String(t.id) === idStr);
       if (tabIndex !== -1) {
-        return { item: tabs[tabIndex], containerId: entry.id, index: tabIndex };
+        return { item: tabs[tabIndex], containerId: (entry as T).id, index: tabIndex };
       }
     }
   }
   return null;
+};
+
+export const cloneWithDeepGroups = <T extends LiveItem | VaultItem>(list: T[]): T[] => {
+  return list.map(item => {
+    if (item && 'tabs' in item) {
+      return { ...item, tabs: [...(item.tabs || [])] } as T;
+    }
+    return item;
+  });
 };
 
 // Default appearance settings for reset functionality
