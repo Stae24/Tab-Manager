@@ -79,3 +79,54 @@ export interface VaultLoadResult {
   vault: VaultItem[];
   timestamp: number;
 }
+
+// Appearance settings types
+export type ThemeMode = 'dark' | 'light' | 'system';
+export type AnimationIntensity = 'full' | 'subtle' | 'off';
+export type AudioIndicatorMode = 'off' | 'playing' | 'muted' | 'both';
+export type BorderRadius = 'none' | 'small' | 'medium' | 'large' | 'full';
+export type ButtonSize = 'small' | 'medium' | 'large';
+export type IconPack = 'gx' | 'default' | 'minimal';
+export type MenuPosition = 'left' | 'center' | 'right';
+export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | 'icon-horse';
+export type FaviconFallback = FaviconSource | 'none';
+export type FaviconSize = '16' | '32' | '64' | '128';
+
+export interface AppearanceSettings {
+  // v1 - Essential
+  theme: ThemeMode;
+  uiScale: number;
+  settingsScale: number;
+  tabDensity: 'minified' | 'compact' | 'normal' | 'spacious';
+  animationIntensity: AnimationIntensity;
+
+  // v1.1 - High Value
+  showFavicons: boolean;
+  showAudioIndicators: AudioIndicatorMode;
+  showFrozenIndicators: boolean;
+  showActiveIndicator: boolean;
+  showTabCount: boolean;
+
+  // v1.2 - Polish
+  accentColor: string;
+  borderRadius: BorderRadius;
+  compactGroupHeaders: boolean;
+  buttonSize: ButtonSize;
+  iconPack: IconPack;
+
+  // v2 - Nice to Have
+  customFontFamily?: string;
+  dragOpacity: number;
+  loadingSpinnerStyle: 'pulse' | 'dots' | 'bars' | 'ring';
+  menuPosition: MenuPosition;
+
+  // v2.1 - Storage
+  vaultSyncEnabled: boolean;
+
+  faviconSource: FaviconSource;
+  faviconFallback: FaviconFallback;
+  faviconSize: FaviconSize;
+
+  sortGroupsByCount: boolean;
+  sortVaultGroupsByCount: boolean;
+}
