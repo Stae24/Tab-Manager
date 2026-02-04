@@ -279,7 +279,7 @@ const LivePanel: React.FC<{
                         onTabClick={(tab) => handleTabClick(tab.id)}
                         onNonDestructiveSave={() => saveToVault(row.item)}
                         onSave={() => moveToVault(row.item.id)}
-                        onDelete={() => (row.item as IslandType).tabs.forEach((t: TabType) => closeTab(t.id))}
+                        onDelete={() => (row.item as IslandType).tabs?.forEach((t: TabType) => closeTab(t.id))}
                         onRename={(title) => onRenameGroup(row.item.id, title)}
                         onToggleCollapse={() => onToggleCollapse(row.item.id)}
                         onTabSave={(tab) => saveToVault(tab)}
@@ -739,7 +739,7 @@ const LivePanel: React.FC<{
                             onTabClick={(tab) => handleTabClick(tab.id)}
                             onNonDestructiveSave={() => saveToVault(row.item)}
                             onSave={() => moveToVault(row.item.id)}
-                            onDelete={() => (row.item as IslandType).tabs.forEach((t: TabType) => closeTab(t.id))}
+                            onDelete={() => (row.item as IslandType).tabs?.forEach((t: TabType) => closeTab(t.id))}
                             onRename={(title) => onRenameGroup(row.item.id, title)}
                             onToggleCollapse={() => onToggleCollapse(row.item.id)}
                             onTabSave={(tab) => saveToVault(tab)}
@@ -1361,14 +1361,14 @@ export const Dashboard: React.FC = () => {
               break;
             }
             if ('tabs' in item && item.tabs) {
-              const nested = item.tabs.find((t: TabType) => t.id == activeId);
+              const nested = item.tabs?.find((t: TabType) => t.id == activeId);
               if (nested) {
                 targetItem = nested;
                 targetIslandId = item.id;
-                browserIndex += item.tabs.indexOf(nested);
+                browserIndex += item.tabs?.indexOf(nested) ?? 0;
                 break;
               }
-              browserIndex += item.tabs.length;
+              browserIndex += item.tabs?.length ?? 0;
             } else {
               browserIndex += 1;
             }

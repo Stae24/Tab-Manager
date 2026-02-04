@@ -84,7 +84,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       newIslands = islands.map((i: LiveItem) => {
         if (String(i.id) === String(found.containerId) && 'tabs' in i) {
           const group = i as Island;
-          const newTabs = group.tabs.filter((t: Tab) => String(t.id) !== String(item.id));
+          const newTabs = (group.tabs || []).filter((t: Tab) => String(t.id) !== String(item.id));
           return { ...group, tabs: newTabs };
         }
         return i;
@@ -101,7 +101,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       i.id = `vault-${i.id}-${timestamp}`;
 
       if (isIsland(i)) {
-        i.tabs.forEach((t) => transformId(t as Tab & { originalId?: UniversalId }));
+        i.tabs?.forEach((t) => transformId(t as Tab & { originalId?: UniversalId }));
       }
     };
 
@@ -113,7 +113,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
 
     if (isIsland(item)) {
-      const tabIds = item.tabs.map((t: Tab) => parseNumericId(t.id)).filter((id): id is number => id !== null);
+      const tabIds = (item.tabs || []).map((t: Tab) => parseNumericId(t.id)).filter((id): id is number => id !== null);
       if (tabIds.length > 0) {
         await tabService.closeTabs(tabIds);
       }
@@ -135,7 +135,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       i.originalId = i.originalId ?? (numericId !== null ? numericId : i.id);
       i.id = `vault-${i.id}-${timestamp}`;
       if (isIsland(i)) {
-        i.tabs.forEach((t) => transformId(t as Tab & { originalId?: UniversalId }));
+        i.tabs?.forEach((t) => transformId(t as Tab & { originalId?: UniversalId }));
       }
     };
 
@@ -175,7 +175,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
     if (isIsland(item)) {
       const newIds: number[] = [];
-      for (const t of item.tabs) {
+      for (const t of (item.tabs || [])) {
         const nt = await chrome.tabs.create({ url: t.url, active: false, index: insertionIndex + newIds.length });
         if (nt.id) newIds.push(nt.id);
       }
@@ -237,7 +237,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     const loose = vault.filter((i: VaultItem): i is Tab & { savedAt: number; originalId: UniversalId } => !isIsland(i) && !(i as Tab).pinned);
 
     if (appearanceSettings.sortVaultGroupsByCount) {
-      groups = groups.sort((a, b) => b.tabs.length - a.tabs.length);
+      groups = groups.sort((a, b) => (b.tabs?.length || 0) - (a.tabs?.length || 0));
     }
 
     const sorted = [...pinned, ...groups, ...loose];
