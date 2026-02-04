@@ -39,6 +39,7 @@ import { cn } from '../utils/cn';
 import { closeTab, moveIsland, createIsland } from '../utils/chromeApi';
 import { Island as IslandType, Tab as TabType, VaultQuotaInfo, UniversalId, LiveItem } from '../types/index';
 import ErrorBoundary from './ErrorBoundary';
+import { logger } from '../utils/logger';
 import { MoveTabCommand } from '../store/commands/MoveTabCommand';
 import { MoveIslandCommand } from '../store/commands/MoveIslandCommand';
 import { 
@@ -438,7 +439,7 @@ const LivePanel: React.FC<{
   };
 
   const handleGroupResults = () => {
-    console.log('[Dashboard] Grouping search results...');
+    logger.debug('[Dashboard] Grouping search results...');
     groupSearchResults(filteredTabs);
     setSearchQuery('');
   };
@@ -1296,14 +1297,14 @@ export const Dashboard: React.FC = () => {
         const tabId = resolveTabId();
 
         if (!tabId) {
-          console.error(`[FAILED] Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
+          logger.error(`[FAILED] Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
           return;
         }
 
         try {
           const tab = await chrome.tabs.get(tabId);
           if (tab.pinned) {
-            console.warn('[ISLAND] Cannot create island from pinned tab');
+            logger.warn('[ISLAND] Cannot create island from pinned tab');
             return;
           }
 
@@ -1314,15 +1315,15 @@ export const Dashboard: React.FC = () => {
           // Signal background to defer refreshes during group creation
           await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
 
-          console.log(`[ISLAND] Creating island for tab: ${tabId}`);
+          logger.debug(`[ISLAND] Creating island for tab: ${tabId}`);
 
           // Call createIsland with no title to ensure it remains "Untitled"
           const groupId = await createIsland([tabId], undefined, 'blue' as chrome.tabGroups.Color);
 
           if (groupId) {
-            console.log(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
+            logger.info(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
           } else {
-            console.error(`[FAILED] createIsland returned null for tab: ${tabId}`);
+            logger.error(`[FAILED] createIsland returned null for tab: ${tabId}`);
           }
 
           // Signal end of island creation to background (triggers refresh)
@@ -1331,8 +1332,7 @@ export const Dashboard: React.FC = () => {
           // Brief delay for visual feedback completion (ensures pulse completes before refresh)
           await new Promise(r => setTimeout(r, POST_ISLAND_CREATION_DELAY_MS));
         } catch (e) {
-
-          console.error('[ISLAND] Tab no longer exists or access denied', e);
+          logger.error('[ISLAND] Tab no longer exists or access denied', e);
           await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
         } finally {
           setIsCreatingIsland(false);

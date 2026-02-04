@@ -2,6 +2,7 @@ import { StateCreator } from 'zustand';
 import { UniqueIdentifier } from '@dnd-kit/core';
 import { Island, Tab, LiveItem, UniversalId, VaultItem } from '../../types/index';
 import { tabService } from '../../services/tabService';
+import { logger } from '../../utils/logger';
 import { parseNumericId, findItemInList, isIsland } from '../utils';
 
 import type { StoreState } from '../types';
@@ -46,7 +47,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       const entities = await tabService.getLiveTabsAndGroups();
       set({ islands: entities, isRefreshing: false });
     } catch (error) {
-      console.error('Failed to sync live tabs:', error);
+      logger.error('Failed to sync live tabs:', error);
       set({ isRefreshing: false });
     }
   },
@@ -293,7 +294,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       await tabService.closeTabs(idsArray);
       await get().syncLiveTabs();
     } catch (error) {
-      console.error("[Deduplicator] Fatal error during deduplication:", error);
+      logger.error("[Deduplicator] Fatal error during deduplication:", error);
     }
   },
 
@@ -332,7 +333,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
             currentIdx += 1;
           }
         } catch (itemError) {
-          console.warn(`[Sorter] Failed to move item ${item.id}:`, itemError);
+          logger.warn(`[Sorter] Failed to move item ${item.id}:`, itemError);
           currentIdx += isIsland(item) ? (item.tabs?.length || 0) : 1;
         }
       }

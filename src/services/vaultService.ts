@@ -9,6 +9,7 @@ import type {
 } from '../types/index';
 import { quotaService } from './quotaService';
 import { STORAGE_VERSION, VAULT_CHUNK_SIZE } from '../constants';
+import { logger } from '../utils/logger';
 
 const VAULT_META_KEY = 'vault_meta';
 const VAULT_CHUNK_PREFIX = 'vault_chunk_';
@@ -37,7 +38,7 @@ async function getVaultChunkKeys(): Promise<string[]> {
 }
 
 async function loadFromBackup(): Promise<VaultItem[]> {
-  console.warn('[VaultStorage] Attempting to load from local backup');
+  logger.warn('[VaultStorage] Attempting to load from local backup');
   const local = await chrome.storage.local.get(['vault_backup']);
   return (local.vault_backup as VaultItem[]) || [];
 }
@@ -66,7 +67,7 @@ export const vaultService = {
       for (let i = 0; i < chunkKeys.length; i++) {
         const chunk = syncData[chunkKeys[i]] as string | undefined;
         if (chunk === undefined) {
-          console.error(`[VaultStorage] Missing chunk ${chunkKeys[i]}`);
+          logger.error(`[VaultStorage] Missing chunk ${chunkKeys[i]}`);
           return { vault: await loadFromBackup(), timestamp: meta.timestamp };
         }
         chunks.push(chunk);
@@ -76,13 +77,13 @@ export const vaultService = {
       const jsonData = LZString.decompressFromUTF16(compressed);
       
       if (!jsonData) {
-        console.error('[VaultStorage] Decompression failed');
+        logger.error('[VaultStorage] Decompression failed');
         return { vault: await loadFromBackup(), timestamp: meta.timestamp };
       }
       
       const computedChecksum = await computeChecksum(jsonData);
       if (computedChecksum !== meta.checksum) {
-        console.error('[VaultStorage] Checksum mismatch, data may be corrupted');
+        logger.error('[VaultStorage] Checksum mismatch, data may be corrupted');
         return { vault: await loadFromBackup(), timestamp: meta.timestamp };
       }
       
@@ -91,7 +92,7 @@ export const vaultService = {
         timestamp: meta.timestamp
       };
     } catch (error) {
-      console.error('[VaultStorage] Failed to load:', error);
+      logger.error('[VaultStorage] Failed to load:', error);
       return { vault: await loadFromBackup(), timestamp: 0 };
     }
   },
@@ -170,7 +171,7 @@ export const vaultService = {
         warningLevel: newQuota.warningLevel
       };
     } catch (error) {
-      console.error('[VaultStorage] Failed to save:', error);
+      logger.error('[VaultStorage] Failed to save:', error);
       return {
         success: false,
         error: 'SYNC_FAILED',
@@ -230,7 +231,7 @@ export const vaultService = {
       
       return { migrated: false, itemCount: 0, from: 'none' };
     } catch (error) {
-      console.error('[VaultStorage] Migration failed:', error);
+      logger.error('[VaultStorage] Migration failed:', error);
       return { migrated: false, itemCount: 0, error: String(error) };
     }
   },

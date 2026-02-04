@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { vaultService } from '../services/vaultService';
 import { quotaService } from '../services/quotaService';
 import { settingsService } from '../services/settingsService';
+import { logger } from '../utils/logger';
 import { isAppearanceSettings, isVaultItems, defaultAppearanceSettings } from './utils';
 
 import { createTabSlice } from './slices/useTabSlice';
@@ -57,7 +58,7 @@ const init = async () => {
 
   const migrationResult = await vaultService.migrateFromLegacy({ syncEnabled });
   if (migrationResult.migrated) {
-    console.log('[VaultStorage] Migration complete:', migrationResult);
+    logger.info('[VaultStorage] Migration complete:', migrationResult);
   }
 
   const { vault, timestamp } = await vaultService.loadVault({ syncEnabled });

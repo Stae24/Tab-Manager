@@ -845,10 +845,10 @@ export const logger = {
 - **Reference**: `src/store/useStore.ts:925` (current console.log)
 
 **Acceptance Criteria**:
-- [ ] Logger utility created
-- [ ] All console.log replaced with logger.debug
-- [ ] Production has no debug output
-- [ ] bun test src/utils/__tests__/logger.test.ts → PASS
+- [x] Logger utility created
+- [x] All console.log replaced with logger.debug
+- [x] Production has no debug output
+- [x] bun test src/utils/__tests__/logger.test.ts → PASS
 
 #### Task 3.10: Add Generic Constraints
 **Priority**: P2.10 (Medium)
