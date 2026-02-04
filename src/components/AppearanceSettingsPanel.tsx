@@ -29,6 +29,7 @@ import {
   MoreHorizontal,
   Cloud,
   HardDrive,
+  ArrowUp,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
@@ -900,6 +901,28 @@ export const AppearanceSettingsPanel: React.FC<{
                   onChange={(checked) => setAppearanceSettings({ showTabCount: checked })}
                   label="Show Tab Count"
                   description="Display the number of tabs in each group header"
+                />
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                id="sort-groups"
+                title="Sort Groups"
+                icon={ArrowUp}
+                isExpanded={expandedSections.has('sort-groups')}
+                onToggle={() => toggleSection('sort-groups')}
+              >
+                <ToggleSwitch
+                  checked={appearanceSettings.sortGroupsByCount}
+                  onChange={(checked) => setAppearanceSettings({ sortGroupsByCount: checked })}
+                  label="Sort Live Groups by Tab Count"
+                  description="When enabled, Live Workspace groups are sorted from most to least tabs"
+                />
+                <div className="h-2" />
+                <ToggleSwitch
+                  checked={appearanceSettings.sortVaultGroupsByCount}
+                  onChange={(checked) => setAppearanceSettings({ sortVaultGroupsByCount: checked })}
+                  label="Sort Vault Groups by Tab Count"
+                  description="When enabled, Neural Vault groups are sorted from most to least tabs"
                 />
               </CollapsibleSection>
             </>
