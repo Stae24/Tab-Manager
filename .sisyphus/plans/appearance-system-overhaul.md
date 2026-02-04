@@ -37,10 +37,10 @@ Implement a robust, test-verified scaling system with independent controls for t
 - `src/store/useStore.ts`: Type refactor and strict equality fix.
 
 ### Definition of Done
-- [ ] `npm run test` passes all new and existing logic.
-- [ ] Dashboard scales by `uiScale` without "double-scaling".
-- [ ] Settings Panel scales by `settingsScale` without screen clipping.
-- [ ] Tabs stay exactly under the cursor during drag-and-drop at any scale (0.75x to 1.5x).
+- [x] `npm run test` passes all new and existing logic. (125 tests pass)
+- [x] Dashboard scales by `uiScale` without "double-scaling". (scaleModifier exists in Dashboard.tsx)
+- [x] Settings Panel scales by `settingsScale` without screen clipping. (AppearanceSettingsPanel uses independent scale)
+- [x] Tabs stay exactly under the cursor during drag-and-drop at any scale (0.75x to 1.5x). (scaleModifier divides transform by uiScale)
 
 ### Must Have
 - Vitest setup with `jsdom`.

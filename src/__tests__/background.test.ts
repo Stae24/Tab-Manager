@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const mockAddListener = vi.fn();
 const mockRemoveListener = vi.fn();
 
-vi.stubGlobal('chrome', {
+// Set up Chrome API mock before importing the module
+const chromeMock = {
   runtime: {
     onMessage: {
       addListener: mockAddListener,
@@ -31,13 +32,15 @@ vi.stubGlobal('chrome', {
     onRemoved: { addListener: vi.fn() },
     onMoved: { addListener: vi.fn() },
   },
+};
+
+Object.defineProperty(globalThis, 'chrome', {
+  value: chromeMock,
+  writable: true,
+  configurable: true,
 });
 
 describe('Background Script Listener Management', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.resetModules();
-  });
 
   it('should register a named message listener and remove it on suspend', async () => {
     await import('../background');

@@ -32,7 +32,11 @@ const mockChrome = {
   }
 };
 
-vi.stubGlobal('chrome', mockChrome);
+Object.defineProperty(globalThis, 'chrome', {
+  value: mockChrome,
+  writable: true,
+  configurable: true,
+});
 
 describe('Command Pattern Tests', () => {
   beforeEach(() => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { consolidateAndGroupTabs } from '../chromeApi';
 
-vi.stubGlobal('chrome', {
+const chromeMock = {
   windows: {
     getLastFocused: vi.fn(),
   },
@@ -22,6 +22,12 @@ vi.stubGlobal('chrome', {
   runtime: {
     lastError: null,
   },
+};
+
+Object.defineProperty(globalThis, 'chrome', {
+  value: chromeMock,
+  writable: true,
+  configurable: true,
 });
 
 const createMockTab = (id: number, url: string, windowId: number = 1, pinned: boolean = false): chrome.tabs.Tab => ({

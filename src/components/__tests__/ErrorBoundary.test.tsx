@@ -11,17 +11,24 @@ const ThrowError = ({ shouldThrow }: { shouldThrow: boolean }) => {
   return <div>Normal Content</div>;
 };
 
+// Set up location.reload mock
+const mockReload = vi.fn();
+Object.defineProperty(globalThis, 'location', {
+  value: { reload: mockReload },
+  writable: true,
+  configurable: true,
+});
+
 describe('ErrorBoundary Component', () => {
   const originalConsoleError = console.error;
 
   beforeEach(() => {
     console.error = vi.fn();
-    vi.stubGlobal('location', { reload: vi.fn() });
+    mockReload.mockClear();
   });
 
   afterEach(() => {
     console.error = originalConsoleError;
-    vi.unstubAllGlobals();
   });
 
   it('renders children when no error occurs', () => {
