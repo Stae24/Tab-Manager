@@ -568,9 +568,9 @@ try {
 - **Reference**: `src/components/Sidebar.tsx:31-95` (export functionality)
 
 **Acceptance Criteria**:
-- [ ] URL.revokeObjectURL called after export
-- [ ] Test verifies no memory leak after 100 exports
-- [ ] bun test src/components/__tests__/export.test.ts → PASS
+- [x] URL.revokeObjectURL called after export
+- [x] Test verifies no memory leak after 100 exports
+- [x] bun test src/components/__tests__/export.test.ts → PASS
 
 **Agent-Executed QA Scenarios**:
 ```

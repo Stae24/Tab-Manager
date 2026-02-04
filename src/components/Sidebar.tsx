@@ -99,6 +99,11 @@ export const Sidebar: React.FC = () => {
     a.href = url;
     a.download = fileName;
     a.click();
+    
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
+    
     setShowExportDropdown(false);
   };
 
