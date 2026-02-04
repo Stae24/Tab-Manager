@@ -16,7 +16,7 @@ export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | '
 export type FaviconFallback = FaviconSource | 'none';
 export type FaviconSize = '16' | '32' | '64' | '128';
 
-interface AppearanceSettings {
+export interface AppearanceSettings {
   // v1 - Essential
   theme: ThemeMode;
   uiScale: number;
@@ -183,8 +183,79 @@ export const parseNumericId = (id: UniqueIdentifier): number => {
   return num;
 };
 
-const isIsland = (item: any): item is Island => {
-  return item && typeof item === 'object' && 'tabs' in item && Array.isArray(item.tabs);
+export const isTab = (item: unknown): item is Tab => {
+  if (!item || typeof item !== 'object') return false;
+  const t = item as any;
+  return (
+    (typeof t.id === 'string' || typeof t.id === 'number') &&
+    typeof t.title === 'string' &&
+    typeof t.url === 'string' &&
+    typeof t.favicon === 'string' &&
+    typeof t.active === 'boolean' &&
+    typeof t.discarded === 'boolean' &&
+    typeof t.windowId === 'number' &&
+    typeof t.index === 'number' &&
+    typeof t.groupId === 'number'
+  );
+};
+
+export const isIsland = (item: unknown): item is Island => {
+  if (!item || typeof item !== 'object') return false;
+  const i = item as any;
+  return (
+    (typeof i.id === 'string' || typeof i.id === 'number') &&
+    typeof i.title === 'string' &&
+    typeof i.color === 'string' &&
+    typeof i.collapsed === 'boolean' &&
+    Array.isArray(i.tabs) &&
+    i.tabs.every(isTab)
+  );
+};
+
+export const isVaultItem = (item: unknown): item is VaultItem => {
+  if (!item || typeof item !== 'object') return false;
+  const v = item as any;
+  return (
+    typeof v.savedAt === 'number' &&
+    (typeof v.originalId === 'string' || typeof v.originalId === 'number') &&
+    (isIsland(v) || isTab(v))
+  );
+};
+
+export const isVaultItems = (items: unknown): items is VaultItem[] => {
+  return Array.isArray(items) && items.every(isVaultItem);
+};
+
+export const isAppearanceSettings = (settings: unknown): settings is AppearanceSettings => {
+  if (!settings || typeof settings !== 'object') return false;
+  const s = settings as any;
+  
+  return (
+    ['dark', 'light', 'system'].includes(s.theme) &&
+    typeof s.uiScale === 'number' &&
+    typeof s.settingsScale === 'number' &&
+    ['minified', 'compact', 'normal', 'spacious'].includes(s.tabDensity) &&
+    ['full', 'subtle', 'off'].includes(s.animationIntensity) &&
+    typeof s.showFavicons === 'boolean' &&
+    ['off', 'playing', 'muted', 'both'].includes(s.showAudioIndicators) &&
+    typeof s.showFrozenIndicators === 'boolean' &&
+    typeof s.showActiveIndicator === 'boolean' &&
+    typeof s.showTabCount === 'boolean' &&
+    typeof s.accentColor === 'string' &&
+    ['none', 'small', 'medium', 'large', 'full'].includes(s.borderRadius) &&
+    typeof s.compactGroupHeaders === 'boolean' &&
+    ['small', 'medium', 'large'].includes(s.buttonSize) &&
+    ['gx', 'default', 'minimal'].includes(s.iconPack) &&
+    typeof s.dragOpacity === 'number' &&
+    ['pulse', 'dots', 'bars', 'ring'].includes(s.loadingSpinnerStyle) &&
+    ['left', 'center', 'right'].includes(s.menuPosition) &&
+    typeof s.vaultSyncEnabled === 'boolean' &&
+    ['chrome', 'google', 'google-hd', 'duckduckgo', 'icon-horse'].includes(s.faviconSource) &&
+    ['chrome', 'google', 'google-hd', 'duckduckgo', 'icon-horse', 'none'].includes(s.faviconFallback) &&
+    ['16', '32', '64', '128'].includes(s.faviconSize) &&
+    typeof s.sortGroupsByCount === 'boolean' &&
+    typeof s.sortVaultGroupsByCount === 'boolean'
+  );
 };
 
 // Tactical Item Discovery
@@ -995,14 +1066,16 @@ const init = async () => {
 
   const state = useStore.getState();
 
-  if (sync.appearanceSettings) {
-    state.setAppearanceSettings(sync.appearanceSettings as AppearanceSettings);
+  if (sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings)) {
+    state.setAppearanceSettings(sync.appearanceSettings);
   }
   if (sync.dividerPosition) state.setDividerPosition(Number(sync.dividerPosition));
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
   if (sync.settingsPanelWidth !== undefined) state.setSettingsPanelWidth(Number(sync.settingsPanelWidth));
 
-  const syncEnabled = (sync.appearanceSettings as AppearanceSettings)?.vaultSyncEnabled ?? defaultAppearanceSettings.vaultSyncEnabled;
+  const syncEnabled = (sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings))
+    ? sync.appearanceSettings.vaultSyncEnabled
+    : defaultAppearanceSettings.vaultSyncEnabled;
 
   const migrationResult = await migrateFromLegacy({ syncEnabled });
   if (migrationResult.migrated) {
@@ -1017,8 +1090,8 @@ const init = async () => {
 
   chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area === 'sync') {
-      if (changes.appearanceSettings) {
-        state.setAppearanceSettings(changes.appearanceSettings.newValue as AppearanceSettings);
+      if (changes.appearanceSettings && isAppearanceSettings(changes.appearanceSettings.newValue)) {
+        state.setAppearanceSettings(changes.appearanceSettings.newValue);
       }
       if (changes.showVault) state.setShowVault(Boolean(changes.showVault.newValue));
       if (changes.dividerPosition) state.setDividerPosition(Number(changes.dividerPosition.newValue));
@@ -1041,9 +1114,9 @@ const init = async () => {
     if (area === 'local') {
       // For local storage, vault_meta is not written - only the vault key is updated
       // Use direct comparison since there's no timestamp metadata in local storage
-      if (changes.vault && !useStore.getState().appearanceSettings.vaultSyncEnabled) {
+      if (changes.vault && isVaultItems(changes.vault.newValue) && !useStore.getState().appearanceSettings.vaultSyncEnabled) {
         if (!useStore.getState().isUpdating) {
-          useStore.setState({ vault: changes.vault.newValue as VaultItem[] });
+          useStore.setState({ vault: changes.vault.newValue });
           const quota = await getVaultQuota();
           useStore.setState({ vaultQuota: quota });
         }

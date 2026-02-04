@@ -328,13 +328,13 @@ const rowVirtualizer = useVirtualizer({
 - **Reference**: `src/components/Dashboard.tsx:30-79` (current rendering), PRIORITY_RANKINGS research (virtualization analysis)
 
 **Acceptance Criteria**:
-- [ ] @tanstack/react-virtual installed
-- [ ] LivePanel virtualized (islands + standalone tabs)
-- [ ] VaultPanel virtualized
-- [ ] Search mode flattened list virtualized
-- [ ] DnD works within virtualized lists
-- [ ] Performance test: 500 tabs renders in <100ms
-- [ ] bun test src/components/__tests__/virtualization.test.ts → PASS
+- [x] @tanstack/react-virtual installed
+- [x] LivePanel virtualized (islands + standalone tabs)
+- [x] VaultPanel virtualized
+- [x] Search mode flattened list virtualized
+- [x] DnD works within virtualized lists
+- [x] Performance test: 500 tabs renders in <100ms
+- [x] bun test src/components/__tests__/virtualization.test.ts → PASS
 
 **Agent-Executed QA Scenarios**:
 ```
@@ -378,11 +378,11 @@ Scenario: Drag and drop works with virtualization
 - **Reference**: `src/types/index.ts:1` (UniversalId definition), `src/components/TabCard.tsx:10` (current usage)
 
 **Acceptance Criteria**:
-- [ ] Audit all ID-related types and parameters
-- [ ] Replace remaining `number | string` with `UniversalId`
-- [ ] Add type guards for ID parsing
-- [ ] tsc --noEmit passes with no errors
-- [ ] bun test src/__tests__/types.test.ts → PASS
+- [x] Audit all ID-related types and parameters
+- [x] Replace remaining `number | string` with `UniversalId`
+- [x] Add type guards for ID parsing
+- [x] tsc --noEmit passes with no errors
+- [x] bun test src/__tests__/types.test.ts → PASS
 
 **Agent-Executed QA Scenarios**:
 ```
@@ -430,11 +430,11 @@ if (isAppearanceSettings(changes.appearanceSettings.newValue)) {
 - **Reference**: `src/store/useStore.ts:900+` (storage handlers)
 
 **Acceptance Criteria**:
-- [ ] Type guard created for AppearanceSettings
-- [ ] Type guard created for VaultItem validation
-- [ ] All storage handlers use type guards
-- [ ] Invalid data rejected gracefully
-- [ ] bun test src/store/__tests__/typeGuards.test.ts → PASS
+- [x] Type guard created for AppearanceSettings
+- [x] Type guard created for VaultItem validation
+- [x] All storage handlers use type guards
+- [x] Invalid data rejected gracefully
+- [x] bun test src/store/__tests__/typeGuards.test.ts → PASS
 
 **Agent-Executed QA Scenarios**:
 ```
