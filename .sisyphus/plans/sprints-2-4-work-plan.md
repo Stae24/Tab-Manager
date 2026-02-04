@@ -464,10 +464,10 @@ Scenario: Invalid storage data rejected with type guards
 - **Reference**: `src/store/useStore.ts:syncSettings` (current debounce)
 
 **Acceptance Criteria**:
-- [ ] Debounce increased to 5000ms
-- [ ] Exponential backoff implemented for quota errors
-- [ ] Quota monitoring added
-- [ ] bun test src/store/__tests__/sync.test.ts → PASS
+- [x] Debounce increased to 5000ms
+- [x] Exponential backoff implemented for quota errors
+- [x] Quota monitoring added
+- [x] bun test src/store/__tests__/sync.test.ts → PASS
 
 **Agent-Executed QA Scenarios**:
 ```

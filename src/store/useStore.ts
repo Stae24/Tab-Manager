@@ -153,9 +153,29 @@ const debounce = (fn: Function, ms = 500) => {
   };
 };
 
+const MAX_SYNC_RETRIES = 3;
+const INITIAL_SYNC_BACKOFF = 1000;
+
+const performSync = async (settings: any, retryCount = 0) => {
+  try {
+    await chrome.storage.sync.set(settings);
+  } catch (error: any) {
+    const message = error?.message || String(error);
+    const isQuotaError = message.includes('QUOTA_EXCEEDED');
+    const isThrottled = message.includes('MAX_WRITE_OPERATIONS') || message.includes('throttled');
+    
+    console.error(`[SyncSettings] Failed to sync settings (attempt ${retryCount + 1}):`, error);
+    
+    if (retryCount < MAX_SYNC_RETRIES && (isQuotaError || isThrottled)) {
+      const delay = INITIAL_SYNC_BACKOFF * Math.pow(2, retryCount);
+      setTimeout(() => performSync(settings, retryCount + 1), delay);
+    }
+  }
+};
+
 const syncSettings = debounce((settings: any) => {
-  chrome.storage.sync.set(settings);
-}, 1000);
+  performSync(settings);
+}, 5000);
 
 const persistVault = async (vault: VaultItem[], syncEnabled: boolean): Promise<VaultStorageResult> => {
   const result = await saveVault(vault, { syncEnabled });
