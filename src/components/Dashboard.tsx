@@ -716,35 +716,33 @@ const VaultPanel: React.FC<{
 };
 
 export const Dashboard: React.FC = () => {
-  const {
-    isDarkMode,
-    islands,
-    vault,
-    moveToVault,
-    saveToVault,
-    restoreFromVault,
-    dividerPosition,
-    setDividerPosition,
-    removeFromVault,
-    moveItemOptimistically,
-    renameGroup,
-    createVaultGroup,
-    toggleVaultGroupCollapse,
-    toggleLiveGroupCollapse,
-    deleteDuplicateTabs,
-    sortGroupsToTop,
-    sortVaultGroupsToTop,
-    showVault,
-    isRenaming,
-    appearanceSettings,
-    vaultQuota,
-    quotaExceededPending,
-    clearQuotaExceeded,
-    setVaultSyncEnabled,
-    groupSearchResults,
-    groupUngroupedTabs,
-    showAppearancePanel
-  } = useStore();
+  const isDarkMode = useStore(state => state.isDarkMode);
+  const islands = useStore(state => state.islands);
+  const vault = useStore(state => state.vault);
+  const moveToVault = useStore(state => state.moveToVault);
+  const saveToVault = useStore(state => state.saveToVault);
+  const restoreFromVault = useStore(state => state.restoreFromVault);
+  const dividerPosition = useStore(state => state.dividerPosition);
+  const setDividerPosition = useStore(state => state.setDividerPosition);
+  const removeFromVault = useStore(state => state.removeFromVault);
+  const moveItemOptimistically = useStore(state => state.moveItemOptimistically);
+  const renameGroup = useStore(state => state.renameGroup);
+  const createVaultGroup = useStore(state => state.createVaultGroup);
+  const toggleVaultGroupCollapse = useStore(state => state.toggleVaultGroupCollapse);
+  const toggleLiveGroupCollapse = useStore(state => state.toggleLiveGroupCollapse);
+  const deleteDuplicateTabs = useStore(state => state.deleteDuplicateTabs);
+  const sortGroupsToTop = useStore(state => state.sortGroupsToTop);
+  const sortVaultGroupsToTop = useStore(state => state.sortVaultGroupsToTop);
+  const showVault = useStore(state => state.showVault);
+  const isRenaming = useStore(state => state.isRenaming);
+  const appearanceSettings = useStore(state => state.appearanceSettings);
+  const vaultQuota = useStore(state => state.vaultQuota);
+  const quotaExceededPending = useStore(state => state.quotaExceededPending);
+  const clearQuotaExceeded = useStore(state => state.clearQuotaExceeded);
+  const setVaultSyncEnabled = useStore(state => state.setVaultSyncEnabled);
+  const groupSearchResults = useStore(state => state.groupSearchResults);
+  const groupUngroupedTabs = useStore(state => state.groupUngroupedTabs);
+  const showAppearancePanel = useStore(state => state.showAppearancePanel);
 
   const [isResizing, setIsResizing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
