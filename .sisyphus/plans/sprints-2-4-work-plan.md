@@ -637,11 +637,11 @@ store/
 - **Reference**: `src/store/useStore.ts:1` (current structure)
 
 **Acceptance Criteria**:
-- [ ] Store split into 4 focused slices
-- [ ] useStore.ts composes all slices for backward compatibility
-- [ ] Each slice has <300 lines
-- [ ] Tests pass for each slice
-- [ ] bun test src/store/__tests__/ → PASS
+- [x] Store split into 4 focused slices
+- [x] useStore.ts composes all slices for backward compatibility
+- [x] Each slice has <300 lines
+- [x] Tests pass for each slice
+- [x] bun test src/store/__tests__/ → PASS
 
 #### Task 3.2: Create Service Layer for Chrome API
 **Priority**: P2.2 (Medium)
