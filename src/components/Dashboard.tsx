@@ -33,6 +33,8 @@ import { useStore, parseNumericId } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { closeTab, moveIsland, createIsland } from '../utils/chromeApi';
 import { Island as IslandType, Tab as TabType, VaultQuotaInfo } from '../types/index';
+import ErrorBoundary from './ErrorBoundary';
+
 
 // Proximity tracking hook for droppable gaps
 export const useProximityGap = (gapId: string, active: any, isDraggingGroup?: boolean) => {
@@ -1102,70 +1104,73 @@ export const Dashboard: React.FC = () => {
       }}
     >
       <Sidebar />
-      <DndContext
-        sensors={isRenaming ? [] : sensors}
-        collisionDetection={closestCorners}
-        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        modifiers={[scaleModifier]}
-      >
-        <div className="flex flex-1 overflow-hidden relative overscroll-none">
-          <LivePanel
-            dividerPosition={dividerPosition}
-            islands={islands}
-            handleTabClick={handleTabClick}
-            moveToVault={moveToVault}
-            saveToVault={saveToVault}
-            closeTab={handleCloseTab}
-            onRenameGroup={renameGroup}
-            onToggleCollapse={toggleLiveGroupCollapse}
-            isDraggingGroup={isDraggingGroup}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            sortOption={sortOption}
-            setSortOption={setSortOption}
-            filteredTabs={filteredTabs}
-            groupSearchResults={groupSearchResults}
-            groupUngroupedTabs={groupUngroupedTabs}
-            deleteDuplicateTabs={deleteDuplicateTabs}
-            sortGroupsToTop={sortGroupsToTop}
-            showVault={showVault}
-            isCreatingIsland={isCreatingIsland}
-            creatingTabId={creatingTabId}
-          />
-          {showVault && (
-            <>
-              <div 
-                onMouseDown={showAppearancePanel ? undefined : handleMouseDown} 
-                className={cn(
-                  "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-col-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative",
-                  showAppearancePanel && "pointer-events-none opacity-0"
-                )}
-              >
-                <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
-                <GripVertical className="w-4 h-4 text-gx-gray group-hover:text-white transition-colors" />
-              </div>
-              <VaultPanel
-                dividerPosition={dividerPosition}
-                vault={vault}
-                removeFromVault={removeFromVault}
-                isDraggingLiveItem={!isDraggingVaultItem && activeItem !== null}
-                createVaultGroup={createVaultGroup}
-                onRenameGroup={renameGroup}
-                onToggleCollapse={toggleVaultGroupCollapse}
-                sortVaultGroupsToTop={sortVaultGroupsToTop}
-                restoreFromVault={restoreFromVault}
-                vaultQuota={vaultQuota}
-              />
-            </>
-          )}
-        </div>
-        <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.1' } } }) }}>
-          {activeItem ? (activeItem.type === 'island' ? <Island island={activeItem.island} isOverlay /> : <TabCard tab={activeItem.tab} isOverlay />) : null}
-        </DragOverlay>
-      </DndContext>
+      <ErrorBoundary name="Tactical Interface">
+        <DndContext
+          sensors={isRenaming ? [] : sensors}
+          collisionDetection={closestCorners}
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          modifiers={[scaleModifier]}
+        >
+          <div className="flex flex-1 overflow-hidden relative overscroll-none">
+            <LivePanel
+              dividerPosition={dividerPosition}
+              islands={islands}
+              handleTabClick={handleTabClick}
+              moveToVault={moveToVault}
+              saveToVault={saveToVault}
+              closeTab={handleCloseTab}
+              onRenameGroup={renameGroup}
+              onToggleCollapse={toggleLiveGroupCollapse}
+              isDraggingGroup={isDraggingGroup}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              sortOption={sortOption}
+              setSortOption={setSortOption}
+              filteredTabs={filteredTabs}
+              groupSearchResults={groupSearchResults}
+              groupUngroupedTabs={groupUngroupedTabs}
+              deleteDuplicateTabs={deleteDuplicateTabs}
+              sortGroupsToTop={sortGroupsToTop}
+              showVault={showVault}
+              isCreatingIsland={isCreatingIsland}
+              creatingTabId={creatingTabId}
+            />
+            {showVault && (
+              <>
+                <div 
+                  onMouseDown={showAppearancePanel ? undefined : handleMouseDown} 
+                  className={cn(
+                    "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-col-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative",
+                    showAppearancePanel && "pointer-events-none opacity-0"
+                  )}
+                >
+                  <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
+                  <GripVertical className="w-4 h-4 text-gx-gray group-hover:text-white transition-colors" />
+                </div>
+                <VaultPanel
+                  dividerPosition={dividerPosition}
+                  vault={vault}
+                  removeFromVault={removeFromVault}
+                  isDraggingLiveItem={!isDraggingVaultItem && activeItem !== null}
+                  createVaultGroup={createVaultGroup}
+                  onRenameGroup={renameGroup}
+                  onToggleCollapse={toggleVaultGroupCollapse}
+                  sortVaultGroupsToTop={sortVaultGroupsToTop}
+                  restoreFromVault={restoreFromVault}
+                  vaultQuota={vaultQuota}
+                />
+              </>
+            )}
+          </div>
+          <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.1' } } }) }}>
+            {activeItem ? (activeItem.type === 'island' ? <Island island={activeItem.island} isOverlay /> : <TabCard tab={activeItem.tab} isOverlay />) : null}
+          </DragOverlay>
+        </DndContext>
+      </ErrorBoundary>
+
       {isLoading && (
         <div className="absolute inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-[1000]">
           <div className="flex flex-col items-center gap-6">
