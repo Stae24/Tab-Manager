@@ -1,7 +1,10 @@
 import { StateCreator } from 'zustand';
 import { VaultItem, UniversalId, LiveItem, VaultQuotaInfo, VaultStorageResult, Island, Tab } from '../../types/index';
-import { saveVault, getVaultQuota, toggleSyncMode } from '../../utils/vaultStorage';
-import { isIsland, parseNumericId, syncSettings, findItemInList } from '../utils';
+import { vaultService } from '../../services/vaultService';
+import { quotaService } from '../../services/quotaService';
+import { tabService } from '../../services/tabService';
+import { settingsService } from '../../services/settingsService';
+import { isIsland, parseNumericId, findItemInList } from '../utils';
 
 import type { StoreState } from '../types';
 
@@ -33,9 +36,9 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   lastVaultTimestamp: 0,
 
   persistVault: async (vault: VaultItem[], syncEnabled: boolean): Promise<VaultStorageResult> => {
-    const result = await saveVault(vault, { syncEnabled });
+    const result = await vaultService.saveVault(vault, { syncEnabled });
 
-    const quota = await getVaultQuota();
+    const quota = await quotaService.getVaultQuota();
     set({ vaultQuota: quota, lastVaultTimestamp: Date.now() });
 
     if (!result.success && result.error === 'QUOTA_EXCEEDED') {
@@ -45,22 +48,22 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   },
 
   refreshVaultQuota: async () => {
-    const quota = await getVaultQuota();
+    const quota = await quotaService.getVaultQuota();
     set({ vaultQuota: quota });
   },
 
   clearQuotaExceeded: () => set({ quotaExceededPending: null }),
 
   setVaultSyncEnabled: async (enabled: boolean) => {
-    const { vault, appearanceSettings, persistVault } = get();
-    const result = await toggleSyncMode(vault, enabled);
+    const { vault, appearanceSettings } = get();
+    const result = await vaultService.toggleSyncMode(vault, enabled);
 
     if (result.success) {
       const updated = { ...appearanceSettings, vaultSyncEnabled: enabled };
       set({ appearanceSettings: updated });
-      syncSettings({ appearanceSettings: updated });
+      settingsService.saveSettings({ appearanceSettings: updated });
 
-      const quota = await getVaultQuota();
+      const quota = await quotaService.getVaultQuota();
       set({ vaultQuota: quota });
     }
 
@@ -92,13 +95,13 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     const timestamp = Date.now();
     const itemClone = JSON.parse(JSON.stringify(item));
 
-    const transformId = (i: any) => {
+    const transformId = (i: (Island | Tab) & { originalId?: UniversalId }) => {
       const numericId = parseNumericId(i.id);
       i.originalId = i.originalId ?? (numericId !== null ? numericId : i.id);
       i.id = `vault-${i.id}-${timestamp}`;
 
       if (isIsland(i)) {
-        i.tabs.forEach(transformId);
+        i.tabs.forEach((t) => transformId(t as Tab & { originalId?: UniversalId }));
       }
     };
 
@@ -109,16 +112,15 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     set({ vault: newVault });
     await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
 
-    const { closeTab } = await import('../../utils/chromeApi');
     if (isIsland(item)) {
       const tabIds = item.tabs.map((t: Tab) => parseNumericId(t.id)).filter((id): id is number => id !== null);
       if (tabIds.length > 0) {
-        await chrome.tabs.remove(tabIds);
+        await tabService.closeTabs(tabIds);
       }
     } else {
       const numericId = parseNumericId(item.id);
       if (numericId !== null) {
-        await closeTab(numericId);
+        await tabService.closeTab(numericId);
       }
     }
   },
@@ -128,12 +130,12 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     let newItem = JSON.parse(JSON.stringify(item));
     const timestamp = Date.now();
 
-    const transformId = (i: any) => {
+    const transformId = (i: (Island | Tab) & { originalId?: UniversalId }) => {
       const numericId = parseNumericId(i.id);
       i.originalId = i.originalId ?? (numericId !== null ? numericId : i.id);
       i.id = `vault-${i.id}-${timestamp}`;
       if (isIsland(i)) {
-        i.tabs.forEach(transformId);
+        i.tabs.forEach((t) => transformId(t as Tab & { originalId?: UniversalId }));
       }
     };
 
@@ -171,7 +173,6 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       insertionIndex = currentWindowTabs.length;
     }
 
-    const { createIsland } = await import('../../utils/chromeApi');
     if (isIsland(item)) {
       const newIds: number[] = [];
       for (const t of item.tabs) {
@@ -179,7 +180,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
         if (nt.id) newIds.push(nt.id);
       }
       if (newIds.length > 0) {
-        await createIsland(newIds, item.title, item.color as any);
+        await tabService.createIsland(newIds, item.title, item.color as chrome.tabGroups.Color);
       }
     } else {
       await chrome.tabs.create({ url: item.url, active: false, index: insertionIndex });
@@ -230,10 +231,10 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
   sortVaultGroupsToTop: async () => {
     const { vault, appearanceSettings, reorderVault } = get();
-    const pinned = vault.filter((i: any) => !isIsland(i) && (i as any).pinned);
+    const pinned = vault.filter((i: VaultItem): i is Tab & { savedAt: number; originalId: UniversalId } => !isIsland(i) && !!(i as Tab).pinned);
     const vaultGroups = vault.filter(isIsland) as (Island & { savedAt: number; originalId: UniversalId; })[];
     let groups = [...vaultGroups];
-    const loose = vault.filter((i: any) => !isIsland(i) && !(i as any).pinned);
+    const loose = vault.filter((i: VaultItem): i is Tab & { savedAt: number; originalId: UniversalId } => !isIsland(i) && !(i as Tab).pinned);
 
     if (appearanceSettings.sortVaultGroupsByCount) {
       groups = groups.sort((a, b) => b.tabs.length - a.tabs.length);
@@ -247,7 +248,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
   removeFromVault: async (id) => {
     const { vault, appearanceSettings, persistVault } = get();
-    const newVault = vault.filter((v: any) => v && v.id != id);
+    const newVault = vault.filter((v: VaultItem) => v && v.id != id);
     set({ vault: newVault });
     await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
   },

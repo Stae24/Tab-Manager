@@ -1,5 +1,11 @@
 import { StateCreator } from 'zustand';
-import { syncSettings } from '../utils';
+import { settingsService } from '../../services/settingsService';
+import { 
+  DIVIDER_POSITION_DEFAULT, 
+  SETTINGS_PANEL_DEFAULT_WIDTH, 
+  SETTINGS_PANEL_MIN_WIDTH, 
+  SETTINGS_PANEL_MAX_WIDTH 
+} from '../../constants';
 
 export interface UISlice {
   dividerPosition: number;
@@ -15,20 +21,20 @@ export interface UISlice {
 }
 
 export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
-  dividerPosition: 50,
+  dividerPosition: DIVIDER_POSITION_DEFAULT,
   showVault: true,
   isRenaming: false,
   showAppearancePanel: false,
-  settingsPanelWidth: 480,
+  settingsPanelWidth: SETTINGS_PANEL_DEFAULT_WIDTH,
 
   setDividerPosition: (dividerPosition) => {
     set({ dividerPosition });
-    syncSettings({ dividerPosition });
+    settingsService.saveSettings({ dividerPosition });
   },
 
   setShowVault: (showVault) => {
     set({ showVault });
-    syncSettings({ showVault });
+    settingsService.saveSettings({ showVault });
   },
 
   setIsRenaming: (isRenaming) => set({ isRenaming }),
@@ -36,8 +42,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
   setShowAppearancePanel: (showAppearancePanel) => set({ showAppearancePanel }),
 
   setSettingsPanelWidth: (width) => {
-    const clampedWidth = Math.max(320, Math.min(800, width));
+    const clampedWidth = Math.max(SETTINGS_PANEL_MIN_WIDTH, Math.min(SETTINGS_PANEL_MAX_WIDTH, width));
     set({ settingsPanelWidth: clampedWidth });
-    syncSettings({ settingsPanelWidth: clampedWidth });
+    settingsService.saveSettings({ settingsPanelWidth: clampedWidth });
   },
 });

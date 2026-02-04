@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { useProximityGap } from '../Dashboard';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { Active } from '@dnd-kit/core';
 
 vi.mock('@dnd-kit/core', () => ({
   useDroppable: vi.fn(() => ({
@@ -16,6 +17,8 @@ describe('useProximityGap memory leak', () => {
   let addSpy: any;
   let removeSpy: any;
 
+  const mockActive = { id: 'active-item' } as Active;
+
   beforeEach(() => {
     addSpy = vi.spyOn(document, 'addEventListener');
     removeSpy = vi.spyOn(document, 'removeEventListener');
@@ -27,25 +30,25 @@ describe('useProximityGap memory leak', () => {
 
   it('should clean up listeners when active toggles', () => {
     const { rerender, unmount } = renderHook(
-      ({ active, isDraggingGroup }: { active: boolean; isDraggingGroup: boolean }) => {
-        const result = useProximityGap('gap-1', active, isDraggingGroup);
+      (props: { active: Active | null; isDraggingGroup: boolean }) => {
+        const result = useProximityGap('gap-1', props.active, props.isDraggingGroup);
         if (result.gapRef) {
            (result.gapRef as any).current = document.createElement('div');
         }
         return result;
       },
-      { initialProps: { active: true, isDraggingGroup: false } }
+      { initialProps: { active: mockActive as Active | null, isDraggingGroup: false } }
     );
 
     expect(addSpy).toHaveBeenCalledWith('pointermove', expect.any(Function));
     const initialAddCount = addSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;
     expect(initialAddCount).toBe(1);
 
-    rerender({ active: false, isDraggingGroup: false });
+    rerender({ active: null, isDraggingGroup: false });
     const removeCountAfterToggle = removeSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;
     expect(removeCountAfterToggle).toBe(1);
 
-    rerender({ active: true, isDraggingGroup: false });
+    rerender({ active: mockActive, isDraggingGroup: false });
     const addCountAfterBack = addSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;
     expect(addCountAfterBack).toBe(2);
 
@@ -56,19 +59,19 @@ describe('useProximityGap memory leak', () => {
 
   it('should handle rapid toggling without accumulating listeners', () => {
     const { rerender, unmount } = renderHook(
-      ({ active }: { active: boolean }) => {
-        const result = useProximityGap('gap-1', active);
+      (props: { active: Active | null }) => {
+        const result = useProximityGap('gap-1', props.active);
         if (result.gapRef) {
           (result.gapRef as any).current = document.createElement('div');
         }
         return result;
       },
-      { initialProps: { active: true } }
+      { initialProps: { active: mockActive as Active | null } }
     );
 
     for (let i = 0; i < 10; i++) {
-      rerender({ active: false });
-      rerender({ active: true });
+      rerender({ active: null });
+      rerender({ active: mockActive });
     }
 
     const addCount = addSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;

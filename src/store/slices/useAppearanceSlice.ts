@@ -1,6 +1,7 @@
 import { StateCreator } from 'zustand';
 import { AppearanceSettings, ThemeMode } from '../../types/index';
-import { defaultAppearanceSettings, syncSettings } from '../utils';
+import { settingsService } from '../../services/settingsService';
+import { defaultAppearanceSettings } from '../utils';
 
 export interface AppearanceSlice {
   appearanceSettings: AppearanceSettings;
@@ -18,7 +19,6 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
     const updated = { ...current, ...newSettings };
     set({ appearanceSettings: updated });
 
-    // Apply theme changes immediately
     if (newSettings.theme) {
       const { theme } = updated;
       const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -26,12 +26,11 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
       document.documentElement.classList.toggle('dark', isDarkMode);
     }
 
-    // Apply accent color immediately
     if (newSettings.accentColor) {
       document.documentElement.style.setProperty('--gx-accent', newSettings.accentColor);
     }
 
-    syncSettings({ appearanceSettings: updated });
+    settingsService.saveSettings({ appearanceSettings: updated });
   },
 
   toggleTheme: () => {

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Sun, Moon, ZoomIn, ZoomOut, RefreshCw, Download, Settings, X, Save, ChevronDown, Minus, Plus as PlusIcon, Layers } from 'lucide-react';
+import { Plus, Sun, Moon, ZoomIn, ZoomOut, RefreshCw, Download, Settings, X, Save, ChevronDown, Minus, Plus as PlusIcon, Layers, Undo, Redo } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { AppearanceSettingsPanel } from './AppearanceSettingsPanel';
+import { BLOB_URL_REVOKE_DELAY_MS } from '../constants';
+import { Island, Tab, LiveItem, VaultItem } from '../types/index';
 
 export const Sidebar: React.FC = () => {
   const isDarkMode = useStore(state => state.isDarkMode);
@@ -13,6 +15,11 @@ export const Sidebar: React.FC = () => {
   const setShowVault = useStore(state => state.setShowVault);
   const showAppearancePanel = useStore(state => state.showAppearancePanel);
   const setShowAppearancePanel = useStore(state => state.setShowAppearancePanel);
+  const undoStack = useStore(state => state.undoStack);
+  const redoStack = useStore(state => state.redoStack);
+  const undo = useStore(state => state.undo);
+  const redo = useStore(state => state.redo);
+
   
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
@@ -53,45 +60,47 @@ export const Sidebar: React.FC = () => {
       mimeType = 'application/json';
     } else if (format === 'csv') {
       content = 'Type,Group,Title,URL\n';
-      islands.forEach((i: any) => {
+      islands.forEach((i: LiveItem) => {
         if (i && 'tabs' in i) {
-          i.tabs.forEach((t: any) => {
+          i.tabs.forEach((t: Tab) => {
             content += `${escapeCsv('Live')},${escapeCsv(i.title || 'Untitled Group')},${escapeCsv(t.title)},${escapeCsv(t.url)}\n`;
           });
         } else if (i) {
           content += `${escapeCsv('Live')},${escapeCsv('Ungrouped')},${escapeCsv(i.title)},${escapeCsv(i.url)}\n`;
         }
       });
-      vault.forEach(i => {
+      vault.forEach((i: VaultItem) => {
         if ('tabs' in i) {
-          i.tabs.forEach(t => {
+          i.tabs.forEach((t: Tab) => {
             content += `${escapeCsv('Vault')},${escapeCsv(i.title || 'Untitled Group')},${escapeCsv(t.title)},${escapeCsv(t.url)}\n`;
           });
         } else {
           content += `${escapeCsv('Vault')},${escapeCsv('Loose Tab')},${escapeCsv(i.title)},${escapeCsv(i.url)}\n`;
         }
       });
+
       mimeType = 'text/csv';
     } else if (format === 'md') {
       content = '# Tab Manager Export\n\n## Live Workspace\n';
-      islands.forEach((i: any) => {
+      islands.forEach((i: LiveItem) => {
         if (i && 'tabs' in i) {
           content += `### ${i.title || 'Untitled Group'}\n`;
-          i.tabs.forEach((t: any) => content += `- [${t.title}](${t.url})\n`);
+          i.tabs.forEach((t: Tab) => content += `- [${t.title}](${t.url})\n`);
         } else if (i) {
           content += `- [${i.title}](${i.url})\n`;
         }
       });
       content += '\n## Vault\n';
-      vault.forEach(i => {
+      vault.forEach((i: VaultItem) => {
         if ('tabs' in i) {
           content += `### ${i.title || 'Untitled Group'}\n`;
-          i.tabs.forEach(t => content += `- [${t.title}](${t.url})\n`);
+          i.tabs.forEach((t: Tab) => content += `- [${t.title}](${t.url})\n`);
         } else {
           content += `- [${i.title}](${i.url})\n`;
         }
       });
     }
+
 
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -135,6 +144,33 @@ export const Sidebar: React.FC = () => {
           )}
         >
           <Settings size={18} />
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={undo}
+          disabled={undoStack.length === 0}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-white/5",
+            undoStack.length === 0 ? "opacity-30 cursor-not-allowed" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
+          )}
+          title={undoStack.length > 0 ? `Undo ${undoStack[undoStack.length - 1].label}` : 'Nothing to undo'}
+        >
+          <Undo size={14} className="text-gx-accent" />
+          <span className="text-[10px] font-bold uppercase">Undo</span>
+        </button>
+        <button
+          onClick={redo}
+          disabled={redoStack.length === 0}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-white/5",
+            redoStack.length === 0 ? "opacity-30 cursor-not-allowed" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
+          )}
+          title={redoStack.length > 0 ? `Redo ${redoStack[0].label}` : 'Nothing to redo'}
+        >
+          <Redo size={14} className="text-gx-accent" />
+          <span className="text-[10px] font-bold uppercase">Redo</span>
         </button>
       </div>
 

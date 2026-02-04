@@ -1,7 +1,7 @@
 import { StateCreator } from 'zustand';
 import { UniqueIdentifier } from '@dnd-kit/core';
-import { Island, Tab, LiveItem, UniversalId } from '../../types/index';
-import { createIsland, updateTabGroup, updateTabGroupCollapse, moveIsland, moveTab, consolidateAndGroupTabs } from '../../utils/chromeApi';
+import { Island, Tab, LiveItem, UniversalId, VaultItem } from '../../types/index';
+import { tabService } from '../../services/tabService';
 import { parseNumericId, findItemInList, isIsland } from '../utils';
 
 import type { StoreState } from '../types';
@@ -43,58 +43,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     if (!acquiredLock) return;
 
     try {
-      const [chromeTabs, chromeGroups] = await Promise.all([
-        chrome.tabs.query({ currentWindow: true }),
-        chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT })
-      ]);
-
-      const tabs: Tab[] = chromeTabs.map(t => ({
-        id: `live-tab-${t.id}`,
-        title: t.title || 'Untitled',
-        url: t.url || '',
-        favicon: t.favIconUrl || '',
-        active: t.active,
-        discarded: t.discarded,
-        windowId: t.windowId,
-        index: t.index,
-        groupId: t.groupId,
-        muted: t.mutedInfo?.muted ?? false,
-        pinned: t.pinned,
-        audible: t.audible ?? false
-      }));
-
-      const groupMap = new Map<number, Island>();
-      chromeGroups.forEach(g => {
-        groupMap.set(g.id, {
-          id: `live-group-${g.id}`,
-          title: g.title || '',
-          color: g.color,
-          collapsed: g.collapsed,
-          tabs: []
-        });
-      });
-
-      tabs.forEach(t => {
-        if (t.groupId !== -1 && groupMap.has(t.groupId)) {
-          groupMap.get(t.groupId)!.tabs.push(t);
-        }
-      });
-
-      const entities: LiveItem[] = [];
-      const processedGroupIds = new Set<number>();
-
-      tabs.sort((a, b) => a.index - b.index).forEach(t => {
-        if (t.groupId === -1) {
-          entities.push(t);
-        } else if (!processedGroupIds.has(t.groupId)) {
-          const group = groupMap.get(t.groupId);
-          if (group) {
-            entities.push(group);
-            processedGroupIds.add(t.groupId);
-          }
-        }
-      });
-
+      const entities = await tabService.getLiveTabsAndGroups();
       set({ islands: entities, isRefreshing: false });
     } catch (error) {
       console.error('Failed to sync live tabs:', error);
@@ -107,9 +56,9 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     const idStr = String(id);
 
     if (idStr.startsWith('vault-')) {
-      const newVault = vault.map((item: any) => {
+      const newVault = vault.map((item: VaultItem) => {
         if (String(item.id) === idStr && 'tabs' in item) {
-          return { ...item, title: newTitle };
+          return { ...item, title: newTitle } as VaultItem;
         }
         return item;
       });
@@ -118,7 +67,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     } else {
       const numericId = parseNumericId(id);
       if (numericId !== null) {
-        await updateTabGroup(numericId, { title: newTitle });
+        await tabService.updateTabGroup(numericId, { title: newTitle });
       }
     }
   },
@@ -130,7 +79,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
 
     if (idStr.startsWith('vault-') || numericId === null) return;
 
-    const targetIsland = islands.find((i: any) => String(i.id) === idStr && 'tabs' in i);
+    const targetIsland = islands.find((i: LiveItem) => String(i.id) === idStr && 'tabs' in i);
     if (!targetIsland) return;
 
     const newCollapsedState = !(targetIsland as Island).collapsed;
@@ -144,7 +93,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     set({ islands: newIslands });
 
     setIsUpdating(true);
-    const success = await updateTabGroupCollapse(numericId, newCollapsedState);
+    const success = await tabService.updateTabGroupCollapse(numericId, newCollapsedState);
     setIsUpdating(false);
 
     if (!success) {
@@ -191,15 +140,15 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
 
         if (!active) return;
 
-        const activeInLive = islands.some((i: LiveItem) => i && (i.id == activeIdVal || (i as any).tabs?.some((t: any) => t && t.id == activeIdVal)));
+        const activeInLive = islands.some((i: LiveItem) => i && (i.id == activeIdVal || ('tabs' in i && i.tabs?.some((t: Tab) => t && t.id == activeIdVal))));
 
         let targetIsLive = activeInLive;
 
         if (overIdVal === 'live-panel-dropzone' || overIdVal === 'live-bottom') targetIsLive = true;
         else if (overIdVal === 'vault-dropzone' || overIdVal === 'vault-bottom') targetIsLive = false;
         else if (over) {
-          const overInIslands = islands.some((i: LiveItem) => i && (i.id == overIdVal || (i as any).tabs?.some((t: any) => t && t.id == overIdVal)));
-          const overInVault = vault.some((v: any) => v && (v.id == overIdVal || (v as any).tabs?.some((t: any) => t && t.id == overIdVal)));
+          const overInIslands = islands.some((i: LiveItem) => i && (i.id == overIdVal || ('tabs' in i && i.tabs?.some((t: Tab) => t && t.id == overIdVal))));
+          const overInVault = vault.some((v: VaultItem) => v && (v.id == overIdVal || ('tabs' in v && v.tabs?.some((t: Tab) => t && t.id == overIdVal))));
 
           if (overInIslands) targetIsLive = true;
           else if (overInVault) targetIsLive = false;
@@ -260,19 +209,19 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         if (targetIndex === -1) return;
         if (active.containerId === targetContainerId && active.index === targetIndex) return;
 
-        const cloneWithDeepGroups = (list: any[]) => list.map(item =>
+        const cloneWithDeepGroups = (list: (LiveItem | VaultItem)[]) => list.map(item =>
           item && 'tabs' in item ? { ...item, tabs: [...item.tabs] } : item
         );
 
-        const newIslands = activeInLive ? cloneWithDeepGroups(islands) : [...islands];
-        const newVault = activeInLive ? [...vault] : cloneWithDeepGroups(vault);
+        const newIslands = activeInLive ? cloneWithDeepGroups(islands) as LiveItem[] : [...islands];
+        const newVault = activeInLive ? [...vault] : cloneWithDeepGroups(vault) as VaultItem[];
         const rootList = activeInLive ? newIslands : newVault;
 
-        const getTargetList = (root: any[], cId: UniqueIdentifier) => {
+        const getTargetList = (root: (LiveItem | VaultItem)[], cId: UniqueIdentifier): (LiveItem | VaultItem)[] | null => {
           if (cId === 'root') return root;
           const cIdStr = String(cId);
           const group = root.find(i => i && String(i.id) === cIdStr);
-          if (group && Array.isArray(group.tabs)) return group.tabs;
+          if (group && 'tabs' in group && Array.isArray(group.tabs)) return group.tabs as (LiveItem | VaultItem)[];
           return null;
         };
 
@@ -284,7 +233,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         const sourceItem = sourceArr[active.index];
 
         if (!sourceItem || String(sourceItem.id) !== String(activeIdVal)) {
-          const correctIndex = sourceArr.findIndex((item: any) => String(item.id) === String(activeIdVal));
+          const correctIndex = sourceArr.findIndex((item: LiveItem | VaultItem) => String(item.id) === String(activeIdVal));
           if (correctIndex === -1) return;
           active.index = correctIndex;
         }
@@ -341,15 +290,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       if (toCloseIds.size === 0) return;
 
       const idsArray = Array.from(toCloseIds);
-      for (const id of idsArray) {
-        try {
-          if (typeof id === 'number' && !isNaN(id)) {
-            await chrome.tabs.remove(id);
-          }
-        } catch (e) {
-          console.warn(`[Deduplicator] Failed to close tab ${id}:`, e);
-        }
-      }
+      await tabService.closeTabs(idsArray);
       await get().syncLiveTabs();
     } catch (error) {
       console.error("[Deduplicator] Fatal error during deduplication:", error);
@@ -361,9 +302,9 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
 
     const { islands, appearanceSettings, setIsUpdating, syncLiveTabs } = get();
 
-    const pinned = islands.filter((i: any) => !isIsland(i) && (i as Tab).pinned);
+    const pinned = islands.filter((i: LiveItem): i is Tab => !isIsland(i) && !!(i as Tab).pinned);
     let groups = islands.filter(isIsland) as Island[];
-    const loose = islands.filter((i: any) => !isIsland(i) && !(i as Tab).pinned);
+    const loose = islands.filter((i: LiveItem): i is Tab => !isIsland(i) && !(i as Tab).pinned);
 
     if (appearanceSettings.sortGroupsByCount) {
       groups = [...groups].sort((a, b) => b.tabs.length - a.tabs.length);
@@ -384,10 +325,10 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
 
         try {
           if (isIsland(item)) {
-            await moveIsland(numericId, currentIdx);
+            await tabService.moveIsland(numericId, currentIdx);
             currentIdx += item.tabs.length;
           } else {
-            await moveTab(numericId, currentIdx);
+            await tabService.moveTab(numericId, currentIdx);
             currentIdx += 1;
           }
         } catch (itemError) {
@@ -406,7 +347,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     setIsUpdating(true);
     try {
       const numericIds = tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
-      await consolidateAndGroupTabs(numericIds, { color: 'random' });
+      await tabService.consolidateAndGroupTabs(numericIds, { color: 'random' });
       await syncLiveTabs();
     } finally {
       setIsUpdating(false);
@@ -421,10 +362,10 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         .filter((item: LiveItem): item is Tab => !('tabs' in item))
         .filter((tab: Tab) => !tab.pinned)
         .map((tab: Tab) => parseNumericId(tab.id))
-        .filter((id: any): id is number => id !== null);
+        .filter((id: number | null): id is number => id !== null);
       
       if (ungroupedTabIds.length >= 2) {
-        await consolidateAndGroupTabs(ungroupedTabIds, { color: 'random' });
+        await tabService.consolidateAndGroupTabs(ungroupedTabIds, { color: 'random' });
         await syncLiveTabs();
       }
     } finally {

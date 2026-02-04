@@ -95,6 +95,12 @@ const getFallbackSource = (fallback: FaviconFallback, primary: FaviconSource): F
   return fallback;
 };
 
+interface NavigatorWithConnection extends Navigator {
+  connection?: {
+    saveData: boolean;
+  };
+}
+
 export const Favicon: React.FC<FaviconProps> = ({ 
   src, 
   url, 
@@ -109,7 +115,7 @@ export const Favicon: React.FC<FaviconProps> = ({
   const effectiveUrl = url || src;
 
   const isDataSaver = useMemo(() => {
-    return (navigator as any).connection?.saveData === true;
+    return (navigator as NavigatorWithConnection).connection?.saveData === true;
   }, []);
 
   useEffect(() => {

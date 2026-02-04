@@ -33,6 +33,23 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
+import { 
+  PANEL_CLOSE_DELAY_MS, 
+  SETTINGS_PANEL_MIN_WIDTH, 
+  SETTINGS_PANEL_MAX_WIDTH, 
+  SETTINGS_PANEL_WINDOW_GAP, 
+  UI_SCALE_MIN, 
+  UI_SCALE_MAX, 
+  UI_SCALE_STEP, 
+  DRAG_OPACITY_MIN, 
+  DRAG_OPACITY_MAX, 
+  DRAG_OPACITY_STEP, 
+  GX_ACCENT_COLOR, 
+  GX_RED_COLOR, 
+  GX_CYAN_COLOR, 
+  GX_GREEN_COLOR, 
+  DROPDOWN_MAX_HEIGHT 
+} from '../constants';
 import type { ThemeMode, AnimationIntensity, AudioIndicatorMode, BorderRadius, ButtonSize, IconPack, MenuPosition, FaviconSource, FaviconFallback, FaviconSize } from '../store/useStore';
 
 type TabId = 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced';
@@ -229,7 +246,7 @@ const DropdownSelect: React.FC<{
                 top: position.top,
                 left: position.left,
                 width: position.width,
-                maxHeight: '300px',
+                maxHeight: `${DROPDOWN_MAX_HEIGHT}px`,
                 overflowY: 'auto',
               }}
             >
@@ -266,11 +283,11 @@ const ColorPalette: React.FC<{
   label: string;
 }> = ({ value, onChange, label }) => {
   const colors = [
-    { name: 'GX Accent', value: 'gx-accent', color: '#7f22fe' },
-    { name: 'GX Red', value: 'gx-red', color: '#ff1b1b' },
-    { name: 'GX Cyan', value: 'gx-cyan', color: '#00d4ff' },
-    { name: 'GX Green', value: 'gx-green', color: '#00ff88' },
-    { name: 'Custom', value: 'custom', color: 'linear-gradient(135deg, #7f22fe 0%, #ff1b1b 100%)' },
+    { name: 'GX Accent', value: 'gx-accent', color: GX_ACCENT_COLOR },
+    { name: 'GX Red', value: 'gx-red', color: GX_RED_COLOR },
+    { name: 'GX Cyan', value: 'gx-cyan', color: GX_CYAN_COLOR },
+    { name: 'GX Green', value: 'gx-green', color: GX_GREEN_COLOR },
+    { name: 'Custom', value: 'custom', color: `linear-gradient(135deg, ${GX_ACCENT_COLOR} 0%, ${GX_RED_COLOR} 100%)` },
   ];
 
   return (
@@ -362,11 +379,10 @@ export const AppearanceSettingsPanel: React.FC<{
   useEffect(() => {
     const fitPanelToWindow = () => {
       const windowWidth = window.innerWidth;
-      const minGap = 50;
-      const maxAllowedWidth = windowWidth - minGap;
+      const maxAllowedWidth = windowWidth - SETTINGS_PANEL_WINDOW_GAP;
       
       if (panelWidth > maxAllowedWidth) {
-        const newWidth = Math.max(320, maxAllowedWidth);
+        const newWidth = Math.max(SETTINGS_PANEL_MIN_WIDTH, maxAllowedWidth);
         setPanelWidth(newWidth);
         setSettingsPanelWidth(newWidth);
       }
@@ -380,11 +396,10 @@ export const AppearanceSettingsPanel: React.FC<{
   useEffect(() => {
     const handleWindowResize = () => {
       const windowWidth = window.innerWidth;
-      const minGap = 50;
-      const maxAllowedWidth = windowWidth - minGap;
+      const maxAllowedWidth = windowWidth - SETTINGS_PANEL_WINDOW_GAP;
       
       if (panelWidth > maxAllowedWidth) {
-        const newWidth = Math.max(320, maxAllowedWidth);
+        const newWidth = Math.max(SETTINGS_PANEL_MIN_WIDTH, maxAllowedWidth);
         setPanelWidth(newWidth);
         setSettingsPanelWidth(newWidth);
       }
@@ -427,9 +442,9 @@ export const AppearanceSettingsPanel: React.FC<{
     const deltaX = resizeStartX.current - e.clientX;
     const newWidth = resizeStartWidth.current + deltaX;
     
-    const clampedWidth = Math.max(320, Math.min(800, newWidth));
+    const clampedWidth = Math.max(SETTINGS_PANEL_MIN_WIDTH, Math.min(SETTINGS_PANEL_MAX_WIDTH, newWidth));
     
-    const maxAllowedWidth = window.innerWidth - 50;
+    const maxAllowedWidth = window.innerWidth - SETTINGS_PANEL_WINDOW_GAP;
     const finalWidth = Math.min(clampedWidth, maxAllowedWidth);
     
     setPanelWidth(finalWidth);
@@ -475,7 +490,7 @@ export const AppearanceSettingsPanel: React.FC<{
     setTimeout(() => {
       onClose();
       setIsClosing(false);
-    }, 200);
+    }, PANEL_CLOSE_DELAY_MS);
   };
 
   // Filter settings by search
@@ -662,18 +677,18 @@ export const AppearanceSettingsPanel: React.FC<{
                   <SliderControl
                     value={appearanceSettings.uiScale}
                     onChange={(value) => setAppearanceSettings({ uiScale: value })}
-                    min={0.5}
-                    max={2}
-                    step={0.05}
+                    min={UI_SCALE_MIN}
+                    max={UI_SCALE_MAX}
+                    step={UI_SCALE_STEP}
                     label="Interface Scale"
                     displayValue={`${Math.round(appearanceSettings.uiScale * 100)}%`}
                   />
                   <SliderControl
                     value={appearanceSettings.settingsScale}
                     onChange={(value) => setAppearanceSettings({ settingsScale: value })}
-                    min={0.5}
-                    max={2}
-                    step={0.05}
+                    min={UI_SCALE_MIN}
+                    max={UI_SCALE_MAX}
+                    step={UI_SCALE_STEP}
                     label="Settings Panel Scale"
                     displayValue={`${Math.round(appearanceSettings.settingsScale * 100)}%`}
                   />
@@ -1031,9 +1046,9 @@ export const AppearanceSettingsPanel: React.FC<{
                 <SliderControl
                   value={appearanceSettings.dragOpacity}
                   onChange={(value) => setAppearanceSettings({ dragOpacity: value })}
-                  min={0.1}
-                  max={1}
-                  step={0.1}
+                  min={DRAG_OPACITY_MIN}
+                  max={DRAG_OPACITY_MAX}
+                  step={DRAG_OPACITY_STEP}
                   label="Dragged Item Opacity"
                   displayValue={`${Math.round(appearanceSettings.dragOpacity * 100)}%`}
                 />
