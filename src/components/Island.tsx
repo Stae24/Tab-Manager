@@ -4,7 +4,7 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { TabCard } from './TabCard';
 import { cn, getIslandBorderColor, getBorderRadiusClass, getBottomBorderRadiusClass } from '../utils/cn';
-import { Island as IslandType, Tab } from '../types/index';
+import { Island as IslandType, Tab, UniversalId } from '../types/index';
 import { ungroupTab, updateTabGroupCollapse, discardTabs, duplicateIsland } from '../utils/chromeApi';
 import { useStore, parseNumericId } from '../store/useStore';
 
@@ -19,7 +19,7 @@ interface IslandProps {
   onRename?: (title: string) => void;
   onTabSave?: (tab: Tab) => void;
   onTabRestore?: (tab: Tab) => void;
-  onTabClose?: (id: string | number) => void;
+  onTabClose?: (id: UniversalId) => void;
   isOverlay?: boolean;
   disabled?: boolean;
   isVault?: boolean;
