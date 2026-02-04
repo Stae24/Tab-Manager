@@ -103,3 +103,14 @@ Refactored `parseNumericId` to return `number | null` instead of a mandatory `nu
   - `item.tabs?.length` instead of `item.tabs.length`
   - `(item.tabs || []).map(...)` or `item.tabs?.map(...)` for array operations.
 - **Why:** Prevents runtime "Cannot read property of undefined" crashes which are common in extensions when UI state slightly lags behind browser state.
+
+### Logger Implementation
+- Implemented a structured logger in `src/utils/logger.ts` to replace direct `console` calls.
+- Gated `debug` and `info` logs behind `import.meta.env.DEV` to reduce noise in production.
+- `warn` and `error` logs remain active in all environments for troubleshooting.
+- Standardized logging format across the codebase.
+
+## Generic Constraints in Helper Functions
+- Refactored `findItemInList` and `cloneWithDeepGroups` to use generic constraints (`T extends LiveItem | VaultItem`).
+- This ensures that utility functions operating on island/tab items maintain type safety across different contexts (Live vs. Vault).
+- Moving internal helpers like `cloneWithDeepGroups` to a central `utils.ts` and making them generic improves reusability and reduces code duplication in store slices.

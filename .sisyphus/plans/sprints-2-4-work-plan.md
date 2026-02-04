@@ -869,10 +869,10 @@ function findItem<T extends LiveItem | VaultItem>(items: T[], id: UniversalId): 
 - **Reference**: `src/store/useStore.ts` (generic functions)
 
 **Acceptance Criteria**:
-- [ ] All generic functions have proper constraints
-- [ ] Type safety improved for generic operations
-- [ ] tsc --noEmit passes
-- [ ] bun test → PASS
+- [x] All generic functions have proper constraints
+- [x] Type safety improved for generic operations
+- [x] tsc --noEmit passes
+- [x] bun test → PASS
 
 ---
 

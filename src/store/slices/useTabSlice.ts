@@ -3,7 +3,7 @@ import { UniqueIdentifier } from '@dnd-kit/core';
 import { Island, Tab, LiveItem, UniversalId, VaultItem } from '../../types/index';
 import { tabService } from '../../services/tabService';
 import { logger } from '../../utils/logger';
-import { parseNumericId, findItemInList, isIsland } from '../utils';
+import { parseNumericId, findItemInList, isIsland, cloneWithDeepGroups } from '../utils';
 
 import type { StoreState } from '../types';
 
@@ -210,24 +210,20 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         if (targetIndex === -1) return;
         if (active.containerId === targetContainerId && active.index === targetIndex) return;
 
-        const cloneWithDeepGroups = (list: (LiveItem | VaultItem)[]) => list.map(item =>
-          item && 'tabs' in item ? { ...item, tabs: [...(item.tabs || [])] } : item
-        );
-
-        const newIslands = activeInLive ? cloneWithDeepGroups(islands) as LiveItem[] : [...islands];
-        const newVault = activeInLive ? [...vault] : cloneWithDeepGroups(vault) as VaultItem[];
+        const newIslands = activeInLive ? cloneWithDeepGroups(islands) : [...islands];
+        const newVault = activeInLive ? [...vault] : cloneWithDeepGroups(vault);
         const rootList = activeInLive ? newIslands : newVault;
 
-        const getTargetList = (root: (LiveItem | VaultItem)[], cId: UniqueIdentifier): (LiveItem | VaultItem)[] | null => {
+        const getTargetList = <T extends LiveItem | VaultItem>(root: T[], cId: UniqueIdentifier): (T | Tab)[] | null => {
           if (cId === 'root') return root;
           const cIdStr = String(cId);
           const group = root.find(i => i && String(i.id) === cIdStr);
-          if (group && 'tabs' in group && Array.isArray(group.tabs)) return group.tabs as (LiveItem | VaultItem)[];
+          if (group && 'tabs' in group && Array.isArray(group.tabs)) return group.tabs;
           return null;
         };
 
-        let sourceArr = getTargetList(rootList, active.containerId);
-        let targetArr = getTargetList(rootList, targetContainerId);
+        const sourceArr = getTargetList(rootList, active.containerId);
+        const targetArr = getTargetList(rootList, targetContainerId);
 
         if (!sourceArr || !targetArr) return;
 
