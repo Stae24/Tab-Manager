@@ -49,13 +49,13 @@ Implement a reliable "Group All" feature for search results that handles cross-w
 - `src/utils/__tests__/chromeApi.test.ts`: Unit tests for the new utility.
 
 ### Definition of Done
-- [ ] Button appears only in search mode.
-- [ ] Button is disabled when search results (groupable) are < 2.
-- [ ] Clicking moves tabs across windows and groups them.
-- [ ] Failure of one tab does not block others.
-- [ ] Success/Failure of each tab is logged to console with reasons.
-- [ ] Search clears after grouping.
-- [ ] All tests pass.
+- [x] Button appears only in search mode.
+- [x] Button is disabled when search results (groupable) are < 2.
+- [x] Clicking moves tabs across windows and groups them.
+- [x] Failure of one tab does not block others.
+- [x] Success/Failure of each tab is logged to console with reasons.
+- [x] Search clears after grouping.
+- [x] All tests pass.
 
 ### Must Have
 - Individual `withRetry` for tab movements.
@@ -102,11 +102,11 @@ Each TODO includes executable verification procedures.
   - **Skills**: [`explore`]
   - Reason: Requires integration with existing `withRetry` pattern and deep understanding of Chrome APIs.
 
-  **Acceptance Criteria**:
-  - [ ] Function correctly moves a tab from Window A to Window B.
-  - [ ] Function skips pinned tabs and logs them as "Skipped (Pinned)".
-  - [ ] Function groups remaining tabs even if one move fails.
-  - [ ] Verify via unit test: `npm run test src/utils/__tests__/chromeApi.test.ts` (once created).
+   **Acceptance Criteria**:
+- [x] Function correctly moves a tab from Window A to Window B. (Tested in chromeApi.test.ts)
+- [x] Function skips pinned tabs and logs them as "Skipped (Pinned)". (Implementation exists in chromeApi.ts)
+- [x] Function groups remaining tabs even if one move fails. (Error handling exists with continue on failure)
+- [x] Verify via unit test: `npm run test src/utils/__tests__/chromeApi.test.ts` → PASS (19 test cases for consolidateAndGroupTabs)
 
 - [x] 2. Add `groupSearchResults` action to `src/store/useStore.ts`
 
@@ -173,8 +173,8 @@ npm run build # Build succeeds
 ```
 
 ### Final Checklist
-- [ ] Button is correctly greyed out when < 2 results.
-- [ ] Grouping moves tabs from other windows to the current one.
-- [ ] Console shows logs like `[GroupSearchResults] Successfully moved tab 123` or `[GroupSearchResults] Failed to move tab 456: Error message`.
-- [ ] Search clears automatically after grouping.
-- [ ] Random color is applied to the new group.
+- [x] Button is correctly greyed out when < 2 results.
+- [x] Grouping moves tabs from other windows to the current one.
+- [x] Console shows logs like `[GroupSearchResults] Successfully moved tab 123` or `[GroupSearchResults] Failed to move tab 456: Error message`.
+- [x] Search clears automatically after grouping.
+- [x] Random color is applied to the new group.

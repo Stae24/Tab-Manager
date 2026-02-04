@@ -1,12 +1,66 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useStore } from '../useStore';
-import type { Island, Tab, VaultItem } from '../../types/index';
+
+// Mock ALL services BEFORE importing useStore
+vi.mock('../services/vaultService', () => ({
+  vaultService: {
+    loadVault: vi.fn().mockResolvedValue({ vault: [], timestamp: 0 }),
+    saveVault: vi.fn().mockResolvedValue({ success: true, bytesUsed: 0, bytesAvailable: 1000, warningLevel: 'none' }),
+    migrateFromLegacy: vi.fn().mockResolvedValue({ migrated: false, itemCount: 0, from: 'none' }),
+    toggleSyncMode: vi.fn().mockResolvedValue({ success: true }),
+  }
+}));
+
+vi.mock('../services/quotaService', () => ({
+  quotaService: {
+    getVaultQuota: vi.fn().mockResolvedValue({ used: 0, total: 1000, percentage: 0, available: 1000, warningLevel: 'none' }),
+  }
+}));
+
+vi.mock('../services/settingsService', () => ({
+  settingsService: {
+    loadSettings: vi.fn().mockResolvedValue({
+      appearanceSettings: {
+        vaultSyncEnabled: true,
+        sortGroupsByCount: false,
+        sortVaultGroupsByCount: false,
+        theme: 'system',
+        accentColor: 'purple',
+        density: 'comfortable',
+        uiScale: 1,
+        animationIntensity: 'normal',
+        audioIndicator: 'icon',
+        borderRadius: 'md',
+        iconPack: 'default',
+        menuPosition: 'bottom',
+        faviconSource: 'google',
+        faviconFallback: 'letter',
+        showCounts: true,
+        compactTabs: false,
+      },
+      showVault: true,
+      dividerPosition: 50,
+      settingsPanelWidth: 300
+    }),
+    watchSettings: vi.fn(() => vi.fn()),
+    saveSettings: vi.fn(),
+  }
+}));
+
+// Reset modules to ensure mocks are applied
+vi.resetModules();
 
 // Mock requestAnimationFrame for synchronous execution in tests
-vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-  cb(0);
-  return 0;
+Object.defineProperty(globalThis, 'requestAnimationFrame', {
+  value: (cb: FrameRequestCallback) => {
+    cb(0);
+    return 0;
+  },
+  writable: true,
+  configurable: true,
 });
+
+import { useStore } from '../useStore';
+import type { Island, Tab, VaultItem } from '../../types/index';
 
 // Helper to reset store state before each test
 const resetStore = () => {
