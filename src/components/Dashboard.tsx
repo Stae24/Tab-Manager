@@ -94,12 +94,13 @@ const LivePanel: React.FC<{
   setSortOption: (option: 'browser-order' | 'alpha-title' | 'alpha-url') => void,
   filteredTabs: TabType[],
   groupSearchResults: (tabs: TabType[]) => Promise<void>,
+  groupUngroupedTabs: () => Promise<void>,
   deleteDuplicateTabs: () => Promise<void>,
   sortGroupsToTop: () => Promise<void>,
   showVault: boolean,
   isCreatingIsland: boolean,
   creatingTabId: number | string | null
-}> = ({ dividerPosition, islands, handleTabClick, moveToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, groupSearchResults, deleteDuplicateTabs, sortGroupsToTop, showVault, isCreatingIsland, creatingTabId }) => {
+}> = ({ dividerPosition, islands, handleTabClick, moveToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, groupSearchResults, groupUngroupedTabs, deleteDuplicateTabs, sortGroupsToTop, showVault, isCreatingIsland, creatingTabId }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'live-panel-dropzone',
   });
@@ -115,6 +116,14 @@ const LivePanel: React.FC<{
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const ungroupedCount = useMemo(() => {
+    const restrictedPatterns = ['about:', 'chrome-extension:'];
+    return (islands || []).filter((item): item is TabType => {
+      if ('tabs' in item || item.pinned) return false;
+      return !restrictedPatterns.some(p => item.url?.startsWith(p));
+    }).length;
+  }, [islands]);
 
   // Droppable gap component for between items
 
@@ -358,6 +367,25 @@ const LivePanel: React.FC<{
                 {isCleaning && (
                   <div className="absolute inset-0 bg-gradient-to-r from-gx-red/10 via-gx-red/20 to-gx-red/10 animate-pulse" />
                 )}
+              </button>
+            )}
+
+            {!searchQuery && (
+              <button
+                onClick={groupUngroupedTabs}
+                disabled={ungroupedCount < 2}
+                title={ungroupedCount < 2 ? "Not enough ungrouped tabs to group" : `Group ${ungroupedCount} ungrouped tabs`}
+                className={cn(
+                  "p-1.5 bg-gx-gray/80 rounded-lg border border-white/5 shadow-inner transition-all group",
+                  ungroupedCount < 2 
+                    ? "opacity-30 cursor-not-allowed grayscale" 
+                    : "hover:border-gx-accent/30 hover:bg-gx-accent/10"
+                )}
+              >
+                <Group size={14} className={cn(
+                  "transition-colors",
+                  ungroupedCount < 2 ? "text-gray-600" : "text-gray-400 group-hover:text-gx-accent"
+                )} />
               </button>
             )}
 
@@ -703,6 +731,7 @@ export const Dashboard: React.FC = () => {
     clearQuotaExceeded,
     setVaultSyncEnabled,
     groupSearchResults,
+    groupUngroupedTabs,
     showAppearancePanel
   } = useStore();
 
@@ -1090,6 +1119,7 @@ export const Dashboard: React.FC = () => {
             setSortOption={setSortOption}
             filteredTabs={filteredTabs}
             groupSearchResults={groupSearchResults}
+            groupUngroupedTabs={groupUngroupedTabs}
             deleteDuplicateTabs={deleteDuplicateTabs}
             sortGroupsToTop={sortGroupsToTop}
             showVault={showVault}
