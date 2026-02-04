@@ -911,10 +911,10 @@ Complete testing gaps, add documentation, and polish the codebase for production
 - **Reference**: `src/utils/__tests__/` (existing test patterns)
 
 **Acceptance Criteria**:
-- [ ] Quota exceeded test implemented
-- [ ] Chrome API failure test implemented
-- [ ] Corrupted data recovery test implemented
-- [ ] bun test src/utils/__tests__/errorCases.test.ts → PASS
+- [x] Quota exceeded test implemented
+- [x] Chrome API failure test implemented
+- [x] Corrupted data recovery test implemented
+- [x] bun test src/utils/__tests__/errorCases.test.ts → PASS
 
 #### Task 4.2: Add Race Condition Tests
 **Priority**: P2.12 (Medium)
