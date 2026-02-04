@@ -209,10 +209,10 @@ chrome.runtime.onSuspend.addListener(() => {
 - **Reference**: `src/background.ts:29-53` (current listener implementation)
 
 **Acceptance Criteria**:
-- [ ] Message listener stored in named function
-- [ ] onSuspend listener added to remove message listener
-- [ ] Test verifies no listener accumulation after reload
-- [ ] bun test src/__tests__/background.test.ts → PASS
+- [x] Message listener stored in named function
+- [x] onSuspend listener added to remove message listener
+- [x] Test verifies no listener accumulation after reload
+- [x] bun test src/__tests__/background.test.ts → PASS
 
 **Agent-Executed QA Scenarios**:
 ```

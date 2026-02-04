@@ -26,7 +26,7 @@ function notifyUI() {
   chrome.runtime.sendMessage({ type: 'REFRESH_TABS' }).catch(() => {});
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+export function messageListener(message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
   if (message.type === 'START_ISLAND_CREATION') {
     islandCreationInProgress = true;
     sendResponse({ success: true });
@@ -48,6 +48,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
+}
 
+chrome.runtime.onMessage.addListener(messageListener);
 
+chrome.runtime.onSuspend.addListener(() => {
+  chrome.runtime.onMessage.removeListener(messageListener);
 });
