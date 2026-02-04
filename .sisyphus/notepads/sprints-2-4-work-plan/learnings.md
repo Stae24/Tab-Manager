@@ -95,3 +95,11 @@ Refactored `parseNumericId` to return `number | null` instead of a mandatory `nu
 - Created `DragOverlayContent` memoized component in `Dashboard.tsx` to stabilize the drag overlay content.
 - Inline arrow functions in props prevent `React.memo` from being effective. While this was addressed for the `DragOverlay` (by not passing handlers), main panel items still use inline handlers.
 - `dnd-kit`'s `DragOverlay` re-renders on every movement to update position, but memoizing its children significantly reduces the work done in each frame.
+
+### Optional Chaining for Tab/Group Access
+- **Context:** Chrome extension APIs (tabs, groups) can be volatile. Items can disappear between query and access.
+- **Pattern:** Always use optional chaining (`?.`) when accessing properties of potentially transient objects like tabs or islands, even if the type system suggests they are present.
+- **Examples:**
+  - `item.tabs?.length` instead of `item.tabs.length`
+  - `(item.tabs || []).map(...)` or `item.tabs?.map(...)` for array operations.
+- **Why:** Prevents runtime "Cannot read property of undefined" crashes which are common in extensions when UI state slightly lags behind browser state.

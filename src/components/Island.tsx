@@ -134,21 +134,21 @@ export const Island: React.FC<IslandProps> = React.memo(({
   // Ungroup all tabs
   const handleUngroupAll = () => {
     setShowMenu(false);
-    const ids = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
+    const ids = (island.tabs || []).map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
     if (ids.length > 0) ungroupTab(ids);
   };
 
   // Freeze all tabs
   const handleFreezeAll = () => {
     setShowMenu(false);
-    const ids = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
+    const ids = (island.tabs || []).map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
     if (ids.length > 0) discardTabs(ids);
   };
 
   // Duplicate group
   const handleDuplicate = () => {
     setShowMenu(false);
-    const ids = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
+    const ids = (island.tabs || []).map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
     if (ids.length > 0) duplicateIsland(ids);
   };
 
@@ -234,7 +234,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
             {island.title || "Untitled Group"}
             {appearanceSettings.showTabCount && (island.tabs?.length || 0) > 0 && (
               <span className="text-[10px] font-black text-white/30 ml-2 tracking-tighter">
-                {island.tabs.length}
+                {island.tabs?.length}
               </span>
             )}
           </span>
@@ -244,7 +244,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const ids = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
+    const ids = (island.tabs || []).map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
                 if (ids.length > 0) ungroupTab(ids);
               }}
               title="Ungroup All"

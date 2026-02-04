@@ -210,7 +210,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         if (active.containerId === targetContainerId && active.index === targetIndex) return;
 
         const cloneWithDeepGroups = (list: (LiveItem | VaultItem)[]) => list.map(item =>
-          item && 'tabs' in item ? { ...item, tabs: [...item.tabs] } : item
+          item && 'tabs' in item ? { ...item, tabs: [...(item.tabs || [])] } : item
         );
 
         const newIslands = activeInLive ? cloneWithDeepGroups(islands) as LiveItem[] : [...islands];
@@ -307,7 +307,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     const loose = islands.filter((i: LiveItem): i is Tab => !isIsland(i) && !(i as Tab).pinned);
 
     if (appearanceSettings.sortGroupsByCount) {
-      groups = [...groups].sort((a, b) => b.tabs.length - a.tabs.length);
+      groups = [...groups].sort((a, b) => (b.tabs?.length || 0) - (a.tabs?.length || 0));
     }
 
     const sorted = [...pinned, ...groups, ...loose];
@@ -319,21 +319,21 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       for (const item of sorted) {
         const numericId = parseNumericId(item.id);
         if (numericId === null) {
-          currentIdx += isIsland(item) ? item.tabs.length : 1;
+          currentIdx += isIsland(item) ? (item.tabs?.length || 0) : 1;
           continue;
         }
 
         try {
           if (isIsland(item)) {
             await tabService.moveIsland(numericId, currentIdx);
-            currentIdx += item.tabs.length;
+            currentIdx += item.tabs?.length || 0;
           } else {
             await tabService.moveTab(numericId, currentIdx);
             currentIdx += 1;
           }
         } catch (itemError) {
           console.warn(`[Sorter] Failed to move item ${item.id}:`, itemError);
-          currentIdx += isIsland(item) ? item.tabs.length : 1;
+          currentIdx += isIsland(item) ? (item.tabs?.length || 0) : 1;
         }
       }
       await syncLiveTabs();

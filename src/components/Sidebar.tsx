@@ -62,7 +62,7 @@ export const Sidebar: React.FC = () => {
       content = 'Type,Group,Title,URL\n';
       islands.forEach((i: LiveItem) => {
         if (i && 'tabs' in i) {
-          i.tabs.forEach((t: Tab) => {
+          i.tabs?.forEach((t: Tab) => {
             content += `${escapeCsv('Live')},${escapeCsv(i.title || 'Untitled Group')},${escapeCsv(t.title)},${escapeCsv(t.url)}\n`;
           });
         } else if (i) {
@@ -71,7 +71,7 @@ export const Sidebar: React.FC = () => {
       });
       vault.forEach((i: VaultItem) => {
         if ('tabs' in i) {
-          i.tabs.forEach((t: Tab) => {
+          i.tabs?.forEach((t: Tab) => {
             content += `${escapeCsv('Vault')},${escapeCsv(i.title || 'Untitled Group')},${escapeCsv(t.title)},${escapeCsv(t.url)}\n`;
           });
         } else {
@@ -85,7 +85,7 @@ export const Sidebar: React.FC = () => {
       islands.forEach((i: LiveItem) => {
         if (i && 'tabs' in i) {
           content += `### ${i.title || 'Untitled Group'}\n`;
-          i.tabs.forEach((t: Tab) => content += `- [${t.title}](${t.url})\n`);
+          i.tabs?.forEach((t: Tab) => content += `- [${t.title}](${t.url})\n`);
         } else if (i) {
           content += `- [${i.title}](${i.url})\n`;
         }
@@ -94,7 +94,7 @@ export const Sidebar: React.FC = () => {
       vault.forEach((i: VaultItem) => {
         if ('tabs' in i) {
           content += `### ${i.title || 'Untitled Group'}\n`;
-          i.tabs.forEach((t: Tab) => content += `- [${t.title}](${t.url})\n`);
+          i.tabs?.forEach((t: Tab) => content += `- [${t.title}](${t.url})\n`);
         } else {
           content += `- [${i.title}](${i.url})\n`;
         }
