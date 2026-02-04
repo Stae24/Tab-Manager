@@ -515,10 +515,10 @@ const parseNumericId = (id: UniversalId): number | null => {
 - **Reference**: `src/store/useStore.ts:parseNumericId` (current implementation)
 
 **Acceptance Criteria**:
-- [ ] parseNumericId returns null on parse failure
-- [ ] All call sites handle null returns
-- [ ] Error logging added for failed parses
-- [ ] bun test src/store/__tests__/parseNumericId.test.ts → PASS
+- [x] parseNumericId returns null on parse failure
+- [x] All call sites handle null returns
+- [x] Error logging added for failed parses
+- [x] bun test src/store/__tests__/parseNumericId.test.ts → PASS
 
 **Agent-Executed QA Scenarios**:
 ```

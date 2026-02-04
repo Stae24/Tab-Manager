@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { GripVertical, Plus, FolderOpen, Save, Loader2, ChevronUp, ChevronDown, Search, ChevronDown as SortDown, X, ChevronUp as SortUp, Trash2, LayoutGrid, Group } from 'lucide-react';
+
 import {
   DndContext,
   closestCorners,
@@ -32,7 +34,7 @@ import { QuotaExceededModal, QuotaExceededAction } from './QuotaExceededModal';
 import { useStore, parseNumericId } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { closeTab, moveIsland, createIsland } from '../utils/chromeApi';
-import { Island as IslandType, Tab as TabType, VaultQuotaInfo } from '../types/index';
+import { Island as IslandType, Tab as TabType, VaultQuotaInfo, UniversalId } from '../types/index';
 import ErrorBoundary from './ErrorBoundary';
 
 
@@ -92,12 +94,12 @@ export const useProximityGap = (gapId: string, active: any, isDraggingGroup?: bo
 const LivePanel: React.FC<{
   dividerPosition: number,
   islands: (IslandType | TabType)[],
-  handleTabClick: (id: number | string) => void,
-  moveToVault: (id: number | string) => void,
+  handleTabClick: (id: UniversalId) => void,
+  moveToVault: (id: UniversalId) => void,
   saveToVault: (island: IslandType | TabType) => void,
-  closeTab: (id: number | string) => void,
-  onRenameGroup: (id: number | string, title: string) => void,
-  onToggleCollapse: (id: number | string) => void,
+  closeTab: (id: UniversalId) => void,
+  onRenameGroup: (id: UniversalId, title: string) => void,
+  onToggleCollapse: (id: UniversalId) => void,
   isDraggingGroup?: boolean,
   searchQuery: string,
   setSearchQuery: (query: string) => void,
@@ -110,7 +112,7 @@ const LivePanel: React.FC<{
   sortGroupsToTop: () => Promise<void>,
   showVault: boolean,
   isCreatingIsland: boolean,
-  creatingTabId: number | string | null
+  creatingTabId: UniversalId | null
 }> = ({ dividerPosition, islands, handleTabClick, moveToVault, saveToVault, closeTab, onRenameGroup, onToggleCollapse, isDraggingGroup, searchQuery, setSearchQuery, sortOption, setSortOption, filteredTabs, groupSearchResults, groupUngroupedTabs, deleteDuplicateTabs, sortGroupsToTop, showVault, isCreatingIsland, creatingTabId }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'live-panel-dropzone',
@@ -127,6 +129,39 @@ const LivePanel: React.FC<{
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const rowItems = useMemo(() => {
+    if (searchQuery) return [];
+    const rows: any[] = [];
+    (islands || []).forEach((item: IslandType | TabType, index: number) => {
+      const isCurrentIsland = item && 'tabs' in item;
+      const prevItem = islands?.[index - 1];
+      const isPrevIsland = prevItem && 'tabs' in prevItem;
+      const showGap = isCurrentIsland && isPrevIsland;
+
+      if (showGap) {
+        rows.push({ type: 'gap', id: `live-gap-${index}`, index });
+      }
+      rows.push({ type: 'item', id: item.id, item });
+    });
+    return rows;
+  }, [islands, searchQuery]);
+
+  const virtualizer = useVirtualizer({
+    count: rowItems.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 40,
+    getItemKey: (index) => rowItems[index].id,
+    overscan: 10,
+  });
+
+  const searchVirtualizer = useVirtualizer({
+    count: searchQuery ? filteredTabs.length : 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 40,
+    getItemKey: (index) => filteredTabs[index].id,
+    overscan: 10,
+  });
 
   const ungroupedCount = useMemo(() => {
     const restrictedPatterns = ['about:', 'chrome-extension:'];
@@ -442,10 +477,16 @@ const LivePanel: React.FC<{
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none scrollbar-hide">
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none scrollbar-hide"
+      >
         {searchQuery ? (
-          // Search Mode: Show filtered tabs in flat list
-          <div key="search-results-list" className="space-y-2 search-mode-enter">
+          <div 
+            key="search-results-list" 
+            className="search-mode-enter relative"
+            style={{ height: `${searchVirtualizer.getTotalSize()}px`, width: '100%' }}
+          >
             {filteredTabs.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40">
                 <Search size={48} className="mb-4" />
@@ -455,65 +496,92 @@ const LivePanel: React.FC<{
                 </p>
               </div>
             ) : (
-              filteredTabs.map((tab: TabType, index: number) => (
-                <div
-                  key={tab.id}
-                  style={{
-                    animationDelay: `${index * 30}ms`,
-                  }}
-                  className="search-mode-enter"
-                >
-                  <TabCard
-                    tab={tab}
-                    onClick={() => handleTabClick(tab.id)}
-                    onSave={() => saveToVault(tab)}
-                    disabled={!!searchQuery}
-                    isLoading={isCreatingIsland && creatingTabId === tab.id}
-                  />
-                </div>
-              ))
+              searchVirtualizer.getVirtualItems().map((virtualRow) => {
+                const tab = filteredTabs[virtualRow.index];
+                return (
+                  <div
+                    key={virtualRow.key}
+                    data-index={virtualRow.index}
+                    ref={searchVirtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`,
+                      paddingBottom: '8px',
+                    }}
+                    className="search-mode-enter"
+                  >
+                    <TabCard
+                      tab={tab}
+                      onClick={() => handleTabClick(tab.id)}
+                      onSave={() => saveToVault(tab)}
+                      disabled={!!searchQuery}
+                      isLoading={isCreatingIsland && creatingTabId === tab.id}
+                    />
+                  </div>
+                );
+              })
             )}
           </div>
         ) : (
-          // Normal Mode: Show islands and standalone tabs
           <>
             <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-              {(islands || []).map((item: IslandType | TabType, index: number) => {
-                const isCurrentIsland = item && 'tabs' in item;
-                const prevItem = islands?.[index - 1];
-                const isPrevIsland = prevItem && 'tabs' in prevItem;
-                const showGap = isCurrentIsland && isPrevIsland;
-
-                return (
-                  <React.Fragment key={item.id}>
-                    {showGap && <DroppableGap index={index} />}
-                    {isCurrentIsland ? (
-                      <Island
-                        island={item as IslandType}
-                        onTabClick={(tab) => handleTabClick(tab.id)}
-                        onNonDestructiveSave={() => saveToVault(item)}
-                        onSave={() => moveToVault(item.id)}
-                        onDelete={() => (item as IslandType).tabs.forEach((t: TabType) => closeTab(t.id))}
-                        onRename={(title) => onRenameGroup(item.id, title)}
-                        onToggleCollapse={() => onToggleCollapse(item.id)}
-                        onTabSave={(tab) => saveToVault(tab)}
-                        onTabClose={(id) => closeTab(id as number)}
-                        disabled={!!searchQuery}
-                      />
-                    ) : (
-                      <TabCard
-                        tab={item as TabType}
-                        onClick={() => handleTabClick(item.id)}
-                        onSave={() => saveToVault(item)}
-                        onClose={() => closeTab(item.id)}
-                        disabled={!!searchQuery}
-                        isLoading={isCreatingIsland && creatingTabId === item.id}
-                      />
-                    )}
-                  </React.Fragment>
-                );
-              })}
+              <div
+                className="relative"
+                style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%' }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = rowItems[virtualRow.index];
+                  
+                  return (
+                    <div
+                      key={virtualRow.key}
+                      data-index={virtualRow.index}
+                      ref={virtualizer.measureElement}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualRow.start}px)`,
+                        paddingBottom: '8px',
+                      }}
+                    >
+                      {row.type === 'gap' ? (
+                        <DroppableGap index={row.index} />
+                      ) : (
+                        row.item && 'tabs' in row.item ? (
+                          <Island
+                            island={row.item as IslandType}
+                            onTabClick={(tab) => handleTabClick(tab.id)}
+                            onNonDestructiveSave={() => saveToVault(row.item)}
+                            onSave={() => moveToVault(row.item.id)}
+                            onDelete={() => (row.item as IslandType).tabs.forEach((t: TabType) => closeTab(t.id))}
+                            onRename={(title) => onRenameGroup(row.item.id, title)}
+                            onToggleCollapse={() => onToggleCollapse(row.item.id)}
+                            onTabSave={(tab) => saveToVault(tab)}
+                            onTabClose={(id) => closeTab(id as number)}
+                            disabled={!!searchQuery}
+                          />
+                        ) : (
+                          <TabCard
+                            tab={row.item as TabType}
+                            onClick={() => handleTabClick(row.item.id)}
+                            onSave={() => saveToVault(row.item)}
+                            onClose={() => closeTab(row.item.id)}
+                            disabled={!!searchQuery}
+                            isLoading={isCreatingIsland && creatingTabId === row.item.id}
+                          />
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </SortableContext>
+
 
             {/* Invisible Drop Zone for Appending */}
             <div
@@ -567,13 +635,13 @@ const LivePanel: React.FC<{
 const VaultPanel: React.FC<{
   dividerPosition: number,
   vault: (IslandType | TabType)[],
-  removeFromVault: (id: number | string) => void,
+  removeFromVault: (id: UniversalId) => void,
   isDraggingLiveItem: boolean,
   createVaultGroup: () => void,
-  onRenameGroup: (id: number | string, title: string) => void,
-  onToggleCollapse: (id: number | string) => void,
+  onRenameGroup: (id: UniversalId, title: string) => void,
+  onToggleCollapse: (id: UniversalId) => void,
   sortVaultGroupsToTop: () => Promise<void>,
-  restoreFromVault: (id: number | string) => void,
+  restoreFromVault: (id: UniversalId) => void,
   vaultQuota: VaultQuotaInfo | null,
   onManageStorage?: () => void
 }> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault, vaultQuota, onManageStorage }) => {
@@ -586,6 +654,30 @@ const VaultPanel: React.FC<{
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const rowItems = useMemo(() => {
+    const rows: any[] = [];
+    (vault || []).forEach((item: IslandType | TabType, index: number) => {
+      const isCurrentIsland = 'tabs' in item;
+      const prevItem = vault?.[index - 1];
+      const isPrevIsland = prevItem && 'tabs' in prevItem;
+      const showGap = isCurrentIsland && isPrevIsland;
+
+      if (showGap) {
+        rows.push({ type: 'gap', id: `vault-gap-${index}`, index });
+      }
+      rows.push({ type: 'item', id: item.id, item });
+    });
+    return rows;
+  }, [vault]);
+
+  const virtualizer = useVirtualizer({
+    count: rowItems.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 40,
+    getItemKey: (index) => rowItems[index].id,
+    overscan: 10,
+  });
 
   // Droppable gap component for between two islands
 
@@ -653,38 +745,55 @@ const VaultPanel: React.FC<{
             />
           )}
           <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-            {(vault || []).map((item: IslandType | TabType, index) => {
-              const isCurrentIsland = 'tabs' in item;
-              const prevItem = vault?.[index - 1];
-              const isPrevIsland = prevItem && 'tabs' in prevItem;
-              const showGap = isCurrentIsland && isPrevIsland;
-              const itemKey = 'savedAt' in item ? (item as any).savedAt : item.id;
-
-              return (
-                <React.Fragment key={itemKey}>
-                  {showGap && <DroppableGap index={index} />}
-                  {isCurrentIsland ? (
-                    <Island
-                      island={item as IslandType}
-                      isVault={true}
-                      onRestore={() => restoreFromVault(item.id)}
-                      onDelete={() => removeFromVault(item.id)}
-                      onRename={(title) => onRenameGroup(item.id, title)}
-                      onToggleCollapse={() => onToggleCollapse(item.id)}
-                      onTabRestore={(tab) => restoreFromVault(tab.id)}
-                      onTabClose={(id) => removeFromVault(id)}
-                    />
-                  ) : (
-                    <TabCard
-                      tab={item as TabType}
-                      isVault={true}
-                      onRestore={() => restoreFromVault(item.id)}
-                      onClose={() => removeFromVault(item.id)}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
+            <div
+              className="relative"
+              style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%' }}
+            >
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const row = rowItems[virtualRow.index];
+                const item = row.item;
+                
+                return (
+                  <div
+                    key={virtualRow.key}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`,
+                      paddingBottom: '8px',
+                    }}
+                  >
+                    {row.type === 'gap' ? (
+                      <DroppableGap index={row.index} />
+                    ) : (
+                      'tabs' in item ? (
+                        <Island
+                          island={item as IslandType}
+                          isVault={true}
+                          onRestore={() => restoreFromVault(item.id)}
+                          onDelete={() => removeFromVault(item.id)}
+                          onRename={(title) => onRenameGroup(item.id, title)}
+                          onToggleCollapse={() => onToggleCollapse(item.id)}
+                          onTabRestore={(tab) => restoreFromVault(tab.id)}
+                          onTabClose={(id) => removeFromVault(id)}
+                        />
+                      ) : (
+                        <TabCard
+                          tab={item as TabType}
+                          isVault={true}
+                          onRestore={() => restoreFromVault(item.id)}
+                          onClose={() => removeFromVault(item.id)}
+                        />
+                      )
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </SortableContext>
 
           {(vault || []).length === 0 && (
@@ -752,7 +861,7 @@ export const Dashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<'browser-order' | 'alpha-title' | 'alpha-url'>('browser-order');
   const [isCreatingIsland, setIsCreatingIsland] = useState(false);
-  const [creatingTabId, setCreatingTabId] = useState<number | string | null>(null);
+  const [creatingTabId, setCreatingTabId] = useState<UniversalId | null>(null);
   const lastFilteredTabsRef = useRef<TabType[]>([]);
 
   // Flatten all tabs from islands and standalone tabs for search mode
@@ -863,16 +972,16 @@ export const Dashboard: React.FC = () => {
     };
   }, [isResizing, setDividerPosition]);
 
-  const handleTabClick = (tabId: number | string) => {
+  const handleTabClick = (tabId: UniversalId) => {
     const numericId = parseNumericId(tabId);
-    if (numericId !== -1) {
+    if (numericId !== null) {
       chrome.tabs.update(numericId, { active: true });
     }
   };
 
-  const handleCloseTab = async (tabId: number | string) => {
+  const handleCloseTab = async (tabId: UniversalId) => {
     const numericId = parseNumericId(tabId);
-    if (numericId !== -1) {
+    if (numericId !== null) {
       await closeTab(numericId);
     }
   };
@@ -1047,14 +1156,17 @@ export const Dashboard: React.FC = () => {
             if (isMovingGroup) {
               // Use moveIsland (chrome.tabGroups.move) to move the entire group atomically.
               // This prevents the group from being ungrouped or split during the move.
-              await moveIsland(parseNumericId(targetItem.id), browserIndex);
+              const numericGroupId = parseNumericId(targetItem.id);
+              if (numericGroupId !== null) {
+                await moveIsland(numericGroupId, browserIndex);
+              }
             } else {
               const tabId = parseNumericId(activeId);
-              if (tabId !== -1) {
+              if (tabId !== null) {
                 await chrome.tabs.move(tabId, { index: browserIndex });
                 if (targetIslandId) {
                   const numericIslandId = parseNumericId(targetIslandId);
-                  if (numericIslandId !== -1) {
+                  if (numericIslandId !== null) {
                     await chrome.tabs.group({ tabIds: tabId, groupId: numericIslandId });
                   }
                 } else {
@@ -1063,6 +1175,7 @@ export const Dashboard: React.FC = () => {
               }
             }
           }
+
         } finally {
           setIsLoading(false);
         }
