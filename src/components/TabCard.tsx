@@ -7,6 +7,7 @@ import { tabService } from '../services/tabService';
 import { parseNumericId, useStore } from '../store/useStore';
 import { Favicon } from './Favicon';
 import { useScrollContainer } from '../contexts/ScrollContainerContext';
+import { ContextMenu } from './ContextMenu';
 import { INTERSECTION_OBSERVER_MARGIN_PX, TAB_LOAD_DELAY_BASE_MS } from '../constants';
 import type { Tab } from '../types/index';
 
@@ -31,7 +32,6 @@ interface NavigatorWithConnection extends Navigator {
 export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClose, onSave, onRestore, isOverlay, disabled, isVault, isLoading }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [priority, setPriority] = useState<number | null>(null);
   const [hasStartedLoading, setHasStartedLoading] = useState(false);
@@ -89,7 +89,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
       if (entry.isIntersecting) {
         setPriority(0);
       }
-    }, { 
+    }, {
       threshold: 0.01,
       root: containerRef?.current || null
     });
@@ -107,7 +107,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
         const p = Math.ceil(distance / 100);
         setPriority(prev => (prev === 0 ? 0 : p));
       }
-    }, { 
+    }, {
       rootMargin: `${INTERSECTION_OBSERVER_MARGIN_PX}px`,
       root: containerRef?.current || null
     });
@@ -137,23 +137,12 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
     }
   }, [priority]);
 
-  // Close menu when clicking outside
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-
-    if (showMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showMenu]);
+  // Calculate menu position - use mouse position directly
+  const calculateMenuPosition = (clientX: number, clientY: number) => {
+    // clientX and clientY are already viewport coordinates in CSS pixels
+    // No adjustment needed for fixed positioning
+    return { x: clientX, y: clientY };
+  };
 
   const combinedRef = (node: HTMLDivElement | null) => {
     setNodeRef(node);
@@ -184,7 +173,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
         onContextMenu={(e) => {
           e.preventDefault();
           if (isOverlay) return;
-          setMenuPosition({ x: e.clientX, y: e.clientY });
+          setMenuPosition(calculateMenuPosition(e.clientX, e.clientY));
           setShowMenu(true);
         }}
       >
@@ -289,107 +278,106 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
         )}
       </div>
 
-      {showMenu && !isOverlay && (
-        <div
-          ref={menuRef}
-          className="fixed w-36 bg-gx-gray border border-gx-accent/20 rounded shadow-xl z-[1000] p-1 flex flex-col gap-1"
-          style={{ left: menuPosition?.x ?? 0, top: menuPosition?.y ?? 0 }}
-        >
-          {!isVault && onSave && (
-            <button onClick={() => { onSave(); setShowMenu(false); }} className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded">
-              <Save size={10} /> SAVE TO VAULT
-            </button>
-          )}
-          {!isVault && (
-            <>
-              <button
-                onClick={() => {
-                  const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) tabService.discardTab(numericId);
-                  setShowMenu(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
-              >
-                <Snowflake size={10} /> FREEZE
-              </button>
-              <button
-                onClick={() => {
-                  const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) tabService.ungroupTab(numericId);
-                  setShowMenu(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
-              >
-                <LogOut size={10} /> UNGROUP
-              </button>
-              <button
-                onClick={() => {
-                  const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) {
-                    if (tab.pinned) tabService.unpinTab(numericId);
-                    else tabService.pinTab(numericId);
-                  }
-                  setShowMenu(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
-              >
-                <Link size={10} /> {tab.pinned ? 'UNPIN' : 'PIN'}
-              </button>
-              <button
-                onClick={() => {
-                  const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) {
-                    if (tab.muted) tabService.unmuteTab(numericId);
-                    else tabService.muteTab(numericId);
-                  }
-                  setShowMenu(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
-              >
-                {tab.muted ? <Volume2 size={10} /> : <VolumeX size={10} />} {tab.muted ? 'UNMUTE' : 'MUTE'}
-              </button>
-              <button
-                onClick={() => {
-                  const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) tabService.duplicateTab(numericId);
-                  setShowMenu(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
-              >
-                <CopyPlus size={10} /> DUPLICATE
-              </button>
-              <button
-                onClick={() => {
-                  const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) tabService.copyTabUrl(numericId);
-                  setShowMenu(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
-              >
-                <Copy size={10} /> COPY URL
-              </button>
-            </>
-          )}
-          {isVault && onRestore && (
-            <button onClick={() => { onRestore(); setShowMenu(false); }} className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-green/20 hover:text-gx-green rounded">
-              <ExternalLink size={10} /> OPEN IN WINDOW
-            </button>
-          )}
-          <button
-            onClick={() => {
-              if (onClose) onClose();
-              else {
-                const numericId = parseNumericId(tab.id);
-                if (numericId !== null) tabService.closeTab(numericId);
-              }
-              setShowMenu(false);
-            }}
-            className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-red/20 text-gx-red rounded"
-          >
-            <Trash2 size={10} /> {isVault ? 'DELETE' : 'CLOSE'}
+      <ContextMenu
+        show={showMenu && !isOverlay}
+        x={menuPosition?.x ?? 0}
+        y={menuPosition?.y ?? 0}
+        onClose={() => setShowMenu(false)}
+      >
+        {!isVault && onSave && (
+          <button onClick={() => { onSave(); setShowMenu(false); }} className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded">
+            <Save size={10} /> SAVE TO VAULT
           </button>
-        </div>
-      )}
+        )}
+        {!isVault && (
+          <>
+            <button
+              onClick={() => {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== null) tabService.discardTab(numericId);
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
+            >
+              <Snowflake size={10} /> FREEZE
+            </button>
+            <button
+              onClick={() => {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== null) tabService.ungroupTab(numericId);
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
+            >
+              <LogOut size={10} /> UNGROUP
+            </button>
+            <button
+              onClick={() => {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== null) {
+                  if (tab.pinned) tabService.unpinTab(numericId);
+                  else tabService.pinTab(numericId);
+                }
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+            >
+              <Link size={10} /> {tab.pinned ? 'UNPIN' : 'PIN'}
+            </button>
+            <button
+              onClick={() => {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== null) {
+                  if (tab.muted) tabService.unmuteTab(numericId);
+                  else tabService.muteTab(numericId);
+                }
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+            >
+              {tab.muted ? <Volume2 size={10} /> : <VolumeX size={10} />} {tab.muted ? 'UNMUTE' : 'MUTE'}
+            </button>
+            <button
+              onClick={() => {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== null) tabService.duplicateTab(numericId);
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+            >
+              <CopyPlus size={10} /> DUPLICATE
+            </button>
+            <button
+              onClick={() => {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== null) tabService.copyTabUrl(numericId);
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+            >
+              <Copy size={10} /> COPY URL
+            </button>
+          </>
+        )}
+        {isVault && onRestore && (
+          <button onClick={() => { onRestore(); setShowMenu(false); }} className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-green/20 hover:text-gx-green rounded">
+            <ExternalLink size={10} /> OPEN IN WINDOW
+          </button>
+        )}
+        <button
+          onClick={() => {
+            if (onClose) onClose();
+            else {
+              const numericId = parseNumericId(tab.id);
+              if (numericId !== null) tabService.closeTab(numericId);
+            }
+            setShowMenu(false);
+          }}
+          className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-red/20 text-gx-red rounded"
+        >
+          <Trash2 size={10} /> {isVault ? 'DELETE' : 'CLOSE'}
+        </button>
+      </ContextMenu>
     </div>
   );
 });
