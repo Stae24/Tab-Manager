@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Trash2, Save, LogOut, ExternalLink, Edit3, X
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TabCard } from './TabCard';
+import { ContextMenu } from './ContextMenu';
 import { cn, getIslandBorderColor, getBorderRadiusClass, getBottomBorderRadiusClass } from '../utils/cn';
 import { Island as IslandType, Tab, UniversalId } from '../types/index';
 import { ungroupTab, updateTabGroupCollapse, discardTabs, duplicateIsland } from '../utils/chromeApi';
@@ -47,7 +48,6 @@ export const Island: React.FC<IslandProps> = React.memo(({
   const [editTitle, setEditTitle] = useState(island.title);
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const borderColor = getIslandBorderColor(island.color);
 
@@ -106,23 +106,6 @@ export const Island: React.FC<IslandProps> = React.memo(({
     }
   };
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-
-    if (showMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showMenu]);
-
   // Start renaming from context menu
   const handleRenameFromMenu = () => {
     setShowMenu(false);
@@ -143,6 +126,13 @@ export const Island: React.FC<IslandProps> = React.memo(({
     setShowMenu(false);
     const ids = (island.tabs || []).map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
     if (ids.length > 0) discardTabs(ids);
+  };
+
+  // Calculate menu position - use mouse position directly
+  const calculateMenuPosition = (clientX: number, clientY: number) => {
+    // clientX and clientY are already viewport coordinates in CSS pixels
+    // No adjustment needed for fixed positioning
+    return { x: clientX, y: clientY };
   };
 
   // Duplicate group
@@ -181,7 +171,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
         onContextMenu={(e) => {
           e.preventDefault();
           if (isOverlay) return;
-          setMenuPosition({ x: e.clientX, y: e.clientY });
+          setMenuPosition(calculateMenuPosition(e.clientX, e.clientY));
           setShowMenu(true);
         }}
       >
@@ -244,7 +234,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-    const ids = (island.tabs || []).map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
+                const ids = (island.tabs || []).map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
                 if (ids.length > 0) ungroupTab(ids);
               }}
               title="Ungroup All"
@@ -289,66 +279,65 @@ export const Island: React.FC<IslandProps> = React.memo(({
       </div>
 
       {/* Context Menu */}
-      {showMenu && !isOverlay && (
-        <div
-          ref={menuRef}
-          className="fixed w-36 bg-gx-gray border border-gx-accent/20 rounded shadow-xl z-[1000] p-1 flex flex-col gap-1"
-          style={{ left: menuPosition?.x ?? 0, top: menuPosition?.y ?? 0 }}
+      <ContextMenu
+        show={showMenu && !isOverlay}
+        x={menuPosition?.x ?? 0}
+        y={menuPosition?.y ?? 0}
+        onClose={() => setShowMenu(false)}
+      >
+        <button
+          onClick={handleRenameFromMenu}
+          className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
         >
-          <button
-            onClick={handleRenameFromMenu}
-            className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
-          >
-            <Edit3 size={10} /> RENAME
-          </button>
-          <button
-            onClick={handleDuplicate}
-            className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
-          >
-            <Copy size={10} /> DUPLICATE GROUP
-          </button>
-          {!isVault && (
-            <>
-              <button
-                onClick={handleUngroupAll}
-                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
-              >
-                <LogOut size={10} /> UNGROUP ALL
-              </button>
-              <button
-                onClick={handleFreezeAll}
-                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
-              >
-                <Snowflake size={10} /> FREEZE ALL
-              </button>
-            </>
-          )}
-          {!isVault && onNonDestructiveSave && (
+          <Edit3 size={10} /> RENAME
+        </button>
+        <button
+          onClick={handleDuplicate}
+          className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+        >
+          <Copy size={10} /> DUPLICATE GROUP
+        </button>
+        {!isVault && (
+          <>
             <button
-              onClick={() => { setShowMenu(false); onNonDestructiveSave(); }}
+              onClick={handleUngroupAll}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
+            >
+              <LogOut size={10} /> UNGROUP ALL
+            </button>
+            <button
+              onClick={handleFreezeAll}
               className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
             >
-              <Save size={10} /> SAVE TO VAULT
+              <Snowflake size={10} /> FREEZE ALL
             </button>
-          )}
-          {isVault && onRestore && (
-            <button
-              onClick={() => { setShowMenu(false); onRestore(); }}
-              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-green/20 hover:text-gx-green rounded"
-            >
-              <ExternalLink size={10} /> OPEN IN WINDOW
-            </button>
-          )}
-          {onDelete && (
-            <button
-              onClick={() => { setShowMenu(false); onDelete(); }}
-              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-red/20 text-gx-red rounded"
-            >
-              <Trash2 size={10} /> {isVault ? 'DELETE' : 'DELETE GROUP'}
-            </button>
-          )}
-        </div>
-      )}
+          </>
+        )}
+        {!isVault && onNonDestructiveSave && (
+          <button
+            onClick={() => { setShowMenu(false); onNonDestructiveSave(); }}
+            className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+          >
+            <Save size={10} /> SAVE TO VAULT
+          </button>
+        )}
+        {isVault && onRestore && (
+          <button
+            onClick={() => { setShowMenu(false); onRestore(); }}
+            className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-green/20 hover:text-gx-green rounded"
+          >
+            <ExternalLink size={10} /> OPEN IN WINDOW
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={() => { setShowMenu(false); onDelete(); }}
+            className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-red/20 text-gx-red rounded"
+          >
+            <Trash2 size={10} /> {isVault ? 'DELETE' : 'DELETE GROUP'}
+          </button>
+        )}
+      </ContextMenu>
 
       {!island.collapsed && !isOverlay && (
         <div
