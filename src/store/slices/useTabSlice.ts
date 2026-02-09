@@ -12,9 +12,14 @@ export interface TabSlice {
   isUpdating: boolean;
   pendingRefresh: boolean;
   isRefreshing: boolean;
-  
+  pendingOperations: Set<number>;
+
   syncLiveTabs: () => Promise<void>;
   setIsUpdating: (val: boolean) => void;
+  addPendingOperation: (id: number) => void;
+  removePendingOperation: (id: number) => void;
+  clearPendingOperations: () => void;
+  hasPendingOperations: () => boolean;
   renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
   toggleLiveGroupCollapse: (id: UniversalId) => Promise<void>;
   moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
@@ -29,11 +34,33 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
   isUpdating: false,
   pendingRefresh: false,
   isRefreshing: false,
+  pendingOperations: new Set<number>(),
 
   setIsUpdating: (isUpdating) => set({ isUpdating }),
 
+  addPendingOperation: (id: number) => {
+    const { pendingOperations } = get();
+    pendingOperations.add(id);
+    set({ pendingOperations: new Set(pendingOperations), isUpdating: true });
+  },
+
+  removePendingOperation: (id: number) => {
+    const { pendingOperations } = get();
+    pendingOperations.delete(id);
+    const hasPending = pendingOperations.size > 0;
+    set({ pendingOperations: new Set(pendingOperations), isUpdating: hasPending });
+  },
+
+  clearPendingOperations: () => {
+    set({ pendingOperations: new Set<number>(), isUpdating: false });
+  },
+
+  hasPendingOperations: () => {
+    return get().pendingOperations.size > 0;
+  },
+
   syncLiveTabs: async () => {
-    if (get().isUpdating) return;
+    if (get().isUpdating || get().hasPendingOperations()) return;
 
     let acquiredLock = false;
     set((state: StoreState) => {
