@@ -8,6 +8,7 @@ export const useTabSync = () => {
   const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRefresh = useRef(false);
   const operationTimeouts = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingOperations = useStore(state => state.pendingOperations);
 
   const clearOperationTimeout = (id: number) => {
     const timeout = operationTimeouts.current.get(id);
@@ -73,9 +74,10 @@ export const useTabSync = () => {
   }, []);
 
   useEffect(() => {
-    const { pendingOperations } = useStore.getState();
+    const currentIds = new Set(pendingOperations);
+    const trackedIds = new Set(operationTimeouts.current.keys());
 
-    pendingOperations.forEach((id) => {
+    currentIds.forEach((id) => {
       if (!operationTimeouts.current.has(id)) {
         const timeout = setTimeout(() => {
           const { removePendingOperation, hasPendingOperations } = useStore.getState();
@@ -87,5 +89,11 @@ export const useTabSync = () => {
         operationTimeouts.current.set(id, timeout);
       }
     });
-  });
+
+    trackedIds.forEach((id) => {
+      if (!currentIds.has(id)) {
+        clearOperationTimeout(id);
+      }
+    });
+  }, [pendingOperations]);
 };

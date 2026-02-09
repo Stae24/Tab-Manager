@@ -1278,7 +1278,7 @@ export const Dashboard: React.FC = () => {
         if (typeof activeId === 'number' && activeId > 0) return activeId;
         if (typeof activeId === 'string') {
           const numeric = parseNumericId(activeId);
-          if (numeric !== -1) return numeric;
+          if (numeric !== null) return numeric;
         }
         const data = event.active.data?.current as DragData | undefined;
         if (data?.type === 'tab' && data.tab?.id) return parseNumericId(data.tab.id);
@@ -1347,13 +1347,13 @@ export const Dashboard: React.FC = () => {
         let isMovingGroup = false;
 
         for (const item of finalIslands) {
-          if (item.id == activeId) {
+          if (String(item.id) === String(activeId)) {
             targetItem = item;
             isMovingGroup = 'tabs' in item;
             break;
           }
           if ('tabs' in item && item.tabs) {
-            const nested = item.tabs?.find((t: TabType) => t.id == activeId);
+            const nested = item.tabs?.find((t: TabType) => String(t.id) === String(activeId));
             if (nested) {
               targetItem = nested;
               targetIslandId = item.id;

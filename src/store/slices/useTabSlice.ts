@@ -40,15 +40,17 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
 
   addPendingOperation: (id: number) => {
     const { pendingOperations } = get();
-    pendingOperations.add(id);
-    set({ pendingOperations: new Set(pendingOperations), isUpdating: true });
+    const newOps = new Set(pendingOperations);
+    newOps.add(id);
+    set({ pendingOperations: newOps, isUpdating: true });
   },
 
   removePendingOperation: (id: number) => {
     const { pendingOperations } = get();
-    pendingOperations.delete(id);
-    const hasPending = pendingOperations.size > 0;
-    set({ pendingOperations: new Set(pendingOperations), isUpdating: hasPending });
+    const newOps = new Set(pendingOperations);
+    newOps.delete(id);
+    const hasPending = newOps.size > 0;
+    set({ pendingOperations: newOps, isUpdating: hasPending });
   },
 
   clearPendingOperations: () => {
