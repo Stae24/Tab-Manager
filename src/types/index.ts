@@ -73,6 +73,7 @@ export interface MigrationResult {
   itemCount: number;
   from?: 'sync_legacy' | 'local_legacy' | 'none';
   error?: string;
+  fallbackToLocal?: boolean;
 }
 
 export interface VaultLoadResult {

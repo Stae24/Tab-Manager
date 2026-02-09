@@ -61,10 +61,14 @@ const init = async () => {
     logger.info('[VaultStorage] Migration complete:', migrationResult);
   }
 
-  const { vault, timestamp } = await vaultService.loadVault({ syncEnabled });
+  const effectiveSyncEnabled = migrationResult.fallbackToLocal ? false : syncEnabled;
+  logger.info(`[Store Init] Loading vault with syncEnabled=${effectiveSyncEnabled} (fallbackToLocal=${migrationResult.fallbackToLocal})`);
+  const { vault, timestamp } = await vaultService.loadVault({ syncEnabled: effectiveSyncEnabled });
+  logger.info(`[Store Init] Vault loaded: ${vault.length} items, timestamp=${timestamp}`);
   useStore.setState({ vault, lastVaultTimestamp: timestamp });
 
   const quota = await quotaService.getVaultQuota();
+  logger.info(`[Store Init] Quota: ${quota.used}/${quota.total} bytes (${Math.round(quota.percentage * 100)}%)`);
   useStore.setState({ vaultQuota: quota });
 
   settingsService.watchSettings(async (changes, area) => {

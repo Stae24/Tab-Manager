@@ -5,6 +5,7 @@ import { quotaService } from '../../services/quotaService';
 import { tabService } from '../../services/tabService';
 import { settingsService } from '../../services/settingsService';
 import { isIsland, parseNumericId, findItemInList } from '../utils';
+import { logger } from '../../utils/logger';
 
 import type { StoreState } from '../types';
 
@@ -36,7 +37,13 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   lastVaultTimestamp: 0,
 
   persistVault: async (vault: VaultItem[], syncEnabled: boolean): Promise<VaultStorageResult> => {
+    const previousVault = get().vault;
     const result = await vaultService.saveVault(vault, { syncEnabled });
+
+    if (!result.success) {
+      set({ vault: previousVault });
+      logger.error('[VaultSlice] Persistence failed, rolled back to previous state:', result.error);
+    }
 
     const quota = await quotaService.getVaultQuota();
     set({ vaultQuota: quota, lastVaultTimestamp: Date.now() });
@@ -74,8 +81,16 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     const { islands, vault, appearanceSettings, persistVault } = get();
     
     const found = findItemInList(islands, id);
-    if (!found || !found.item) return;
+    if (!found || !found.item) {
+      logger.warn(`[VaultSlice] moveToVault: Item ${id} not found in islands`);
+      return;
+    }
     const item = found.item;
+    const isGroup = isIsland(item);
+    const tabCount = isGroup ? (item.tabs?.length || 0) : 1;
+    
+    logger.info(`[VaultSlice] moveToVault: Moving ${isGroup ? 'group' : 'tab'} (${tabCount} tabs) to vault. ID: ${item.id}`);
+    logger.info(`[VaultSlice] moveToVault: Current vault has ${vault.length} items, syncEnabled=${appearanceSettings.vaultSyncEnabled}`);
 
     let newIslands = islands;
     if (found.containerId === 'root') {
@@ -91,6 +106,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       });
     }
     set({ islands: newIslands });
+    logger.info('[VaultSlice] moveToVault: Updated islands state');
 
     const timestamp = Date.now();
     const itemClone = JSON.parse(JSON.stringify(item));
@@ -110,18 +126,27 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
     const newVault = [...vault, itemClone as VaultItem];
     set({ vault: newVault });
-    await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
-
-    if (isIsland(item)) {
-      const tabIds = (item.tabs || []).map((t: Tab) => parseNumericId(t.id)).filter((id): id is number => id !== null);
-      if (tabIds.length > 0) {
-        await tabService.closeTabs(tabIds);
+    logger.info(`[VaultSlice] moveToVault: Updated vault state, now has ${newVault.length} items`);
+    
+    logger.info('[VaultSlice] moveToVault: Calling persistVault...');
+    const result = await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
+    
+    if (result.success) {
+      logger.info('[VaultSlice] moveToVault: Persistence successful, closing tabs');
+      if (isIsland(item)) {
+        const tabIds = (item.tabs || []).map((t: Tab) => parseNumericId(t.id)).filter((id): id is number => id !== null);
+        if (tabIds.length > 0) {
+          await tabService.closeTabs(tabIds);
+        }
+      } else {
+        const numericId = parseNumericId(item.id);
+        if (numericId !== null) {
+          await tabService.closeTab(numericId);
+        }
       }
+      logger.info('[VaultSlice] moveToVault: Complete');
     } else {
-      const numericId = parseNumericId(item.id);
-      if (numericId !== null) {
-        await tabService.closeTab(numericId);
-      }
+      logger.error(`[VaultSlice] moveToVault: Persistence FAILED with error ${result.error}. Vault was rolled back.`);
     }
   },
 
@@ -248,7 +273,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
   removeFromVault: async (id) => {
     const { vault, appearanceSettings, persistVault } = get();
-    const newVault = vault.filter((v: VaultItem) => v && v.id != id);
+    const newVault = vault.filter((v: VaultItem) => v && String(v.id) !== String(id));
     set({ vault: newVault });
     await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
   },
