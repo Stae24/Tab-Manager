@@ -1048,6 +1048,7 @@ export const Dashboard: React.FC = () => {
   const groupUngroupedTabs = useStore(state => state.groupUngroupedTabs);
   const showAppearancePanel = useStore(state => state.showAppearancePanel);
   const executeCommand = useStore(state => state.executeCommand);
+  const addPendingOperation = useStore(state => state.addPendingOperation);
 
   const [isResizing, setIsResizing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -1213,7 +1214,6 @@ export const Dashboard: React.FC = () => {
       (data?.type === 'tab' && data.tab.id.toString().startsWith('vault-'));
 
     setIsDraggingVaultItem(isVault);
-    useStore.getState().setIsUpdating(true);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -1237,193 +1237,188 @@ export const Dashboard: React.FC = () => {
     setIsDraggingVaultItem(false);
     setIsDraggingGroup(false);
 
-    try {
-      if (!over) return;
+    if (!over) return;
 
-      const activeId = active.id;
-      const overId = over.id;
+    const activeId = active.id;
+    const overId = over.id;
 
-      // We MUST use the latest state from the store after optimistic moves
-      const { islands: finalIslands, vault: finalVault } = useStore.getState();
+    // We MUST use the latest state from the store after optimistic moves
+    const { islands: finalIslands, vault: finalVault } = useStore.getState();
 
-      // Identify Source and Target
-      const activeIdStr = activeId.toString();
-      const overIdStr = overId.toString();
-      const isVaultSource = activeIdStr.startsWith('vault-');
+    // Identify Source and Target
+    const activeIdStr = activeId.toString();
+    const overIdStr = overId.toString();
+    const isVaultSource = activeIdStr.startsWith('vault-');
 
-      // Target is Vault if dropzone OR if the ID starts with 'vault-'
-      // This covers all Vault items and the dropzone
-      const isVaultTarget = overIdStr === 'vault-dropzone' || overIdStr === 'vault-bottom' || overIdStr.startsWith('vault-');
+    // Target is Vault if dropzone OR if the ID starts with 'vault-'
+    // This covers all Vault items and the dropzone
+    const isVaultTarget = overIdStr === 'vault-dropzone' || overIdStr === 'vault-bottom' || overIdStr.startsWith('vault-');
 
-      // SCENARIO 1: Internal Vault Move (Sort)
-      if (isVaultSource && isVaultTarget) {
-        await useStore.getState().reorderVault(finalVault);
-        return;
+    // SCENARIO 1: Internal Vault Move (Sort)
+    if (isVaultSource && isVaultTarget) {
+      await useStore.getState().reorderVault(finalVault);
+      return;
+    }
+
+    // SCENARIO 2: Archive (Live -> Vault)
+    if (!isVaultSource && isVaultTarget) {
+      // Find item in islands to get ID, or just use activeId
+      // Note: activeId is enough for moveToVault
+
+      if (activeId) {
+        await moveToVault(activeId);
       }
+      return;
+    }
 
-      // SCENARIO 2: Archive (Live -> Vault)
-      if (!isVaultSource && isVaultTarget) {
-        // Find item in islands to get ID, or just use activeId
-        // Note: activeId is enough for moveToVault
 
-        if (activeId) {
-          await moveToVault(activeId);
+    // SCENARIO 5: Create New Group from Tab (Live -> Create Zone)
+    if (overIdStr === 'create-island-dropzone' && !isVaultSource) {
+      const resolveTabId = (): number | null => {
+        if (typeof activeId === 'number' && activeId > 0) return activeId;
+        if (typeof activeId === 'string') {
+          const numeric = parseNumericId(activeId);
+          if (numeric !== -1) return numeric;
         }
+        const data = event.active.data?.current as DragData | undefined;
+        if (data?.type === 'tab' && data.tab?.id) return parseNumericId(data.tab.id);
+        if (activeItem?.type === 'tab' && activeItem.tab?.id) return parseNumericId(activeItem.tab.id);
+        return null;
+      };
+
+      const tabId = resolveTabId();
+
+      if (!tabId) {
+        logger.error(`[FAILED] Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
         return;
       }
 
-
-      // SCENARIO 5: Create New Group from Tab (Live -> Create Zone)
-      if (overIdStr === 'create-island-dropzone' && !isVaultSource) {
-        const resolveTabId = (): number | null => {
-          if (typeof activeId === 'number' && activeId > 0) return activeId;
-          if (typeof activeId === 'string') {
-            const numeric = parseNumericId(activeId);
-            if (numeric !== -1) return numeric;
-          }
-          const data = event.active.data?.current as DragData | undefined;
-          if (data?.type === 'tab' && data.tab?.id) return parseNumericId(data.tab.id);
-          if (activeItem?.type === 'tab' && activeItem.tab?.id) return parseNumericId(activeItem.tab.id);
-          return null;
-        };
-
-        const tabId = resolveTabId();
-
-        if (!tabId) {
-          logger.error(`[FAILED] Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
+      try {
+        const tab = await chrome.tabs.get(tabId);
+        if (tab.pinned) {
+          logger.warn('[ISLAND] Cannot create island from pinned tab');
           return;
         }
 
-        try {
-          const tab = await chrome.tabs.get(tabId);
-          if (tab.pinned) {
-            logger.warn('[ISLAND] Cannot create island from pinned tab');
-            return;
-          }
+        // Set island creation state (lightweight, just for UI indicators)
+        setIsCreatingIsland(true);
+        setCreatingTabId(tabId);
 
-          // Set island creation state (lightweight, just for UI indicators)
-          setIsCreatingIsland(true);
-          setCreatingTabId(tabId);
+        // Signal background to defer refreshes during group creation
+        await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
 
-          // Signal background to defer refreshes during group creation
-          await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
+        logger.debug(`[ISLAND] Creating island for tab: ${tabId}`);
 
-          logger.debug(`[ISLAND] Creating island for tab: ${tabId}`);
+        // Call createIsland with no title to ensure it remains "Untitled"
+        const groupId = await createIsland([tabId], undefined, 'blue' as chrome.tabGroups.Color);
 
-          // Call createIsland with no title to ensure it remains "Untitled"
-          const groupId = await createIsland([tabId], undefined, 'blue' as chrome.tabGroups.Color);
-
-          if (groupId) {
-            logger.info(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
-          } else {
-            logger.error(`[FAILED] createIsland returned null for tab: ${tabId}`);
-          }
-
-          // Signal end of island creation to background (triggers refresh)
-          await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
-
-          // Brief delay for visual feedback completion (ensures pulse completes before refresh)
-          await new Promise(r => setTimeout(r, POST_ISLAND_CREATION_DELAY_MS));
-        } catch (e) {
-          logger.error('[ISLAND] Tab no longer exists or access denied', e);
-          await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
-        } finally {
-          setIsCreatingIsland(false);
-          setCreatingTabId(null);
+        if (groupId) {
+          logger.info(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
+        } else {
+          logger.error(`[FAILED] createIsland returned null for tab: ${tabId}`);
         }
-        return;
+
+        // Signal end of island creation to background (triggers refresh)
+        await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
+
+        // Brief delay for visual feedback completion (ensures pulse completes before refresh)
+        await new Promise(r => setTimeout(r, POST_ISLAND_CREATION_DELAY_MS));
+      } catch (e) {
+        logger.error('[ISLAND] Tab no longer exists or access denied', e);
+        await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
+      } finally {
+        setIsCreatingIsland(false);
+        setCreatingTabId(null);
       }
+      return;
+    }
 
-      // SCENARIO 3: Internal Live Move (Sort) OR Restore (Vault -> Live)
-      // Skip if it was the Create Dropzone (handled in SCENARIO 5)
-      if (!isVaultSource && !isVaultTarget && overIdStr !== 'create-island-dropzone') {
-        // Show loading overlay for complex moves only
-        setIsLoading(true);
+    // SCENARIO 3: Internal Live Move (Sort) OR Restore (Vault -> Live)
+    // Skip if it was the Create Dropzone (handled in SCENARIO 5)
+    if (!isVaultSource && !isVaultTarget && overIdStr !== 'create-island-dropzone') {
+      // Show loading overlay for complex moves only
+      setIsLoading(true);
 
-        try {
-          // Internal Live Move
-          let browserIndex = 0;
-          let targetItem: LiveItem | null = null;
-          let targetIslandId: UniversalId | null = null;
-          let isMovingGroup = false;
+      try {
+        // Internal Live Move
+        let browserIndex = 0;
+        let targetItem: LiveItem | null = null;
+        let targetIslandId: UniversalId | null = null;
+        let isMovingGroup = false;
 
-          for (const item of finalIslands) {
-            if (item.id == activeId) {
-              targetItem = item;
-              isMovingGroup = 'tabs' in item;
+        for (const item of finalIslands) {
+          if (item.id == activeId) {
+            targetItem = item;
+            isMovingGroup = 'tabs' in item;
+            break;
+          }
+          if ('tabs' in item && item.tabs) {
+            const nested = item.tabs?.find((t: TabType) => t.id == activeId);
+            if (nested) {
+              targetItem = nested;
+              targetIslandId = item.id;
+              browserIndex += item.tabs?.indexOf(nested) ?? 0;
               break;
             }
-            if ('tabs' in item && item.tabs) {
-              const nested = item.tabs?.find((t: TabType) => t.id == activeId);
-              if (nested) {
-                targetItem = nested;
-                targetIslandId = item.id;
-                browserIndex += item.tabs?.indexOf(nested) ?? 0;
-                break;
-              }
-              browserIndex += item.tabs?.length ?? 0;
-            } else {
-              browserIndex += 1;
-            }
-          }
-
-          if (!targetItem) return;
-
-          if (isMovingGroup) {
-            const numericGroupId = parseNumericId(targetItem.id);
-            if (numericGroupId !== null && dragStartInfo) {
-              const command = new MoveIslandCommand({
-                islandId: numericGroupId,
-                fromIndex: dragStartInfo.index,
-                toIndex: browserIndex,
-                fromWindowId: dragStartInfo.windowId,
-                toWindowId: dragStartInfo.windowId
-              });
-              await executeCommand(command);
-            }
+            browserIndex += item.tabs?.length ?? 0;
           } else {
-            const tabId = parseNumericId(activeId);
-            if (tabId !== null && dragStartInfo) {
-              const toGroupId = targetIslandId ? parseNumericId(targetIslandId) : -1;
-              const command = new MoveTabCommand({
-                tabId,
-                fromIndex: dragStartInfo.index,
-                toIndex: browserIndex,
-                fromGroupId: dragStartInfo.groupId,
-                toGroupId: toGroupId ?? -1,
-                fromWindowId: dragStartInfo.windowId,
-                toWindowId: dragStartInfo.windowId
-              });
-              await executeCommand(command);
-            }
+            browserIndex += 1;
           }
-
-        } finally {
-          setIsLoading(false);
         }
-        return;
-      }
 
+        if (!targetItem) return;
 
-      // SCENARIO 4: Restore (Vault -> Live)
-      // (isVaultSource && !isVaultTarget)
-      if (isVaultSource && !isVaultTarget) {
-        setIsLoading(true);
-
-        try {
-          if (activeId) {
-            await restoreFromVault(activeId);
+        if (isMovingGroup) {
+          const numericGroupId = parseNumericId(targetItem.id);
+          if (numericGroupId !== null && dragStartInfo) {
+            addPendingOperation(numericGroupId);
+            const command = new MoveIslandCommand({
+              islandId: numericGroupId,
+              fromIndex: dragStartInfo.index,
+              toIndex: browserIndex,
+              fromWindowId: dragStartInfo.windowId,
+              toWindowId: dragStartInfo.windowId
+            });
+            await executeCommand(command);
           }
-        } finally {
-          setIsLoading(false);
+        } else {
+          const tabId = parseNumericId(activeId);
+          if (tabId !== null && dragStartInfo) {
+            addPendingOperation(tabId);
+            const toGroupId = targetIslandId ? parseNumericId(targetIslandId) : -1;
+            const command = new MoveTabCommand({
+              tabId,
+              fromIndex: dragStartInfo.index,
+              toIndex: browserIndex,
+              fromGroupId: dragStartInfo.groupId,
+              toGroupId: toGroupId ?? -1,
+              fromWindowId: dragStartInfo.windowId,
+              toWindowId: dragStartInfo.windowId
+            });
+            await executeCommand(command);
+          }
         }
-        return;
-      }
 
-    } finally {
-      // Orchestrate drag-end state and refresh logic
-      useStore.getState().setIsUpdating(false);
-      await useStore.getState().syncLiveTabs();
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+
+    // SCENARIO 4: Restore (Vault -> Live)
+    // (isVaultSource && !isVaultTarget)
+    if (isVaultSource && !isVaultTarget) {
+      setIsLoading(true);
+
+      try {
+        if (activeId) {
+          await restoreFromVault(activeId);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+      return;
     }
   };
 

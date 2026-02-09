@@ -7,12 +7,26 @@ chrome.action.onClicked.addListener(() => {
 chrome.tabs.onCreated.addListener(() => notifyUI());
 chrome.tabs.onRemoved.addListener(() => notifyUI());
 chrome.tabs.onUpdated.addListener(() => notifyUI());
-chrome.tabs.onMoved.addListener(() => notifyUI());
+chrome.tabs.onMoved.addListener((tabId, moveInfo) => {
+  chrome.runtime.sendMessage({
+    type: 'TAB_MOVED',
+    tabId: tabId,
+    fromIndex: moveInfo.fromIndex,
+    toIndex: moveInfo.toIndex
+  }).catch(() => {});
+  notifyUI();
+});
 
 chrome.tabGroups.onCreated.addListener(() => notifyUI());
 chrome.tabGroups.onUpdated.addListener(() => notifyUI());
 chrome.tabGroups.onRemoved.addListener(() => notifyUI());
-chrome.tabGroups.onMoved.addListener(() => notifyUI());
+chrome.tabGroups.onMoved.addListener((group) => {
+  chrome.runtime.sendMessage({
+    type: 'GROUP_MOVED',
+    groupId: group.id
+  }).catch(() => {});
+  notifyUI();
+});
 
 let islandCreationInProgress = false;
 
