@@ -42,11 +42,11 @@ import ErrorBoundary from './ErrorBoundary';
 import { logger } from '../utils/logger';
 import { MoveTabCommand } from '../store/commands/MoveTabCommand';
 import { MoveIslandCommand } from '../store/commands/MoveIslandCommand';
-import { 
-  BASE_FONT_SIZE, 
-  DND_ACTIVATION_DISTANCE, 
-  DIVIDER_POSITION_MIN, 
-  DIVIDER_POSITION_MAX, 
+import {
+  BASE_FONT_SIZE,
+  DND_ACTIVATION_DISTANCE,
+  DIVIDER_POSITION_MIN,
+  DIVIDER_POSITION_MAX,
   POST_ISLAND_CREATION_DELAY_MS,
   VIRTUAL_ROW_ESTIMATE_SIZE,
   VIRTUAL_ROW_OVERSCAN,
@@ -110,7 +110,7 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
   return { setNodeRef, gapRef, isOver, expanded };
 };
 
-type DashboardRow = 
+type DashboardRow =
   | { type: 'gap'; id: string; index: number }
   | { type: 'item'; id: UniversalId; item: IslandType | TabType };
 
@@ -146,7 +146,7 @@ const LivePanel: React.FC<{
     id: 'create-island-dropzone',
   });
 
-  const { setNodeRef: setBottomRef, isOver: isBottomOver } = useDroppable({
+  const { setNodeRef: setBottomRef } = useDroppable({
     id: 'live-bottom',
   });
 
@@ -210,8 +210,8 @@ const LivePanel: React.FC<{
     }
 
     return (
-      <div 
-        key="search-results-list" 
+      <div
+        key="search-results-list"
         className="search-mode-enter relative"
         style={{ height: `${searchVirtualizer.getTotalSize()}px`, width: '100%' }}
       >
@@ -256,7 +256,7 @@ const LivePanel: React.FC<{
           >
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const row = rowItems[virtualRow.index];
-              
+
               return (
                 <div
                   key={virtualRow.key}
@@ -605,8 +605,8 @@ const LivePanel: React.FC<{
                 title={ungroupedCount < 2 ? "Not enough ungrouped tabs to group" : `Group ${ungroupedCount} ungrouped tabs`}
                 className={cn(
                   "p-1.5 bg-gx-gray/80 rounded-lg border border-white/5 shadow-inner transition-all group",
-                  ungroupedCount < 2 
-                    ? "opacity-30 cursor-not-allowed grayscale" 
+                  ungroupedCount < 2
+                    ? "opacity-30 cursor-not-allowed grayscale"
                     : "hover:border-gx-accent/30 hover:bg-gx-accent/10"
                 )}
               >
@@ -659,13 +659,13 @@ const LivePanel: React.FC<{
         )}
       </div>
 
-      <div 
+      <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none scrollbar-hide"
       >
         {searchQuery ? (
-          <div 
-            key="search-results-list" 
+          <div
+            key="search-results-list"
             className="search-mode-enter relative"
             style={{ height: `${searchVirtualizer.getTotalSize()}px`, width: '100%' }}
           >
@@ -716,7 +716,7 @@ const LivePanel: React.FC<{
               >
                 {virtualizer.getVirtualItems().map((virtualRow) => {
                   const row = rowItems[virtualRow.index];
-                  
+
                   return (
                     <div
                       key={virtualRow.key}
@@ -831,7 +831,7 @@ const VaultPanel: React.FC<{
     id: 'vault-dropzone',
   });
 
-  const { setNodeRef: setBottomRef, isOver: isBottomOver } = useDroppable({
+  const { setNodeRef: setBottomRef } = useDroppable({
     id: 'vault-bottom',
   });
 
@@ -893,7 +893,7 @@ const VaultPanel: React.FC<{
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const row = rowItems[virtualRow.index];
-            
+
             return (
               <div
                 key={virtualRow.key}
@@ -981,7 +981,7 @@ const VaultPanel: React.FC<{
         </div>
       </div>
 
-      <div 
+      <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none"
       >
@@ -993,21 +993,14 @@ const VaultPanel: React.FC<{
               onManageStorage={onManageStorage}
             />
           )}
-          
+
           {renderVaultList()}
           {renderEmptyState()}
 
           <div
             ref={setBottomRef}
-            className={cn(
-              "h-24 w-full rounded-xl border-2 border-dashed border-transparent transition-all flex items-center justify-center shrink-0",
-              isBottomOver ? "border-gx-accent/30 bg-gx-accent/5" : "hover:border-gx-gray/30"
-            )}
-          >
-            <span className={cn("text-xs font-bold uppercase tracking-widest text-gx-gray opacity-0 transition-opacity", isBottomOver && "opacity-100")}>
-              Drop to Append
-            </span>
-          </div>
+            className="h-24 w-full"
+          />
         </ScrollContainerProvider>
       </div>
 
@@ -1015,7 +1008,7 @@ const VaultPanel: React.FC<{
   );
 };
 
-type DragData = 
+type DragData =
   | { type: 'island'; island: IslandType }
   | { type: 'tab'; tab: TabType };
 
@@ -1482,8 +1475,8 @@ export const Dashboard: React.FC = () => {
             />
             {showVault && (
               <>
-                <div 
-                  onMouseDown={showAppearancePanel ? undefined : handleMouseDown} 
+                <div
+                  onMouseDown={showAppearancePanel ? undefined : handleMouseDown}
                   className={cn(
                     "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-col-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative",
                     showAppearancePanel && "pointer-events-none opacity-0"
