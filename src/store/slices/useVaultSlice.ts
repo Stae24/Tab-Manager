@@ -67,15 +67,16 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     if (result.fallbackToLocal) {
       const { appearanceSettings } = get();
       logger.warn('[VaultSlice] Auto-disabling vault sync due to size limits');
-      
+
       await vaultService.disableVaultSync(vault);
-      
+
       const updated = { ...appearanceSettings, vaultSyncEnabled: false };
       set({ appearanceSettings: updated });
       settingsService.saveSettings({ appearanceSettings: updated });
-      
+
       const newQuota = await quotaService.getVaultQuota();
       set({ vaultQuota: { ...newQuota, warningLevel: 'none' as const }, lastVaultTimestamp: Date.now() });
+      return result;
     }
 
     const newQuota = await quotaService.getVaultQuota();

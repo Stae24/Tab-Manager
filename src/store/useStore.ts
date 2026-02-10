@@ -73,17 +73,17 @@ const init = async () => {
   logger.info(`[Store Init] Quota: ${quota.used}/${quota.total} bytes (${Math.round(quota.percentage * 100)}%)`);
   useStore.setState({ vaultQuota: quota });
 
-  if (quota.percentage >= 1.0) {
-    logger.warn(`[Store Init] Quota critical at ${Math.round(quota.percentage * 100)}%, auto-disabling sync`);
-    await vaultService.disableVaultSync(vault);
-    const currentSettings = sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? sync.appearanceSettings : defaultAppearanceSettings;
-    const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
-    useStore.setState({ 
-      effectiveSyncEnabled: false,
-      vaultQuota: { ...quota, warningLevel: 'none' as const }
-    });
-    settingsService.saveSettings({ appearanceSettings: updatedSettings });
-  }
+   if (quota.percentage >= 1.0) {
+     logger.warn(`[Store Init] Quota critical at ${Math.round(quota.percentage * 100)}%, auto-disabling sync`);
+     await vaultService.disableVaultSync(vault);
+     const currentSettings = sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? sync.appearanceSettings : defaultAppearanceSettings;
+     const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
+     useStore.setState({ 
+       effectiveSyncEnabled: false,
+       vaultQuota: { ...quota, warningLevel: 'none' as const }
+     });
+     await settingsService.saveSettings({ appearanceSettings: updatedSettings });
+   }
 
   settingsService.watchSettings(async (changes, area) => {
     if (area === 'sync') {
