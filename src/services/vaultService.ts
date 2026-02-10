@@ -8,7 +8,7 @@ import type {
   VaultLoadResult
 } from '../types/index';
 import { quotaService } from './quotaService';
-import { STORAGE_VERSION, VAULT_CHUNK_SIZE, CHROME_SYNC_ITEM_MAX_BYTES } from '../constants';
+import { STORAGE_VERSION, VAULT_CHUNK_SIZE, CHROME_SYNC_ITEM_MAX_BYTES, VAULT_QUOTA_SAFETY_MARGIN_BYTES } from '../constants';
 import { logger } from '../utils/logger';
 
 const VAULT_META_KEY = 'vault_meta';
@@ -164,10 +164,13 @@ export const vaultService = {
     const currentVaultBytes = await chrome.storage.sync.getBytesInUse(currentKeys);
     const netNewBytes = compressedBytes - currentVaultBytes;
     
-    logger.info(`[VaultStorage] Quota check: available=${quota.available}, needed=${netNewBytes}, currentKeys=${currentKeys.length}`);
+    const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES;
+    const estimatedRequiredBytes = netNewBytes + safetyMargin;
     
-    if (netNewBytes > quota.available) {
-      logger.warn(`[VaultStorage] Vault too large for sync: need ${netNewBytes} bytes, have ${quota.available}. Falling back to local storage.`);
+    logger.info(`[VaultStorage] Quota check: available=${quota.available}, needed=${netNewBytes}, withSafetyMargin=${estimatedRequiredBytes}, currentKeys=${currentKeys.length}`);
+    
+    if (estimatedRequiredBytes > quota.available) {
+      logger.warn(`[VaultStorage] Vault too large for sync: need ${netNewBytes} bytes (${estimatedRequiredBytes} with safety margin), have ${quota.available}. Falling back to local storage.`);
       logger.warn('[VaultStorage] To retry sync: Clear vault storage and re-enable vault sync in settings');
       
       // Save to local storage instead
@@ -294,11 +297,28 @@ export const vaultService = {
       };
     } catch (error) {
       logger.error('[VaultStorage] Failed to save:', error);
+      
+      const isQuotaError = error instanceof Error && error.message.includes('quota');
+      
+      if (isQuotaError) {
+        logger.warn('[VaultStorage] Quota exceeded during sync write, falling back to local storage');
+      } else {
+        logger.warn('[VaultStorage] Sync write failed, falling back to local storage');
+      }
+      
+      await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault }).catch((e) => {
+        logger.error('[VaultStorage] Failed to save to local storage:', e);
+      });
+      await chrome.storage.local.set({ vault_backup: vault }).catch((e) => {
+        logger.error('[VaultStorage] Failed to save backup to local storage:', e);
+      });
+      
       return {
-        success: false,
-        error: 'SYNC_FAILED',
+        success: true,
+        fallbackToLocal: true,
         bytesUsed: quota.used,
-        bytesAvailable: quota.available
+        bytesAvailable: quota.available,
+        warningLevel: 'critical'
       };
     }
   },

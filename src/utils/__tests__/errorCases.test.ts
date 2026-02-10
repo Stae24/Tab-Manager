@@ -140,15 +140,16 @@ describe('Error Cases - vaultService.saveVault', () => {
     expect(result.fallbackToLocal).toBe(true);
   });
 
-  it('returns SYNC_FAILED when chrome.storage.sync.set throws', async () => {
+  it('falls back to local storage when chrome.storage.sync.set throws', async () => {
     const vault = [createMockVaultItem(1, 'Tab 1')];
     
     vi.spyOn(chrome.storage.sync, 'set').mockRejectedValue(new Error('Sync failed unexpectedly'));
 
     const result = await vaultService.saveVault(vault, { syncEnabled: true });
     
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('SYNC_FAILED');
+    expect(result.success).toBe(true);
+    expect(result.fallbackToLocal).toBe(true);
+    expect(result.error).toBeUndefined();
   });
 });
 

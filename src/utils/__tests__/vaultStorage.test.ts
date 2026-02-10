@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import LZString from 'lz-string';
 
 const VAULT_META_KEY = 'vault_meta';
@@ -331,5 +331,108 @@ describe('vaultStorage - chunking', () => {
     expect(loaded).toHaveLength(50);
     expect(loaded[0].title).toBe('Chunked Tab 0');
     expect(loaded[49].title).toBe('Chunked Tab 49');
+  });
+});
+
+describe('vaultStorage - quota fallback', () => {
+  let originalChrome: typeof chrome;
+  
+  beforeEach(() => {
+    originalChrome = globalThis.chrome;
+  });
+  
+  afterEach(() => {
+    globalThis.chrome = originalChrome;
+    vi.restoreAllMocks();
+  });
+  
+  it('falls back to local storage when sync write fails with quota error', async () => {
+    const vault = [createMockVaultItem(1, 'Test Tab')];
+    
+    let syncSetCallCount = 0;
+    const mockSyncStorageLocal: Record<string, unknown> = {};
+    
+    globalThis.chrome = {
+      storage: {
+        sync: {
+          get: vi.fn(async (keys: string[] | null) => {
+            if (keys === null) return { ...mockSyncStorageLocal };
+            const result: Record<string, unknown> = {};
+            (Array.isArray(keys) ? keys : [keys]).forEach(k => {
+              if (mockSyncStorageLocal[k] !== undefined) result[k] = mockSyncStorageLocal[k];
+            });
+            return result;
+          }) as unknown as chrome.storage.StorageArea['get'],
+          set: vi.fn(async (data: Record<string, unknown>) => {
+            syncSetCallCount++;
+            throw new Error('QUOTA_BYTES quota exceeded');
+          }) as unknown as chrome.storage.StorageArea['set'],
+          remove: vi.fn(async () => {}) as unknown as chrome.storage.StorageArea['remove'],
+          getBytesInUse: vi.fn(async (keys: string[] | null) => {
+            let total = 0;
+            if (keys === null) {
+              total = JSON.stringify(mockSyncStorageLocal).length;
+            } else {
+              keys.forEach(k => {
+                if (mockSyncStorageLocal[k] !== undefined) {
+                  total += JSON.stringify(mockSyncStorageLocal[k]).length + k.length;
+                }
+              });
+            }
+            return total;
+          }) as unknown as chrome.storage.StorageArea['getBytesInUse'],
+        },
+        local: {
+          get: vi.fn(async () => ({})) as unknown as chrome.storage.StorageArea['get'],
+          set: vi.fn(async () => {}) as unknown as chrome.storage.StorageArea['set'],
+          remove: vi.fn(async () => {}) as unknown as chrome.storage.StorageArea['remove'],
+          getBytesInUse: vi.fn(async () => 0) as unknown as chrome.storage.StorageArea['getBytesInUse'],
+        },
+      },
+    } as typeof chrome;
+    
+    const { saveVault: testSaveVault } = await import('../vaultStorage');
+    
+    const result = await testSaveVault(vault, { syncEnabled: true });
+    
+    expect(result.success).toBe(true);
+    expect(result.fallbackToLocal).toBe(true);
+    expect(result.warningLevel).toBe('critical');
+  });
+  
+  it('falls back to local storage when sync write fails with generic error', async () => {
+    const vault = [createMockVaultItem(1, 'Test Tab')];
+    
+    const mockSyncStorageLocal: Record<string, unknown> = {};
+    const mockLocalStorageLocal: Record<string, unknown> = {};
+    
+    globalThis.chrome = {
+      storage: {
+        sync: {
+          get: vi.fn(async () => mockSyncStorageLocal) as unknown as chrome.storage.StorageArea['get'],
+          set: vi.fn(async () => {
+            throw new Error('Storage write failed');
+          }) as unknown as chrome.storage.StorageArea['set'],
+          remove: vi.fn(async () => {}) as unknown as chrome.storage.StorageArea['remove'],
+          getBytesInUse: vi.fn(async () => 0) as unknown as chrome.storage.StorageArea['getBytesInUse'],
+        },
+        local: {
+          get: vi.fn(async () => ({})) as unknown as chrome.storage.StorageArea['get'],
+          set: vi.fn(async (data: Record<string, unknown>) => {
+            Object.assign(mockLocalStorageLocal, data);
+          }) as unknown as chrome.storage.StorageArea['set'],
+          remove: vi.fn(async () => {}) as unknown as chrome.storage.StorageArea['remove'],
+          getBytesInUse: vi.fn(async () => 0) as unknown as chrome.storage.StorageArea['getBytesInUse'],
+        },
+      },
+    } as typeof chrome;
+    
+    const { saveVault: testSaveVault } = await import('../vaultStorage');
+    
+    const result = await testSaveVault(vault, { syncEnabled: true });
+    
+    expect(result.success).toBe(true);
+    expect(result.fallbackToLocal).toBe(true);
+    expect(mockLocalStorageLocal[LEGACY_VAULT_KEY]).toEqual(vault);
   });
 });
