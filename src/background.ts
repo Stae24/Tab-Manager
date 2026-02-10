@@ -6,9 +6,13 @@ chrome.action.onClicked.addListener(() => {
 });
 
 (async () => {
-  const orphanedCount = await quotaService.cleanupOrphanedChunks();
-  if (orphanedCount > 0) {
-    console.log(`[Background] Cleaned up ${orphanedCount} orphaned vault chunks`);
+  try {
+    const orphanedCount = await quotaService.cleanupOrphanedChunks();
+    if (orphanedCount > 0) {
+      console.log(`[Background] Cleaned up ${orphanedCount} orphaned vault chunks`);
+    }
+  } catch (error) {
+    console.error('[Background] Cleanup failed:', error);
   }
 })();
 

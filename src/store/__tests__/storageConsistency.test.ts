@@ -209,6 +209,8 @@ describe('data preservation during fallback', () => {
 
     const result = await vaultService.disableVaultSync(vault);
 
-    expect(chrome.storage.sync.remove).toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('SYNC_FAILED');
+    expect(chrome.storage.sync.remove).not.toHaveBeenCalled();
   });
 });

@@ -31,7 +31,7 @@ async function checkQuotaBeforeSave(
 
   const testVault = [...currentVault, { ...item, savedAt: Date.now(), originalId: item.id } as VaultItem];
   const testJson = JSON.stringify(testVault);
-  const estimatedCompressedSize = Math.ceil(testJson.length * 0.7);
+  const estimatedCompressedSize = Math.ceil(new TextEncoder().encode(testJson).length * 0.7);
   const quota = await quotaService.getVaultQuota();
   const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES * 2;
 
@@ -61,7 +61,7 @@ export interface VaultSlice {
   clearQuotaExceeded: () => void;
   setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
   
-  persistVault: (vault: VaultItem[], syncEnabled: boolean) => Promise<VaultStorageResult>;
+  persistVault: (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]) => Promise<VaultStorageResult>;
 }
 
 export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (set, get) => ({
@@ -71,29 +71,32 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   lastVaultTimestamp: 0,
   effectiveSyncEnabled: undefined,
 
-  persistVault: async (vault: VaultItem[], syncEnabled: boolean): Promise<VaultStorageResult> => {
-    const previousVault = get().vault;
+  persistVault: async (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]): Promise<VaultStorageResult> => {
+    const capturedPreviousVault = previousVault ?? get().vault;
     
     const quota = await quotaService.getVaultQuota();
     if (quota.percentage >= 1.0) {
       logger.warn(`[VaultSlice] Already at ${Math.round(quota.percentage * 100)}%, forcing local fallback`);
-      await vaultService.disableVaultSync(vault);
-      
+      const disableResult = await vaultService.disableVaultSync(vault);
+      if (!disableResult.success) {
+        return { success: false, error: disableResult.error || 'SYNC_FAILED' };
+      }
+
       const { appearanceSettings } = get();
       const updated = { ...appearanceSettings, vaultSyncEnabled: false };
       set({ appearanceSettings: updated });
       settingsService.saveSettings({ appearanceSettings: updated });
-      
+
       const newQuota = await quotaService.getVaultQuota();
       set({ vaultQuota: { ...newQuota, warningLevel: 'none' as const }, lastVaultTimestamp: Date.now() });
-      
+
       return { success: true, warningLevel: 'none' };
     }
     
     const result = await vaultService.saveVault(vault, { syncEnabled });
 
     if (!result.success) {
-      set({ vault: previousVault });
+      set({ vault: capturedPreviousVault });
       logger.error('[VaultSlice] Persistence failed:', result.error);
     }
 
@@ -101,7 +104,11 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       const { appearanceSettings } = get();
       logger.warn('[VaultSlice] Auto-disabling vault sync due to size limits');
 
-      await vaultService.disableVaultSync(vault);
+      const disableResult = await vaultService.disableVaultSync(vault);
+      if (!disableResult.success) {
+        set({ vault: capturedPreviousVault });
+        return { success: false, error: disableResult.error || 'SYNC_FAILED' };
+      }
 
       const updated = { ...appearanceSettings, vaultSyncEnabled: false };
       set({ appearanceSettings: updated });
@@ -146,7 +153,9 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
   moveToVault: async (id) => {
     const { islands, vault, appearanceSettings, persistVault } = get();
-    
+
+    const originalIslands = islands;
+
     const found = findItemInList(islands, id);
     if (!found || !found.item) {
       logger.warn(`[VaultSlice] moveToVault: Item ${id} not found in islands`);
@@ -210,8 +219,8 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     logger.info(`[VaultSlice] moveToVault: Updated vault state, now has ${newVault.length} items`);
     
     logger.info('[VaultSlice] moveToVault: Calling persistVault...');
-    const result = await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
-    
+    const result = await persistVault(newVault, appearanceSettings.vaultSyncEnabled, vault);
+
     if (result.success) {
       logger.info('[VaultSlice] moveToVault: Persistence successful, closing tabs');
       if (isIsland(item)) {
@@ -228,12 +237,14 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       logger.info('[VaultSlice] moveToVault: Complete');
     } else {
       logger.error(`[VaultSlice] moveToVault: Persistence FAILED with error ${result.error}. Vault was rolled back.`);
+      set({ islands: originalIslands });
     }
   },
 
   saveToVault: async (item) => {
     const { vault, appearanceSettings, persistVault } = get();
-    
+    const previousVault = vault;
+
     const quotaCheck = await checkQuotaBeforeSave(item, vault);
     if (!quotaCheck.allowed) {
       if (quotaCheck.shouldSwitchToLocal && appearanceSettings.vaultSyncEnabled) {
@@ -265,7 +276,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
     const newVault = [...vault, newItem];
     set({ vault: newVault });
-    await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
+    await persistVault(newVault, appearanceSettings.vaultSyncEnabled, previousVault);
   },
 
   restoreFromVault: async (id) => {

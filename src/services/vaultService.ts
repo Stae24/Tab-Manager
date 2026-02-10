@@ -299,25 +299,42 @@ export const vaultService = {
       logger.error('[VaultStorage] Failed to save:', error);
       
       const isQuotaError = error instanceof Error && error.message.includes('quota');
-      
+
       if (isQuotaError) {
         logger.warn('[VaultStorage] Quota exceeded during sync write, falling back to local storage');
       } else {
         logger.warn('[VaultStorage] Sync write failed, falling back to local storage');
       }
-      
+
+      let legacySaveFailed = false;
+      let backupSaveFailed = false;
       await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault }).catch((e) => {
         logger.error('[VaultStorage] Failed to save to local storage:', e);
+        legacySaveFailed = true;
       });
       await chrome.storage.local.set({ vault_backup: vault }).catch((e) => {
         logger.error('[VaultStorage] Failed to save backup to local storage:', e);
+        backupSaveFailed = true;
       });
-      
+
+      const newQuota = await quotaService.getVaultQuota();
+
+      if (legacySaveFailed && backupSaveFailed) {
+        return {
+          success: false,
+          fallbackToLocal: false,
+          bytesUsed: newQuota.used,
+          bytesAvailable: newQuota.available,
+          warningLevel: 'critical',
+          error: 'SYNC_FAILED'
+        };
+      }
+
       return {
         success: true,
         fallbackToLocal: true,
-        bytesUsed: quota.used,
-        bytesAvailable: quota.available,
+        bytesUsed: newQuota.used,
+        bytesAvailable: newQuota.available,
         warningLevel: 'critical'
       };
     }
@@ -339,7 +356,7 @@ export const vaultService = {
        if (syncLegacyVault && Array.isArray(syncLegacyVault) && syncLegacyVault.length > 0) {
          if (config.syncEnabled) {
            const result = await vaultService.saveVault(syncLegacyVault, config);
-           if (result.success) {
+           if (!result.fallbackToLocal) {
              await chrome.storage.sync.remove(LEGACY_VAULT_KEY);
              return { migrated: true, itemCount: syncLegacyVault.length, from: 'sync_legacy' };
            } else {
@@ -367,7 +384,7 @@ export const vaultService = {
        if (localLegacyVault && Array.isArray(localLegacyVault) && localLegacyVault.length > 0) {
          if (config.syncEnabled) {
            const result = await vaultService.saveVault(localLegacyVault, config);
-           if (result.success) {
+           if (!result.fallbackToLocal) {
              await chrome.storage.local.remove(LEGACY_VAULT_KEY);
              return { migrated: true, itemCount: localLegacyVault.length, from: 'local_legacy' };
            }
@@ -402,18 +419,30 @@ export const vaultService = {
   disableVaultSync: async (vault: VaultItem[]): Promise<VaultStorageResult> => {
     try {
       logger.info('[VaultStorage] Disabling vault sync, clearing chunks...');
-      
-      await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault }).catch(() => {});
-      await chrome.storage.local.set({ vault_backup: vault }).catch(() => {});
-      
+
+      let localSaveFailed = false;
+      await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault }).catch((e) => {
+        logger.error('[VaultStorage] Failed to save legacy vault to local storage:', e);
+        localSaveFailed = true;
+      });
+      await chrome.storage.local.set({ vault_backup: vault }).catch((e) => {
+        logger.error('[VaultStorage] Failed to save backup to local storage:', e);
+        localSaveFailed = true;
+      });
+
+      if (localSaveFailed) {
+        logger.error('[VaultStorage] Local storage writes failed during disableVaultSync');
+        throw new Error('Local storage write failed');
+      }
+
       const keys = await getVaultChunkKeys();
       if (keys.length > 0) {
         await chrome.storage.sync.remove(keys);
         logger.info(`[VaultStorage] Removed ${keys.length} sync chunks`);
       }
-      
+
       const quota = await quotaService.getVaultQuota();
-      
+
       return {
         success: true,
         bytesUsed: quota.used,
