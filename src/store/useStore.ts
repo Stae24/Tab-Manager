@@ -61,15 +61,29 @@ const init = async () => {
     logger.info('[VaultStorage] Migration complete:', migrationResult);
   }
 
-  const effectiveSyncEnabled = migrationResult.fallbackToLocal ? false : syncEnabled;
-  logger.info(`[Store Init] Loading vault with syncEnabled=${effectiveSyncEnabled} (fallbackToLocal=${migrationResult.fallbackToLocal})`);
-  const { vault, timestamp } = await vaultService.loadVault({ syncEnabled: effectiveSyncEnabled });
+  const effectiveSyncEnabled = migrationResult.fallbackToLocal ? false : undefined;
+  const loadSyncEnabled = effectiveSyncEnabled !== undefined ? effectiveSyncEnabled : syncEnabled;
+
+  logger.info(`[Store Init] Loading vault with syncEnabled=${loadSyncEnabled} (fallbackToLocal=${migrationResult.fallbackToLocal})`);
+  const { vault, timestamp } = await vaultService.loadVault({ syncEnabled: loadSyncEnabled });
   logger.info(`[Store Init] Vault loaded: ${vault.length} items, timestamp=${timestamp}`);
-  useStore.setState({ vault, lastVaultTimestamp: timestamp });
+  useStore.setState({ vault, lastVaultTimestamp: timestamp, effectiveSyncEnabled });
 
   const quota = await quotaService.getVaultQuota();
   logger.info(`[Store Init] Quota: ${quota.used}/${quota.total} bytes (${Math.round(quota.percentage * 100)}%)`);
   useStore.setState({ vaultQuota: quota });
+
+  if (quota.percentage >= 1.0) {
+    logger.warn(`[Store Init] Quota critical at ${Math.round(quota.percentage * 100)}%, auto-disabling sync`);
+    await vaultService.disableVaultSync(vault);
+    const currentSettings = sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? sync.appearanceSettings : defaultAppearanceSettings;
+    const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
+    useStore.setState({ 
+      effectiveSyncEnabled: false,
+      vaultQuota: { ...quota, warningLevel: 'none' as const }
+    });
+    settingsService.saveSettings({ appearanceSettings: updatedSettings });
+  }
 
   settingsService.watchSettings(async (changes, area) => {
     if (area === 'sync') {
@@ -85,8 +99,9 @@ const init = async () => {
         const currentTimestamp = useStore.getState().lastVaultTimestamp;
         // Only reload if incoming version is newer (timestamp-based conflict resolution)
         if (incomingTimestamp > currentTimestamp && !useStore.getState().isUpdating) {
-          const currentSettings = useStore.getState().appearanceSettings;
-          const { vault: reloadedVault } = await vaultService.loadVault({ syncEnabled: currentSettings.vaultSyncEnabled });
+          const { appearanceSettings: currentSettings, effectiveSyncEnabled: persistedSyncEnabled } = useStore.getState();
+          const syncEnabled = persistedSyncEnabled !== undefined ? persistedSyncEnabled : currentSettings.vaultSyncEnabled;
+          const { vault: reloadedVault } = await vaultService.loadVault({ syncEnabled });
           useStore.setState({ vault: reloadedVault, lastVaultTimestamp: incomingTimestamp });
           const quota = await quotaService.getVaultQuota();
           useStore.setState({ vaultQuota: quota });

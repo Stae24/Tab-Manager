@@ -1,6 +1,7 @@
 export const CHROME_32BIT_INT_MAX = 2147483647;
 export const STORAGE_VERSION = 2;
 export const VAULT_CHUNK_SIZE = 4096;
+export const CHROME_SYNC_ITEM_MAX_BYTES = 8192;
 export const MAX_SYNC_RETRIES = 3;
 export const INITIAL_SYNC_BACKOFF = 1000;
 export const CHROME_SYNC_QUOTA_BYTES = 102400;

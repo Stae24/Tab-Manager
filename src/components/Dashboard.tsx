@@ -825,8 +825,9 @@ const VaultPanel: React.FC<{
   sortVaultGroupsToTop: () => Promise<void>,
   restoreFromVault: (id: UniversalId) => void,
   vaultQuota: VaultQuotaInfo | null,
+  vaultSyncEnabled: boolean,
   onManageStorage?: () => void
-}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault, vaultQuota, onManageStorage }) => {
+}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault, vaultQuota, vaultSyncEnabled, onManageStorage }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'vault-dropzone',
   });
@@ -836,6 +837,7 @@ const VaultPanel: React.FC<{
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showLocalStorageWarning, setShowLocalStorageWarning] = useState(true);
 
   const rowItems = useMemo(() => {
     const rows: DashboardRow[] = [];
@@ -980,6 +982,21 @@ const VaultPanel: React.FC<{
           <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">{(vault || []).length} ARCHIVED</span>
         </div>
       </div>
+
+      {!vaultSyncEnabled && (vault || []).length > 0 && showLocalStorageWarning && (
+        <div className="bg-gx-red/20 border-b border-gx-red/30 px-4 py-2 flex items-center justify-between flex-shrink-0">
+          <span className="text-xs text-gx-red">
+            ⚠️ Vault too large for sync. Using local storage. Clear vault and re-enable sync in settings to retry.
+          </span>
+          <button
+            onClick={() => setShowLocalStorageWarning(false)}
+            className="text-gx-red hover:text-white transition-colors p-1"
+            title="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       <div
         ref={scrollRef}
@@ -1491,6 +1508,7 @@ export const Dashboard: React.FC = () => {
                   sortVaultGroupsToTop={sortVaultGroupsToTop}
                   restoreFromVault={restoreFromVault}
                   vaultQuota={vaultQuota}
+                  vaultSyncEnabled={appearanceSettings.vaultSyncEnabled}
                 />
               </>
             )}

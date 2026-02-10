@@ -14,6 +14,7 @@ export interface VaultSlice {
   vaultQuota: VaultQuotaInfo | null;
   quotaExceededPending: VaultStorageResult | null;
   lastVaultTimestamp: number;
+  effectiveSyncEnabled?: boolean;
   
   moveToVault: (id: UniversalId) => Promise<void>;
   saveToVault: (item: LiveItem) => Promise<void>;
@@ -35,18 +36,50 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   vaultQuota: null,
   quotaExceededPending: null,
   lastVaultTimestamp: 0,
+  effectiveSyncEnabled: undefined,
 
   persistVault: async (vault: VaultItem[], syncEnabled: boolean): Promise<VaultStorageResult> => {
     const previousVault = get().vault;
+    
+    const quota = await quotaService.getVaultQuota();
+    if (quota.percentage >= 1.0) {
+      logger.warn(`[VaultSlice] Already at ${Math.round(quota.percentage * 100)}%, forcing local fallback`);
+      await vaultService.disableVaultSync(vault);
+      
+      const { appearanceSettings } = get();
+      const updated = { ...appearanceSettings, vaultSyncEnabled: false };
+      set({ appearanceSettings: updated });
+      settingsService.saveSettings({ appearanceSettings: updated });
+      
+      const newQuota = await quotaService.getVaultQuota();
+      set({ vaultQuota: { ...newQuota, warningLevel: 'none' as const }, lastVaultTimestamp: Date.now() });
+      
+      return { success: true, warningLevel: 'none' };
+    }
+    
     const result = await vaultService.saveVault(vault, { syncEnabled });
 
     if (!result.success) {
       set({ vault: previousVault });
-      logger.error('[VaultSlice] Persistence failed, rolled back to previous state:', result.error);
+      logger.error('[VaultSlice] Persistence failed:', result.error);
     }
 
-    const quota = await quotaService.getVaultQuota();
-    set({ vaultQuota: quota, lastVaultTimestamp: Date.now() });
+    if (result.fallbackToLocal) {
+      const { appearanceSettings } = get();
+      logger.warn('[VaultSlice] Auto-disabling vault sync due to size limits');
+      
+      await vaultService.disableVaultSync(vault);
+      
+      const updated = { ...appearanceSettings, vaultSyncEnabled: false };
+      set({ appearanceSettings: updated });
+      settingsService.saveSettings({ appearanceSettings: updated });
+      
+      const newQuota = await quotaService.getVaultQuota();
+      set({ vaultQuota: { ...newQuota, warningLevel: 'none' as const }, lastVaultTimestamp: Date.now() });
+    }
+
+    const newQuota = await quotaService.getVaultQuota();
+    set({ vaultQuota: newQuota, lastVaultTimestamp: Date.now() });
 
     if (!result.success && result.error === 'QUOTA_EXCEEDED') {
       set({ quotaExceededPending: result });
