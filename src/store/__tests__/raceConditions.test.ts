@@ -38,6 +38,7 @@ vi.mock('../../services/vaultService', () => ({
     saveVault: vi.fn().mockResolvedValue({ success: true, bytesUsed: 0, bytesAvailable: 1000, warningLevel: 'none' }),
     migrateFromLegacy: vi.fn().mockResolvedValue({ migrated: false, itemCount: 0, from: 'none' }),
     toggleSyncMode: vi.fn().mockResolvedValue({ success: true }),
+    disableVaultSync: vi.fn().mockResolvedValue({ success: true, bytesUsed: 0, bytesAvailable: 1000, warningLevel: 'none' }),
   }
 }));
 

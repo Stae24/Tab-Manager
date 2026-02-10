@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock ALL services BEFORE importing useStore
-vi.mock('../services/vaultService', () => ({
+vi.mock('../../services/vaultService', () => ({
   vaultService: {
     loadVault: vi.fn().mockResolvedValue({ vault: [], timestamp: 0 }),
     saveVault: vi.fn().mockResolvedValue({ success: true, bytesUsed: 0, bytesAvailable: 1000, warningLevel: 'none' }),
@@ -10,13 +10,13 @@ vi.mock('../services/vaultService', () => ({
   }
 }));
 
-vi.mock('../services/quotaService', () => ({
+vi.mock('../../services/quotaService', () => ({
   quotaService: {
     getVaultQuota: vi.fn().mockResolvedValue({ used: 0, total: 1000, percentage: 0, available: 1000, warningLevel: 'none' }),
   }
 }));
 
-vi.mock('../services/settingsService', () => ({
+vi.mock('../../services/settingsService', () => ({
   settingsService: {
     loadSettings: vi.fn().mockResolvedValue({
       appearanceSettings: {

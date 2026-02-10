@@ -49,6 +49,7 @@ export interface VaultStorageResult {
   bytesUsed?: number;
   bytesAvailable?: number;
   warningLevel?: QuotaWarningLevel;
+  fallbackToLocal?: boolean;
 }
 
 export interface VaultQuotaInfo {

@@ -136,8 +136,8 @@ describe('Error Cases - vaultService.saveVault', () => {
 
     const result = await vaultService.saveVault(vault, { syncEnabled: true });
     
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('QUOTA_EXCEEDED');
+    expect(result.success).toBe(true);
+    expect(result.fallbackToLocal).toBe(true);
   });
 
   it('returns SYNC_FAILED when chrome.storage.sync.set throws', async () => {
