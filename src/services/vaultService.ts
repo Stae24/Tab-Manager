@@ -325,24 +325,24 @@ export const vaultService = {
            } else {
              await vaultService.disableVaultSync(syncLegacyVault);
              await chrome.storage.sync.remove(LEGACY_VAULT_KEY);
-             return { 
-               migrated: true, 
-               itemCount: syncLegacyVault.length, 
+             return {
+               migrated: true,
+               itemCount: syncLegacyVault.length,
                from: 'sync_legacy',
                fallbackToLocal: true
              };
            }
          } else {
            await vaultService.disableVaultSync(syncLegacyVault);
-           return { 
-             migrated: true, 
-             itemCount: syncLegacyVault.length, 
+           return {
+             migrated: true,
+             itemCount: syncLegacyVault.length,
              from: 'sync_legacy',
              fallbackToLocal: true
            };
          }
        }
-      
+
        const localLegacyVault = localData[LEGACY_VAULT_KEY] as VaultItem[] | undefined;
        if (localLegacyVault && Array.isArray(localLegacyVault) && localLegacyVault.length > 0) {
          if (config.syncEnabled) {
@@ -356,13 +356,13 @@ export const vaultService = {
          }
          return { migrated: false, itemCount: localLegacyVault.length, from: 'local_legacy' };
        }
-      
-      return { migrated: false, itemCount: 0, from: 'none' };
-    } catch (error) {
-      logger.error('[VaultStorage] Migration failed:', error);
-      return { migrated: false, itemCount: 0, error: String(error) };
-    }
-  },
+
+       return { migrated: false, itemCount: 0, from: 'none' };
+     } catch (error) {
+       logger.error('[VaultStorage] Migration failed:', error);
+       return { migrated: false, itemCount: 0, error: String(error) };
+     }
+   },
 
   toggleSyncMode: async (
     currentVault: VaultItem[],
@@ -380,25 +380,35 @@ export const vaultService = {
   },
 
   disableVaultSync: async (vault: VaultItem[]): Promise<VaultStorageResult> => {
-    logger.info('[VaultStorage] Disabling vault sync, clearing chunks...');
-    
-    const keys = await getVaultChunkKeys();
-    if (keys.length > 0) {
-      await chrome.storage.sync.remove(keys);
-      logger.info(`[VaultStorage] Removed ${keys.length} sync chunks`);
+    try {
+      logger.info('[VaultStorage] Disabling vault sync, clearing chunks...');
+      
+      await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault }).catch(() => {});
+      await chrome.storage.local.set({ vault_backup: vault }).catch(() => {});
+      
+      const keys = await getVaultChunkKeys();
+      if (keys.length > 0) {
+        await chrome.storage.sync.remove(keys);
+        logger.info(`[VaultStorage] Removed ${keys.length} sync chunks`);
+      }
+      
+      const quota = await quotaService.getVaultQuota();
+      
+      return {
+        success: true,
+        bytesUsed: quota.used,
+        bytesAvailable: quota.available,
+        warningLevel: 'none'
+      };
+    } catch (error) {
+      logger.error('[VaultStorage] Failed to disable sync:', error);
+      return {
+        success: false,
+        error: 'SYNC_FAILED',
+        bytesUsed: 0,
+        bytesAvailable: 0
+      };
     }
-    
-    await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault });
-    await chrome.storage.local.set({ vault_backup: vault });
-    
-    const quota = await quotaService.getVaultQuota();
-    
-    return {
-      success: true,
-      bytesUsed: quota.used,
-      bytesAvailable: quota.available,
-      warningLevel: 'none'
-    };
   }
 };
 
