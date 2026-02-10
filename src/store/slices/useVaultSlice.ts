@@ -6,8 +6,41 @@ import { tabService } from '../../services/tabService';
 import { settingsService } from '../../services/settingsService';
 import { isIsland, parseNumericId, findItemInList } from '../utils';
 import { logger } from '../../utils/logger';
+import { VAULT_QUOTA_SAFETY_MARGIN_BYTES } from '../../constants';
 
 import type { StoreState } from '../types';
+
+function estimateItemSize(item: LiveItem): number {
+  const json = JSON.stringify(item);
+  return new TextEncoder().encode(json).length * 2;
+}
+
+async function checkQuotaBeforeSave(
+  item: LiveItem,
+  currentVault: VaultItem[]
+): Promise<{ allowed: boolean; shouldSwitchToLocal: boolean }> {
+  if (!currentVault.length) {
+    const quota = await quotaService.getVaultQuota();
+    const estimatedItemSize = estimateItemSize(item);
+    const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES * 2;
+    return {
+      allowed: quota.available - estimatedItemSize >= safetyMargin,
+      shouldSwitchToLocal: false
+    };
+  }
+
+  const testVault = [...currentVault, { ...item, savedAt: Date.now(), originalId: item.id } as VaultItem];
+  const testJson = JSON.stringify(testVault);
+  const estimatedCompressedSize = Math.ceil(testJson.length * 0.7);
+  const quota = await quotaService.getVaultQuota();
+  const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES * 2;
+
+  if (quota.available - estimatedCompressedSize < safetyMargin) {
+    return { allowed: false, shouldSwitchToLocal: true };
+  }
+
+  return { allowed: true, shouldSwitchToLocal: false };
+}
 
 export interface VaultSlice {
   vault: VaultItem[];
@@ -126,6 +159,20 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     logger.info(`[VaultSlice] moveToVault: Moving ${isGroup ? 'group' : 'tab'} (${tabCount} tabs) to vault. ID: ${item.id}`);
     logger.info(`[VaultSlice] moveToVault: Current vault has ${vault.length} items, syncEnabled=${appearanceSettings.vaultSyncEnabled}`);
 
+    const quotaCheck = await checkQuotaBeforeSave(item, vault);
+    if (!quotaCheck.allowed) {
+      if (quotaCheck.shouldSwitchToLocal && appearanceSettings.vaultSyncEnabled) {
+        logger.info('[VaultSlice] moveToVault: Auto-switching to local storage due to quota');
+        const updated = { ...appearanceSettings, vaultSyncEnabled: false };
+        set({ appearanceSettings: updated });
+        settingsService.saveSettings({ appearanceSettings: updated });
+        set({ vaultQuota: { ...(await quotaService.getVaultQuota()), warningLevel: 'none' as const } });
+      } else {
+        logger.warn('[VaultSlice] moveToVault: Quota exceeded, cannot move to vault');
+        return;
+      }
+    }
+
     let newIslands = islands;
     if (found.containerId === 'root') {
       newIslands = islands.filter((i: LiveItem) => String(i.id) !== String(item.id));
@@ -186,6 +233,21 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
   saveToVault: async (item) => {
     const { vault, appearanceSettings, persistVault } = get();
+    
+    const quotaCheck = await checkQuotaBeforeSave(item, vault);
+    if (!quotaCheck.allowed) {
+      if (quotaCheck.shouldSwitchToLocal && appearanceSettings.vaultSyncEnabled) {
+        logger.info('[VaultSlice] saveToVault: Auto-switching to local storage due to quota');
+        const updated = { ...appearanceSettings, vaultSyncEnabled: false };
+        set({ appearanceSettings: updated });
+        settingsService.saveSettings({ appearanceSettings: updated });
+        set({ vaultQuota: { ...(await quotaService.getVaultQuota()), warningLevel: 'none' as const } });
+      } else {
+        logger.warn('[VaultSlice] saveToVault: Quota exceeded, cannot save to vault');
+        return;
+      }
+    }
+
     let newItem = JSON.parse(JSON.stringify(item));
     const timestamp = Date.now();
 
