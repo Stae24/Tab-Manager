@@ -1,8 +1,16 @@
 import { ISLAND_CREATION_REFRESH_DELAY_MS, REFRESH_UI_DELAY_MS } from './constants';
+import { quotaService } from './services/quotaService';
 
 chrome.action.onClicked.addListener(() => {
   chrome.tabs.create({ url: 'index.html' });
 });
+
+(async () => {
+  const orphanedCount = await quotaService.cleanupOrphanedChunks();
+  if (orphanedCount > 0) {
+    console.log(`[Background] Cleaned up ${orphanedCount} orphaned vault chunks`);
+  }
+})();
 
 chrome.tabs.onCreated.addListener(() => notifyUI());
 chrome.tabs.onRemoved.addListener(() => notifyUI());

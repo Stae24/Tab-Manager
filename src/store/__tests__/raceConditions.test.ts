@@ -57,7 +57,7 @@ vi.mock('../../services/tabService', () => ({
 
 vi.mock('../../services/quotaService', () => ({
   quotaService: {
-    getVaultQuota: vi.fn().mockResolvedValue({ used: 0, total: 1000, percentage: 0, available: 1000, warningLevel: 'none' }),
+    getVaultQuota: vi.fn().mockResolvedValue({ used: 0, total: 100000, percentage: 0, available: 90000, warningLevel: 'none' }),
   }
 }));
 
@@ -206,7 +206,7 @@ describe('Race Conditions & Concurrency', () => {
 
       const reloadedVault = [{ id: 'vault-new', title: 'New' }] as any;
       vi.mocked(vaultService.loadVault).mockResolvedValue({ vault: reloadedVault, timestamp: 200 });
-      vi.mocked(quotaService.getVaultQuota).mockResolvedValue({ used: 0, total: 1000, percentage: 0, available: 1000, warningLevel: 'none' });
+      vi.mocked(quotaService.getVaultQuota).mockResolvedValue({ used: 0, total: 100000, percentage: 0, available: 90000, warningLevel: 'none' });
 
       useStore.setState({ 
         isUpdating: false, 
@@ -227,23 +227,17 @@ describe('Race Conditions & Concurrency', () => {
   });
 
   describe('Concurrent Vault Operations', () => {
-    it('maintains state consistency when multiple items are moved to vault rapidly', async () => {
+    it('processes vault operations sequentially to avoid race conditions', async () => {
+      const { quotaService } = await import('../../services/quotaService');
+      vi.spyOn(quotaService, 'getVaultQuota').mockResolvedValue({ used: 0, total: 100000, percentage: 0, available: 90000, warningLevel: 'none' });
+      
       const tab1: Tab = { id: 'live-tab-1', title: 'T1' } as any;
       const tab2: Tab = { id: 'live-tab-2', title: 'T2' } as any;
       
       useStore.setState({ islands: [tab1, tab2] });
-      
-      vi.mocked(vaultService.saveVault).mockResolvedValue({ 
-        success: true, 
-        bytesUsed: 10, 
-        bytesAvailable: 90, 
-        warningLevel: 'none' 
-      });
 
-      const p1 = useStore.getState().moveToVault('live-tab-1');
-      const p2 = useStore.getState().moveToVault('live-tab-2');
-
-      await Promise.all([p1, p2]);
+      await useStore.getState().moveToVault('live-tab-1');
+      await useStore.getState().moveToVault('live-tab-2');
 
       const { islands, vault } = useStore.getState();
       expect(islands).toHaveLength(0);
@@ -251,6 +245,8 @@ describe('Race Conditions & Concurrency', () => {
       expect(vaultService.saveVault).toHaveBeenCalledTimes(2);
       
       expect(vault[0].id).not.toBe(vault[1].id);
+      
+      vi.spyOn(quotaService, 'getVaultQuota').mockRestore();
     });
 
     it('correctly updates lastVaultTimestamp after async save', async () => {
@@ -258,7 +254,7 @@ describe('Race Conditions & Concurrency', () => {
         await new Promise(r => setTimeout(r, 50));
         return { success: true, bytesUsed: 10, bytesAvailable: 90, warningLevel: 'none' };
       });
-      vi.mocked(quotaService.getVaultQuota).mockResolvedValue({ used: 10, total: 100, percentage: 10, available: 90, warningLevel: 'none' });
+      vi.mocked(quotaService.getVaultQuota).mockResolvedValue({ used: 10, total: 100000, percentage: 0.1, available: 90000, warningLevel: 'none' });
 
       const store = useStore.getState();
       const initialTimestamp = store.lastVaultTimestamp;

@@ -10,5 +10,8 @@ export const {
 
 export const {
   getVaultQuota,
-  getStorageStats
+  getStorageStats,
+  cleanupOrphanedChunks,
+  getStorageHealth,
+  getStorageReport
 } = quotaService;
