@@ -348,10 +348,10 @@ describe('vaultStorage - quota fallback', () => {
   
   it('falls back to local storage when sync write fails with quota error', async () => {
     const vault = [createMockVaultItem(1, 'Test Tab')];
-    
-    let syncSetCallCount = 0;
+
     const mockSyncStorageLocal: Record<string, unknown> = {};
-    
+    const mockLocalStorageLocal: Record<string, unknown> = {};
+
     globalThis.chrome = {
       storage: {
         sync: {
@@ -364,7 +364,6 @@ describe('vaultStorage - quota fallback', () => {
             return result;
           }) as unknown as chrome.storage.StorageArea['get'],
           set: vi.fn(async (data: Record<string, unknown>) => {
-            syncSetCallCount++;
             throw new Error('QUOTA_BYTES quota exceeded');
           }) as unknown as chrome.storage.StorageArea['set'],
           remove: vi.fn(async () => {}) as unknown as chrome.storage.StorageArea['remove'],
@@ -384,20 +383,23 @@ describe('vaultStorage - quota fallback', () => {
         },
         local: {
           get: vi.fn(async () => ({})) as unknown as chrome.storage.StorageArea['get'],
-          set: vi.fn(async () => {}) as unknown as chrome.storage.StorageArea['set'],
+          set: vi.fn(async (data: Record<string, unknown>) => {
+            Object.assign(mockLocalStorageLocal, data);
+          }) as unknown as chrome.storage.StorageArea['set'],
           remove: vi.fn(async () => {}) as unknown as chrome.storage.StorageArea['remove'],
           getBytesInUse: vi.fn(async () => 0) as unknown as chrome.storage.StorageArea['getBytesInUse'],
         },
       },
     } as typeof chrome;
-    
+
     const { saveVault: testSaveVault } = await import('../vaultStorage');
-    
+
     const result = await testSaveVault(vault, { syncEnabled: true });
-    
+
     expect(result.success).toBe(true);
     expect(result.fallbackToLocal).toBe(true);
     expect(result.warningLevel).toBe('critical');
+    expect(mockLocalStorageLocal[LEGACY_VAULT_KEY]).toEqual(vault);
   });
   
   it('falls back to local storage when sync write fails with generic error', async () => {

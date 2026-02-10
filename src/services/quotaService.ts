@@ -165,21 +165,38 @@ export const quotaService = {
     lastSyncTime: number | null;
   }> => {
     try {
-      const [health, stats, meta, orphanedCount] = await Promise.all([
-        quotaService.getStorageHealth(),
-        quotaService.getStorageStats(),
+      const [syncBytesInUse, localBytesInUse, syncMeta, localData] = await Promise.all([
+        chrome.storage.sync.getBytesInUse(null),
+        chrome.storage.local.getBytesInUse(null),
         chrome.storage.sync.get(VAULT_META_KEY),
-        countOrphanedChunks()
+        chrome.storage.local.get([LEGACY_VAULT_KEY, 'vault_backup'])
       ]);
-      
+
+      const syncAllData = await chrome.storage.sync.get(null);
+      const meta = syncMeta[VAULT_META_KEY] as VaultMeta | undefined;
+      const validKeys = new Set([VAULT_META_KEY, ...(meta?.chunkKeys || [])]);
+      const orphanedChunks = Object.keys(syncAllData).filter(
+        key => key.startsWith(VAULT_CHUNK_PREFIX) && !validKeys.has(key)
+      ).length;
+
+      const syncUsageRatio = syncBytesInUse / CHROME_SYNC_QUOTA_BYTES;
+      let health: StorageHealthStatus = 'healthy';
+      if (syncUsageRatio > 0.95 || orphanedChunks > 5) {
+        health = 'critical';
+      } else if (syncUsageRatio > 0.85 || orphanedChunks > 0) {
+        health = 'degraded';
+      }
+
+      const vault = (localData[LEGACY_VAULT_KEY] || localData.vault_backup || []) as VaultItem[];
+
       return {
         health,
-        syncUsed: stats.syncUsed,
-        syncTotal: stats.syncTotal,
-        localUsed: stats.localUsed,
-        vaultItemCount: stats.vaultItemCount,
-        orphanedChunks: orphanedCount,
-        lastSyncTime: ((meta as Record<string, unknown>)?.[VAULT_META_KEY] as VaultMeta | undefined)?.timestamp || null
+        syncUsed: syncBytesInUse,
+        syncTotal: CHROME_SYNC_QUOTA_BYTES,
+        localUsed: localBytesInUse,
+        vaultItemCount: vault.length,
+        orphanedChunks,
+        lastSyncTime: meta?.timestamp || null
       };
     } catch (error) {
       logger.error('[QuotaService] Failed to generate storage report:', error);

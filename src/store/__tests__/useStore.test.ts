@@ -115,7 +115,7 @@ describe('useStore - syncLiveTabs', () => {
 describe('useStore - moveToVault', () => {
   it('moves a live tab to vault and calls chrome.tabs.remove', async () => {
     const { quotaService } = await import('../../services/quotaService');
-    vi.mocked(quotaService.getVaultQuota).mockResolvedValue({ used: 0, total: 100000, percentage: 0, available: 90000, warningLevel: 'none' });
+    vi.mocked(quotaService.getVaultQuota).mockResolvedValue({ used: 0, total: 100000, percentage: 0, available: 100000, warningLevel: 'none' });
     
     const liveTab: Tab = {
       id: 'live-tab-1',
