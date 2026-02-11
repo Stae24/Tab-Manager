@@ -63,8 +63,8 @@ export const vaultService = {
       const meta = metaResult[VAULT_META_KEY] as VaultMeta | undefined;
       
       if (!meta) {
-        logger.warn('[VaultStorage] No meta found, loading from backup');
-        return { vault: await loadFromBackup(), timestamp: 0 };
+        logger.warn('[VaultStorage] No meta found in sync storage. This is normal for first-time users. Loading from local without fallback flag.');
+        return { vault: await loadFromBackup(), timestamp: 0, fallbackToLocal: false };
       }
       
       logger.info(`[VaultStorage] Found meta: version=${meta.version}, chunkCount=${meta.chunkCount}, chunkKeys=${meta.chunkKeys?.length || 'undefined'}`);
@@ -90,8 +90,8 @@ export const vaultService = {
         logger.info(`[VaultStorage] Chunk ${chunkKeys[i]}: ${chunk ? 'FOUND' : 'MISSING'}, size=${chunkSize} bytes`);
         
         if (chunk === undefined) {
-          logger.error(`[VaultStorage] Missing chunk ${chunkKeys[i]}, loading from backup`);
-          return { vault: await loadFromBackup(), timestamp: meta.timestamp };
+          logger.error(`[VaultStorage] 🔴 Missing chunk ${chunkKeys[i]}, loading from backup (fallbackToLocal=true)`);
+          return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
         }
         chunks.push(chunk);
       }
@@ -103,14 +103,14 @@ export const vaultService = {
       const jsonData = LZString.decompressFromUTF16(compressed);
 
       if (!jsonData) {
-        logger.error('[VaultStorage] Decompression failed, loading from backup');
-        return { vault: await loadFromBackup(), timestamp: meta.timestamp };
+        logger.error('[VaultStorage] 🔴 Decompression failed, loading from backup (fallbackToLocal=true)');
+        return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
       }
 
       const computedChecksum = await computeChecksum(jsonData);
       if (computedChecksum !== meta.checksum) {
-        logger.error('[VaultStorage] Checksum mismatch, data may be corrupted - loading from backup');
-        return { vault: await loadFromBackup(), timestamp: meta.timestamp };
+        logger.error(`[VaultStorage] 🔴 Checksum mismatch (expected=${meta.checksum}, got=${computedChecksum}), loading from backup (fallbackToLocal=true)`);
+        return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
       }
       
       let parsed: VaultItem[];
@@ -139,6 +139,9 @@ export const vaultService = {
     vault: VaultItem[],
     config: VaultStorageConfig
   ): Promise<VaultStorageResult> => {
+    console.error(`[DEBUG] saveVault CALLED: syncEnabled=${config.syncEnabled}, vaultSize=${vault.length}`);
+    console.trace('[DEBUG] saveVault call stack');
+    
     const jsonData = JSON.stringify(vault);
     const checksum = await computeChecksum(jsonData);
     
@@ -170,8 +173,8 @@ export const vaultService = {
     logger.info(`[VaultStorage] Quota check: available=${quota.available}, needed=${netNewBytes}, withSafetyMargin=${estimatedRequiredBytes}, currentKeys=${currentKeys.length}`);
     
     if (estimatedRequiredBytes > quota.available) {
-      logger.warn(`[VaultStorage] Vault too large for sync: need ${netNewBytes} bytes (${estimatedRequiredBytes} with safety margin), have ${quota.available}. Falling back to local storage.`);
-      logger.warn('[VaultStorage] To retry sync: Clear vault storage and re-enable vault sync in settings');
+      logger.warn(`[VaultStorage] 🔴 QUOTA EXCEEDED: need ${netNewBytes} bytes (${estimatedRequiredBytes} with safety margin), have ${quota.available}. Falling back to local storage (fallbackToLocal=true).`);
+      logger.warn('[VaultStorage] 🔴 To retry sync: Clear vault storage and re-enable vault sync in settings');
       
       // Save to local storage instead
       await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault });
@@ -340,8 +343,11 @@ export const vaultService = {
     }
   },
 
-  migrateFromLegacy: async (config: VaultStorageConfig): Promise<MigrationResult> => {
+   migrateFromLegacy: async (config: VaultStorageConfig): Promise<MigrationResult> => {
     try {
+      console.error(`[DEBUG] migrateFromLegacy CALLED: syncEnabled=${config.syncEnabled}`);
+      console.trace('[DEBUG] migrateFromLegacy call stack');
+      
       const [syncData, localData] = await Promise.all([
         chrome.storage.sync.get([LEGACY_VAULT_KEY, VAULT_META_KEY]),
         chrome.storage.local.get([LEGACY_VAULT_KEY])
@@ -401,12 +407,20 @@ export const vaultService = {
      }
    },
 
-  toggleSyncMode: async (
+   toggleSyncMode: async (
     currentVault: VaultItem[],
     enableSync: boolean
   ): Promise<VaultStorageResult> => {
+    console.error(`[DEBUG] toggleSyncMode CALLED: enableSync=${enableSync}, vaultItems=${currentVault.length}`);
+    console.trace('[DEBUG] toggleSyncMode call stack');
     if (enableSync) {
       const result = await vaultService.saveVault(currentVault, { syncEnabled: true });
+
+      if (result.fallbackToLocal) {
+        await vaultService.disableVaultSync(currentVault);
+        return result;
+      }
+
       if (result.success) {
         await chrome.storage.local.remove(LEGACY_VAULT_KEY);
       }

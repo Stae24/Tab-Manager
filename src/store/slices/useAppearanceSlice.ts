@@ -2,6 +2,7 @@ import { StateCreator } from 'zustand';
 import { AppearanceSettings, ThemeMode } from '../../types/index';
 import { settingsService } from '../../services/settingsService';
 import { defaultAppearanceSettings } from '../utils';
+import { logger } from '../../utils/logger';
 
 export interface AppearanceSlice {
   appearanceSettings: AppearanceSettings;
@@ -17,6 +18,15 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
   setAppearanceSettings: (newSettings) => {
     const current = get().appearanceSettings;
     const updated = { ...current, ...newSettings };
+    
+    if ('vaultSyncEnabled' in newSettings) {
+      logger.info('[AppearanceSlice] vaultSyncEnabled changing:', {
+        from: current.vaultSyncEnabled,
+        to: newSettings.vaultSyncEnabled,
+        stack: new Error().stack
+      });
+    }
+    
     set({ appearanceSettings: updated });
 
     if (newSettings.theme) {

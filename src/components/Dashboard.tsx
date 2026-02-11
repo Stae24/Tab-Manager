@@ -825,9 +825,10 @@ const VaultPanel: React.FC<{
   sortVaultGroupsToTop: () => Promise<void>,
   restoreFromVault: (id: UniversalId) => void,
   vaultQuota: VaultQuotaInfo | null,
-  vaultSyncEnabled: boolean,
+  effectiveSyncEnabled?: boolean,
+  vaultCount?: number,
   onManageStorage?: () => void
-}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault, vaultQuota, vaultSyncEnabled, onManageStorage }) => {
+}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault, vaultQuota, effectiveSyncEnabled, vaultCount, onManageStorage }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'vault-dropzone',
   });
@@ -838,6 +839,18 @@ const VaultPanel: React.FC<{
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLocalStorageWarning, setShowLocalStorageWarning] = useState(true);
+
+  useEffect(() => {
+    logger.debug('[VaultPanel] Banner state:', {
+      effectiveSyncEnabled,
+      vaultCount,
+      showLocalStorageWarning,
+      bannerWouldShow: effectiveSyncEnabled === false && (vaultCount || 0) > 0 && showLocalStorageWarning,
+      condition1: effectiveSyncEnabled === false,
+      condition2: (vaultCount || 0) > 0,
+      condition3: showLocalStorageWarning
+    });
+  }, [effectiveSyncEnabled, vaultCount, showLocalStorageWarning]);
 
   const rowItems = useMemo(() => {
     const rows: DashboardRow[] = [];
@@ -979,11 +992,11 @@ const VaultPanel: React.FC<{
           <button onClick={createVaultGroup} title="Add Group" className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all">
             <Plus className="w-4 h-4" />
           </button>
-          <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">{(vault || []).length} ARCHIVED</span>
+          <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">{vaultCount} ARCHIVED</span>
         </div>
       </div>
 
-      {!vaultSyncEnabled && (vault || []).length > 0 && showLocalStorageWarning && (
+      {effectiveSyncEnabled === false && (vaultCount || 0) > 0 && showLocalStorageWarning && (
         <div className="bg-gx-red/20 border-b border-gx-red/30 px-4 py-2 flex items-center justify-between flex-shrink-0">
           <span className="text-xs text-gx-red">
             ⚠️ Vault too large for sync. Using local storage. Clear vault and re-enable sync in settings to retry.
@@ -1057,11 +1070,21 @@ export const Dashboard: React.FC = () => {
   const showVault = useStore(state => state.showVault);
   const isRenaming = useStore(state => state.isRenaming);
   const appearanceSettings = useStore(state => state.appearanceSettings);
+  const effectiveSyncEnabled = useStore(state => state.effectiveSyncEnabled);
   const vaultQuota = useStore(state => state.vaultQuota);
   const quotaExceededPending = useStore(state => state.quotaExceededPending);
   const clearQuotaExceeded = useStore(state => state.clearQuotaExceeded);
   const setVaultSyncEnabled = useStore(state => state.setVaultSyncEnabled);
   const groupSearchResults = useStore(state => state.groupSearchResults);
+
+  useEffect(() => {
+    logger.debug('[Dashboard] Sync state:', {
+      effectiveSyncEnabled,
+      appearanceVaultSyncEnabled: appearanceSettings?.vaultSyncEnabled,
+      vaultLength: vault?.length,
+      vaultQuotaWarningLevel: vaultQuota?.warningLevel
+    });
+  }, [effectiveSyncEnabled, appearanceSettings?.vaultSyncEnabled, vault?.length, vaultQuota?.warningLevel]);
   const groupUngroupedTabs = useStore(state => state.groupUngroupedTabs);
   const showAppearancePanel = useStore(state => state.showAppearancePanel);
   const executeCommand = useStore(state => state.executeCommand);
@@ -1508,7 +1531,8 @@ export const Dashboard: React.FC = () => {
                   sortVaultGroupsToTop={sortVaultGroupsToTop}
                   restoreFromVault={restoreFromVault}
                   vaultQuota={vaultQuota}
-                  vaultSyncEnabled={appearanceSettings.vaultSyncEnabled}
+                  effectiveSyncEnabled={effectiveSyncEnabled}
+                  vaultCount={(vault || []).length}
                 />
               </>
             )}

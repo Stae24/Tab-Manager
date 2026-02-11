@@ -1,9 +1,15 @@
 import { syncSettings } from '../store/utils';
 import { AppearanceSettings } from '../types/index';
+import { logger } from '../utils/logger';
 
 export const settingsService = {
   loadSettings: async () => {
-    return chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault', 'settingsPanelWidth']);
+    const result = await chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault', 'settingsPanelWidth']);
+    logger.info('[SettingsService] Loaded settings:', {
+      hasAppearanceSettings: !!result.appearanceSettings,
+      vaultSyncEnabled: (result.appearanceSettings as any)?.vaultSyncEnabled
+    });
+    return result;
   },
 
   saveSettings: (settings: Partial<{
@@ -12,6 +18,9 @@ export const settingsService = {
     showVault: boolean;
     settingsPanelWidth: number;
   }>) => {
+    if (settings.appearanceSettings) {
+      logger.info('[SettingsService] Saving settings - vaultSyncEnabled:', settings.appearanceSettings.vaultSyncEnabled);
+    }
     syncSettings(settings);
   },
 
