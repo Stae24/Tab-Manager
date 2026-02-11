@@ -80,6 +80,7 @@ export interface MigrationResult {
 export interface VaultLoadResult {
   vault: VaultItem[];
   timestamp: number;
+  fallbackToLocal?: boolean;
 }
 
 // Appearance settings types

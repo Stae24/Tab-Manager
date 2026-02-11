@@ -56,6 +56,14 @@ const init = async () => {
     ? sync.appearanceSettings.vaultSyncEnabled
     : defaultAppearanceSettings.vaultSyncEnabled;
 
+  logger.info('[Store Init] Settings loaded:', {
+    hasAppearanceSettings: !!sync.appearanceSettings,
+    isValidSettings: sync.appearanceSettings ? isAppearanceSettings(sync.appearanceSettings) : false,
+    storedVaultSyncEnabled: sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? (sync.appearanceSettings as any).vaultSyncEnabled : undefined,
+    defaultVaultSyncEnabled: defaultAppearanceSettings.vaultSyncEnabled,
+    finalSyncEnabled: syncEnabled
+  });
+
   const migrationResult = await vaultService.migrateFromLegacy({ syncEnabled });
   if (migrationResult.migrated) {
     logger.info('[VaultStorage] Migration complete:', migrationResult);
@@ -64,31 +72,60 @@ const init = async () => {
   const effectiveSyncEnabled = migrationResult.fallbackToLocal ? false : undefined;
   const loadSyncEnabled = effectiveSyncEnabled !== undefined ? effectiveSyncEnabled : syncEnabled;
 
-  logger.info(`[Store Init] Loading vault with syncEnabled=${loadSyncEnabled} (fallbackToLocal=${migrationResult.fallbackToLocal})`);
-  const { vault, timestamp } = await vaultService.loadVault({ syncEnabled: loadSyncEnabled });
-  logger.info(`[Store Init] Vault loaded: ${vault.length} items, timestamp=${timestamp}`);
-  useStore.setState({ vault, lastVaultTimestamp: timestamp, effectiveSyncEnabled });
+  logger.info(`[Store Init] Loading vault with syncEnabled=${loadSyncEnabled} (migrationFallback=${migrationResult.fallbackToLocal})`);
+  const loadResult = await vaultService.loadVault({ syncEnabled: loadSyncEnabled });
+  logger.info(`[Store Init] Vault loaded: ${loadResult.vault.length} items, timestamp=${loadResult.timestamp}, loadFallback=${loadResult.fallbackToLocal}`);
+  
+  const loadFallbackToLocal = loadResult.fallbackToLocal || migrationResult.fallbackToLocal;
+  const finalEffectiveSyncEnabled = loadFallbackToLocal ? false : effectiveSyncEnabled;
+  
+  logger.info(`[Store Init] Setting effectiveSyncEnabled:`, {
+    migrationFallbackToLocal: migrationResult.fallbackToLocal,
+    loadFallbackToLocal: loadResult.fallbackToLocal,
+    loadFallbackToLocalCombined: loadFallbackToLocal,
+    effectiveSyncEnabledBefore: effectiveSyncEnabled,
+    finalEffectiveSyncEnabled
+  });
+   
+  useStore.setState({ vault: loadResult.vault, lastVaultTimestamp: loadResult.timestamp, effectiveSyncEnabled: finalEffectiveSyncEnabled });
 
-  const quota = await quotaService.getVaultQuota();
-  logger.info(`[Store Init] Quota: ${quota.used}/${quota.total} bytes (${Math.round(quota.percentage * 100)}%)`);
-  useStore.setState({ vaultQuota: quota });
+    if (syncEnabled && !loadFallbackToLocal) {
+      const quota = await quotaService.getVaultQuota();
+      logger.info(`[Store Init] Quota: ${quota.used}/${quota.total} bytes (${Math.round(quota.percentage * 100)}%)`);
+      useStore.setState({ vaultQuota: quota });
 
-   if (quota.percentage >= 1.0) {
-      logger.warn(`[Store Init] Quota critical at ${Math.round(quota.percentage * 100)}%, auto-disabling sync`);
-      const currentSettings = sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? sync.appearanceSettings : defaultAppearanceSettings;
-      const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
-      try {
-        await vaultService.disableVaultSync(vault);
-      } catch (error) {
-        logger.error('[Store Init] Failed to disable vault sync:', error);
-        return;
+      if (quota.percentage >= 1.0) {
+        logger.warn(`[Store Init] 🔴 DISABLING SYNC: Quota critical at ${Math.round(quota.percentage * 100)}% (${quota.used}/${quota.total} bytes)`);
+        logger.warn(`[Store Init] 🔴 This vault has fallen back to LOCAL storage.`);
+        const currentSettings = sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? sync.appearanceSettings : defaultAppearanceSettings;
+        const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
+        try {
+          await vaultService.disableVaultSync(loadResult.vault);
+        } catch (error) {
+          logger.error('[Store Init] Failed to disable vault sync:', error);
+          return;
+        }
+        useStore.setState({
+          appearanceSettings: updatedSettings,
+          effectiveSyncEnabled: false,
+          vaultQuota: { ...quota, warningLevel: 'none' as const }
+        });
+        await settingsService.saveSettings({ appearanceSettings: updatedSettings });
+        logger.warn(`[Store Init] 🔴 SYNC DISABLED. To re-enable: Settings → Vault → Enable Vault Sync`);
       }
-      useStore.setState({
-        appearanceSettings: updatedSettings,
-        effectiveSyncEnabled: false,
-        vaultQuota: { ...quota, warningLevel: 'none' as const }
-      });
-      await settingsService.saveSettings({ appearanceSettings: updatedSettings });
+    } else if (!syncEnabled) {
+      logger.info(`[Store Init] ℹ️ Sync was already disabled in settings (vaultSyncEnabled=false)`);
+      const orphanedCount = await quotaService.cleanupOrphanedChunks();
+      if (orphanedCount > 0) {
+        logger.info(`[Store Init] Cleaned up ${orphanedCount} orphaned sync chunks`);
+      }
+      const quota = await quotaService.getVaultQuota();
+      useStore.setState({ vaultQuota: quota });
+    } else if (loadFallbackToLocal) {
+      logger.warn(`[Store Init] 🔴 SYNC DISABLED: Load fallback to local triggered`);
+      logger.warn(`[Store Init] 🔴 migrationFallback=${migrationResult.fallbackToLocal}, loadFallback=${loadResult.fallbackToLocal}`);
+      const quota = await quotaService.getVaultQuota();
+      useStore.setState({ vaultQuota: quota });
     }
 
   settingsService.watchSettings(async (changes, area) => {
@@ -100,19 +137,34 @@ const init = async () => {
       if (changes.dividerPosition) state.setDividerPosition(Number(changes.dividerPosition.newValue));
       if (changes.settingsPanelWidth) state.setSettingsPanelWidth(Number(changes.settingsPanelWidth.newValue));
 
-      if (changes.vault_meta) {
-        const incomingTimestamp = (changes.vault_meta.newValue as { timestamp?: number })?.timestamp ?? 0;
-        const currentTimestamp = useStore.getState().lastVaultTimestamp;
-        // Only reload if incoming version is newer (timestamp-based conflict resolution)
-        if (incomingTimestamp > currentTimestamp && !useStore.getState().isUpdating) {
-          const { appearanceSettings: currentSettings, effectiveSyncEnabled: persistedSyncEnabled } = useStore.getState();
-          const syncEnabled = persistedSyncEnabled !== undefined ? persistedSyncEnabled : currentSettings.vaultSyncEnabled;
-          const { vault: reloadedVault } = await vaultService.loadVault({ syncEnabled });
-          useStore.setState({ vault: reloadedVault, lastVaultTimestamp: incomingTimestamp });
-          const quota = await quotaService.getVaultQuota();
-          useStore.setState({ vaultQuota: quota });
+        if (changes.vault_meta) {
+          const incomingTimestamp = (changes.vault_meta.newValue as { timestamp?: number })?.timestamp ?? 0;
+          const currentTimestamp = useStore.getState().lastVaultTimestamp;
+          if (incomingTimestamp > currentTimestamp && !useStore.getState().isUpdating) {
+            try {
+              const { appearanceSettings: currentSettings, effectiveSyncEnabled: persistedSyncEnabled } = useStore.getState();
+              const syncEnabled = persistedSyncEnabled !== undefined ? persistedSyncEnabled : currentSettings.vaultSyncEnabled;
+              const loadResult = await vaultService.loadVault({ syncEnabled });
+              
+              if (loadResult.fallbackToLocal) {
+                const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
+                useStore.setState({ 
+                  vault: loadResult.vault, 
+                  lastVaultTimestamp: incomingTimestamp,
+                  effectiveSyncEnabled: false,
+                  appearanceSettings: updatedSettings 
+                });
+                await settingsService.saveSettings({ appearanceSettings: updatedSettings });
+              } else {
+                useStore.setState({ vault: loadResult.vault, lastVaultTimestamp: incomingTimestamp });
+              }
+              const quota = await quotaService.getVaultQuota();
+              useStore.setState({ vaultQuota: quota });
+            } catch (error) {
+              logger.error('[Store] Failed to sync vault from storage:', error);
+            }
+          }
         }
-      }
     }
 
     if (area === 'local') {
