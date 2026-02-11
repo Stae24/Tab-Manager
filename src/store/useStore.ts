@@ -108,7 +108,7 @@ const init = async () => {
         useStore.setState({
           appearanceSettings: updatedSettings,
           effectiveSyncEnabled: false,
-          vaultQuota: { ...quota, warningLevel: 'none' as const }
+          vaultQuota: quota
         });
         await settingsService.saveSettings({ appearanceSettings: updatedSettings });
         logger.warn(`[Store Init] 🔴 SYNC DISABLED. To re-enable: Settings → Vault → Enable Vault Sync`);
