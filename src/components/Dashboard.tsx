@@ -1016,10 +1016,11 @@ const VaultPanel: React.FC<{
         className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none"
       >
         <ScrollContainerProvider containerRef={scrollRef}>
-          {vaultQuota && vaultQuota.warningLevel !== 'none' && (
+          {vaultQuota && (
             <QuotaWarningBanner
               warningLevel={vaultQuota.warningLevel}
               percentage={vaultQuota.percentage}
+              syncEnabled={!!effectiveSyncEnabled}
               onManageStorage={onManageStorage}
             />
           )}
