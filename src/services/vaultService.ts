@@ -300,6 +300,8 @@ export const vaultService = {
         logger.info(`[VaultStorage] Removing ${oldKeys.length} old chunks: ${oldKeys.join(', ')}`);
         await chrome.storage.sync.remove(oldKeys);
       }
+
+      await quotaService.cleanupOrphanedChunks();
       
       await chrome.storage.local.set({ vault_backup: vault });
       logger.info('[VaultStorage] Backup updated in local storage');
