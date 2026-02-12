@@ -25,10 +25,11 @@ async function checkQuotaBeforeSave(
     return { allowed: true, shouldSwitchToLocal: false };
   }
 
+  const quota = await quotaService.getVaultQuota();
+  const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES;
+
   if (!currentVault.length) {
-    const quota = await quotaService.getVaultQuota();
     const estimatedItemSize = estimateItemSize(item);
-    const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES * 2;
     return {
       allowed: quota.available - estimatedItemSize >= safetyMargin,
       shouldSwitchToLocal: false
@@ -39,10 +40,11 @@ async function checkQuotaBeforeSave(
   const testJson = JSON.stringify(testVault);
   const compressed = LZString.compressToUTF16(testJson);
   const estimatedCompressedSize = compressed.length * 2;
-  const quota = await quotaService.getVaultQuota();
-  const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES * 2;
 
-  if (quota.available - estimatedCompressedSize < safetyMargin) {
+  const netNewBytes = estimatedCompressedSize - quota.used;
+  const estimatedRequiredBytes = netNewBytes + safetyMargin;
+
+  if (estimatedRequiredBytes > quota.available) {
     return { allowed: false, shouldSwitchToLocal: true };
   }
 

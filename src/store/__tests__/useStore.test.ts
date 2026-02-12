@@ -12,7 +12,8 @@ vi.mock('../../services/vaultService', () => ({
 
 vi.mock('../../services/quotaService', () => ({
   quotaService: {
-    getVaultQuota: vi.fn().mockResolvedValue({ used: 0, total: 1000, percentage: 0, available: 1000, warningLevel: 'none' }),
+    getVaultQuota: vi.fn().mockResolvedValue({ used: 0, total: 1000, percentage: 0, available: 1000, warningLevel: 'none', orphanedChunks: 0 }),
+    logQuotaDetails: vi.fn().mockResolvedValue({ used: 0, total: 1000, percentage: 0, available: 1000, warningLevel: 'none', orphanedChunks: 0 }),
   }
 }));
 

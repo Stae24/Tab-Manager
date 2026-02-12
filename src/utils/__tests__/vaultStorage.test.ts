@@ -185,6 +185,7 @@ describe('vaultStorage - getVaultQuota', () => {
     expect(quota).toHaveProperty('total');
     expect(quota).toHaveProperty('percentage');
     expect(quota).toHaveProperty('warningLevel');
+    expect(quota).toHaveProperty('orphanedChunks');
     expect(typeof quota.used).toBe('number');
     expect(typeof quota.percentage).toBe('number');
   });

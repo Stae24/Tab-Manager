@@ -8,7 +8,7 @@ import type {
   VaultLoadResult
 } from '../types/index';
 import { quotaService } from './quotaService';
-import { STORAGE_VERSION, VAULT_CHUNK_SIZE, CHROME_SYNC_ITEM_MAX_BYTES, VAULT_QUOTA_SAFETY_MARGIN_BYTES } from '../constants';
+import { STORAGE_VERSION, VAULT_CHUNK_SIZE, CHROME_SYNC_ITEM_MAX_BYTES, VAULT_QUOTA_SAFETY_MARGIN_BYTES, SYNC_SETTINGS_RESERVE_BYTES } from '../constants';
 import { logger } from '../utils/logger';
 
 const VAULT_META_KEY = 'vault_meta';
@@ -67,7 +67,7 @@ export const vaultService = {
         return { vault: await loadFromBackup(), timestamp: 0, fallbackToLocal: false };
       }
       
-      logger.info(`[VaultStorage] Found meta: version=${meta.version}, chunkCount=${meta.chunkCount}, chunkKeys=${meta.chunkKeys?.length || 'undefined'}`);
+      logger.info(`[VaultStorage] Found meta: version=${meta.version}, chunkCount=${meta.chunkCount}, chunkKeys.length=${meta.chunkKeys?.length || 0}`);
       
       if (meta.version !== STORAGE_VERSION) {
         logger.warn(`[VaultStorage] Version mismatch: expected ${STORAGE_VERSION}, got ${meta.version}. Attempting to load data anyway.`);
@@ -76,40 +76,57 @@ export const vaultService = {
       const chunks: string[] = [];
       const chunkKeys = meta.chunkKeys || Array.from({ length: meta.chunkCount }, (_, i) => `${VAULT_CHUNK_PREFIX}${i}`);
       
-      logger.info(`[VaultStorage] Loading ${chunkKeys.length} chunks: ${chunkKeys.join(', ')}`);
+      logger.info(`[VaultStorage] Attempting to load ${chunkKeys.length} chunks`);
+      logger.debug(`[VaultStorage] Chunk keys to fetch: ${chunkKeys.join(', ')}`);
       
       // Explicitly request specific keys instead of get(null) to avoid pagination/limit issues
       const keysToFetch = [VAULT_META_KEY, ...chunkKeys];
       const syncData = await chrome.storage.sync.get(keysToFetch);
       
-      logger.info(`[VaultStorage] Retrieved ${Object.keys(syncData).length} items from storage`);
+      const retrievedKeys = Object.keys(syncData);
+      logger.debug(`[VaultStorage] Retrieved ${retrievedKeys.length} items: ${retrievedKeys.join(', ')}`);
+      
+      // Check which expected chunks are missing
+      const missingChunks = chunkKeys.filter(key => syncData[key] === undefined);
+      if (missingChunks.length > 0) {
+        logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Missing ${missingChunks.length} chunks`);
+        logger.error(`[VaultStorage]   - chunkCount in meta: ${meta.chunkCount}`);
+        logger.error(`[VaultStorage]   - chunkKeys.length in meta: ${meta.chunkKeys?.length || 0}`);
+        logger.error(`[VaultStorage]   - Missing chunk keys: ${missingChunks.join(', ')}`);
+        logger.error(`[VaultStorage]   - Available in storage: ${retrievedKeys.filter(k => k.startsWith(VAULT_CHUNK_PREFIX)).join(', ')}`);
+        return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
+      }
       
       for (let i = 0; i < chunkKeys.length; i++) {
         const chunk = syncData[chunkKeys[i]] as string | undefined;
-        const chunkSize = chunk ? chunk.length * 2 : 0; // UTF-16 = 2 bytes per char
-        logger.info(`[VaultStorage] Chunk ${chunkKeys[i]}: ${chunk ? 'FOUND' : 'MISSING'}, size=${chunkSize} bytes`);
-        
         if (chunk === undefined) {
-          logger.error(`[VaultStorage] 🔴 Missing chunk ${chunkKeys[i]}, loading from backup (fallbackToLocal=true)`);
+          logger.error(`[VaultStorage] 🔴 Unexpected: Chunk ${chunkKeys[i]} was not found despite passing earlier check`);
           return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
         }
+        const chunkSize = chunk.length * 2; // UTF-16 = 2 bytes per char
+        logger.debug(`[VaultStorage] Chunk ${chunkKeys[i]}: FOUND, size=${chunkSize} bytes`);
         chunks.push(chunk);
       }
       
       const totalCompressedSize = chunks.reduce((sum, chunk) => sum + chunk.length * 2, 0);
-      logger.info(`[VaultStorage] All chunks loaded. Total compressed size: ${totalCompressedSize} bytes`);
+      logger.info(`[VaultStorage] All ${chunks.length} chunks loaded. Total compressed size: ${totalCompressedSize} bytes`);
 
       const compressed = chunks.join('');
       const jsonData = LZString.decompressFromUTF16(compressed);
 
       if (!jsonData) {
-        logger.error('[VaultStorage] 🔴 Decompression failed, loading from backup (fallbackToLocal=true)');
+        logger.error('[VaultStorage] 🔴 FALLBACK TRIGGERED: Decompression failed');
+        logger.error(`[VaultStorage]   - Compressed size: ${compressed.length} chars`);
+        logger.error(`[VaultStorage]   - This indicates corrupted or incomplete data`);
         return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
       }
 
       const computedChecksum = await computeChecksum(jsonData);
       if (computedChecksum !== meta.checksum) {
-        logger.error(`[VaultStorage] 🔴 Checksum mismatch (expected=${meta.checksum}, got=${computedChecksum}), loading from backup (fallbackToLocal=true)`);
+        logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Checksum mismatch`);
+        logger.error(`[VaultStorage]   - Expected: ${meta.checksum}`);
+        logger.error(`[VaultStorage]   - Computed: ${computedChecksum}`);
+        logger.error(`[VaultStorage]   - Data may have been corrupted in transit`);
         return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
       }
       
@@ -125,6 +142,7 @@ export const vaultService = {
         return { vault: await loadFromBackup(), timestamp: meta.timestamp };
       }
 
+      logger.info(`[VaultStorage] ✅ Load successful: ${parsed.length} items`);
       return {
         vault: parsed,
         timestamp: meta.timestamp
@@ -170,11 +188,24 @@ export const vaultService = {
     const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES;
     const estimatedRequiredBytes = netNewBytes + safetyMargin;
     
-    logger.info(`[VaultStorage] Quota check: available=${quota.available}, needed=${netNewBytes}, withSafetyMargin=${estimatedRequiredBytes}, currentKeys=${currentKeys.length}`);
+    logger.info(`[VaultStorage] 📊 Quota state BEFORE save:`);
+    logger.info(`[VaultStorage]   - quota.used (current vault bytes): ${quota.used}`);
+    logger.info(`[VaultStorage]   - quota.available (free space): ${quota.available}`);
+    logger.info(`[VaultStorage]   - quota.total (capacity for vault): ${quota.total}`);
+    logger.info(`[VaultStorage]   - Current vault bytes in storage: ${currentVaultBytes}`);
+    logger.info(`[VaultStorage]   - New compressed size: ${compressedBytes}`);
+    logger.info(`[VaultStorage]   - Net new bytes: ${netNewBytes}`);
+    logger.info(`[VaultStorage]   - Safety margin: ${safetyMargin}`);
+    logger.info(`[VaultStorage]   - Estimated required (net + margin): ${estimatedRequiredBytes}`);
+    logger.info(`[VaultStorage]   - Check: ${estimatedRequiredBytes} > ${quota.available} ? ${estimatedRequiredBytes > quota.available}`);
     
     if (estimatedRequiredBytes > quota.available) {
-      logger.warn(`[VaultStorage] 🔴 QUOTA EXCEEDED: need ${netNewBytes} bytes (${estimatedRequiredBytes} with safety margin), have ${quota.available}. Falling back to local storage (fallbackToLocal=true).`);
-      logger.warn('[VaultStorage] 🔴 To retry sync: Clear vault storage and re-enable vault sync in settings');
+      logger.warn(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Quota exceeded`);
+      logger.warn(`[VaultStorage]   - Need ${netNewBytes} bytes (${estimatedRequiredBytes} with safety margin)`);
+      logger.warn(`[VaultStorage]   - Have ${quota.available} bytes free`);
+      logger.warn(`[VaultStorage]   - New vault would be ${compressedBytes} bytes (total used: ${quota.used + netNewBytes})`);
+      logger.warn(`[VaultStorage]   - Capacity: ${quota.total}, Settings reserve: ${SYNC_SETTINGS_RESERVE_BYTES} bytes`);
+      logger.warn(`[VaultStorage]   - To retry sync: Clear vault storage and re-enable vault sync in settings`);
       
       // Save to local storage instead
       await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault });
@@ -299,15 +330,22 @@ export const vaultService = {
         warningLevel: newQuota.warningLevel
       };
     } catch (error) {
-      logger.error('[VaultStorage] Failed to save:', error);
+      logger.error('[VaultStorage] ❌ SYNC WRITE FAILED:', error);
       
-      const isQuotaError = error instanceof Error && error.message.includes('quota');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isQuotaError = errorMessage.includes('quota');
 
       if (isQuotaError) {
-        logger.warn('[VaultStorage] Quota exceeded during sync write, falling back to local storage');
+        logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Quota error during sync write`);
+        logger.error(`[VaultStorage]   - Error message: ${errorMessage}`);
+        logger.error(`[VaultStorage]   - This indicates the storage became full during the write operation`);
       } else {
-        logger.warn('[VaultStorage] Sync write failed, falling back to local storage');
+        logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Non-quota error during sync write`);
+        logger.error(`[VaultStorage]   - Error message: ${errorMessage}`);
+        logger.error(`[VaultStorage]   - This could be a transient sync error or storage corruption`);
       }
+
+      logger.error(`[VaultStorage]   - Attempting to save to local storage instead...`);
 
       let legacySaveFailed = false;
       let backupSaveFailed = false;
