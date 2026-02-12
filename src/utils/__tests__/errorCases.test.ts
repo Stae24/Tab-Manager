@@ -154,12 +154,9 @@ describe('Error Cases - vaultService.saveVault', () => {
 });
 
 describe('Error Cases - tabService', () => {
-  it.skip('throws error when chrome.tabs.move fails after retries', async () => {
+  it('throws error when chrome.tabs.move fails after retries', async () => {
     const error = new Error('Tab cannot be modified');
     vi.spyOn(chrome.tabs, 'move').mockRejectedValue(error);
-
-    // Skip this test - Vitest 4.x module mocking limitations
-    // This functionality is tested indirectly by other tests
 
     await expect(tabService.moveTab(1, 0)).rejects.toThrow('Tab cannot be modified');
     expect(chrome.tabs.move).toHaveBeenCalledTimes(3);
