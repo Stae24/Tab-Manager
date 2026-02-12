@@ -1,32 +1,51 @@
 # src/components AGENTS.md
 
 ## OVERVIEW
-UI layer for the Opera GX Island Manager. Centered around a dual-panel tactical dashboard (Live Workspace vs. Neural Vault) with heavy emphasis on drag-and-drop orchestration and GX-themed visual feedback.
+UI layer for dual-panel tactical dashboard (Live Workspace vs. Neural Vault). DnD orchestration via @dnd-kit, GX-themed styling.
 
-## UI ARCHITECTURE
-- **Dashboard.tsx (Monolithic)**: Orchestrates the `DndContext`. Contains `LivePanel` (active tabs/groups) and `VaultPanel` (archived items).
-- **Island.tsx**: Interactive group container. Handles collapsing, renaming, and nested sortable tabs.
-- **TabCard.tsx**: Atomic draggable unit. Responsive to density settings and discarded states.
-- **Refactor Targets**:
-  - Extract `LivePanel` and `VaultPanel` to standalone files.
-  - Move DnD logic from `Dashboard.tsx` into a `useDashboardDnd` hook.
-  - Decouple proximity tracking logic (`useProximityGap`) into a specialized utility.
+## COMPONENT HIERARCHY
+```
+Dashboard.tsx (DndContext orchestrator)
+├── Sidebar.tsx (settings toggle, vault count)
+├── LivePanel.tsx (active tabs/groups)
+│   ├── Island.tsx (group container, collapsible)
+│   │   └── TabCard.tsx (draggable tab)
+│   └── DroppableGap.tsx (proximity-expanded drop zones)
+├── VaultPanel.tsx (archived items)
+├── AppearanceSettingsPanel.tsx (theme, density, sync toggle)
+├── QuotaWarningBanner.tsx (storage warnings)
+├── QuotaExceededModal.tsx (quota exceeded action)
+├── ContextMenu.tsx (right-click actions)
+├── Favicon.tsx (cached favicon rendering)
+└── ErrorBoundary.tsx (error containment)
+```
 
-## DND FLOW (dnd-kit)
-- **Sensors**: `PointerSensor` (activation distance: 8px) + `KeyboardSensor`.
-- **Proximity Gaps**: `useProximityGap` and `DroppableGap` expand invisible droppable zones between Islands to prevent "target jumping" during reordering.
-- **Cross-Panel Logic**: `handleDragEnd` detects moves via ID namespacing (`vault-*` prefix).
-  - **Live -> Vault**: Triggers `moveToVault` (archive).
-  - **Vault -> Live**: Triggers `restoreFromVault` (unarchive).
-  - **Live -> Create Zone**: Triggers `createIsland` for tactical grouping.
-- **Optimistic UI**: `moveItemOptimistically` updates Zustand state immediately; `syncLiveTabs` reconciles with Chrome API on drop.
+## DND FLOW (@dnd-kit)
+- **Sensors**: `PointerSensor` (8px activation) + `KeyboardSensor`
+- **Proximity Gaps**: `useProximityGap` expands drop zones during drag
+- **Cross-Panel**: ID prefix detection (`vault-*` vs `live-*`)
+- **Optimistic UI**: `moveItemOptimistically` → immediate state update
+- **Command Pattern**: `MoveTabCommand`/`MoveIslandCommand` for undo
 
-## STYLING PATTERNS (GX THEME)
-- **Neon Accents**: `shadow-[0_0_8px_rgba(127,34,254,0.5)]` for interactive headers.
-- **Glow/Pulse**: `animate-pulse-glow` for loading (`isCreatingIsland`) and active drag states.
-- **Borders**: `Island` borders map to Chrome's `TabGroupColor` via `getIslandBorderColor`.
-- **Panel Feedback**: `LivePanel` uses `bg-gx-accent/5` when items are hovered; `VaultPanel` uses `bg-gx-red/5` for archiving intent.
+### handleDragEnd Logic
+| Source | Target | Action |
+|--------|--------|--------|
+| Live Tab | Vault Area | `moveToVault()` |
+| Vault Item | Live Area | `restoreFromVault()` |
+| Live Tab | Create Zone | `createIsland()` |
+| Live Tab | Live Tab | Reorder via command |
+| Island | Island | Reorder group |
+
+## STYLING (GX Theme)
+- **Accent**: `gx-accent: #7f22fe` (purple)
+- **Neon Glow**: `shadow-[0_0_8px_rgba(127,34,254,0.5)]`
+- **Borders**: `getIslandBorderColor()` maps Chrome TabGroupColor
+- **Dark Mode**: `isDarkMode` state toggles `dark` class
+
+## STATE LOCKING
+`isUpdating` flag during drag prevents background sync from overriding optimistic layout. Always set before Chrome API calls, clear after.
 
 ## NOTES
-- **State Locking**: `useStore.setIsUpdating(true)` during drag prevents background sync from overriding optimistic layout.
-- **UI Scaling**: `scaleModifier` in `DndContext` ensures drag coordinates remain accurate across different zoom levels.
+- **scaleModifier**: Adjusts drag coordinates for zoom levels
+- **isCreatingIsland**: Shows loading state during group creation
+- **searchQuery**: Filters all tabs, groups results by option
