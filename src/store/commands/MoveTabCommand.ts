@@ -1,5 +1,6 @@
 import { Command } from './types';
 import { tabService } from '../../services/tabService';
+import { logger } from '../../utils/logger';
 
 export interface MoveTabParams {
   tabId: number;
@@ -24,7 +25,9 @@ export class MoveTabCommand implements Command {
     } else {
       try {
         await chrome.tabs.ungroup(this.params.tabId);
-      } catch (e) {}
+      } catch (e) {
+        logger.warn('[MoveTabCommand] Failed to ungroup tab:', e);
+      }
     }
   }
 
@@ -35,7 +38,9 @@ export class MoveTabCommand implements Command {
     } else {
       try {
         await chrome.tabs.ungroup(this.params.tabId);
-      } catch (e) {}
+      } catch (e) {
+        logger.warn('[MoveTabCommand] Failed to ungroup tab in undo:', e);
+      }
     }
   }
 }

@@ -11,6 +11,7 @@ import { createUISlice } from './slices/useUISlice';
 import { createAppearanceSlice } from './slices/useAppearanceSlice';
 import { createCommandSlice } from './slices/useCommandSlice';
 import { StoreState } from './types';
+import { AppearanceSettings } from '../types/index';
 
 // Re-export types for public API consistency
 export type { 
@@ -59,7 +60,7 @@ const init = async () => {
   logger.info('[Store Init] Settings loaded:', {
     hasAppearanceSettings: !!sync.appearanceSettings,
     isValidSettings: sync.appearanceSettings ? isAppearanceSettings(sync.appearanceSettings) : false,
-    storedVaultSyncEnabled: sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? (sync.appearanceSettings as any).vaultSyncEnabled : undefined,
+    storedVaultSyncEnabled: sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? (sync.appearanceSettings as AppearanceSettings).vaultSyncEnabled : undefined,
     defaultVaultSyncEnabled: defaultAppearanceSettings.vaultSyncEnabled,
     finalSyncEnabled: syncEnabled
   });
