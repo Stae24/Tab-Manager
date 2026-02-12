@@ -365,8 +365,8 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     const item = vault[itemIndex];
 
     let insertionIndex = 0;
-    const currentWindowTabs = await chrome.tabs.query({ currentWindow: true });
-    const currentWindowGroups = await chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+    const currentWindowTabs = await tabService.getCurrentWindowTabs();
+    const currentWindowGroups = await tabService.getCurrentWindowGroups();
 
     if (currentWindowGroups.length > 0) {
       const groupsWithIndices = currentWindowGroups.map(g => {
@@ -386,14 +386,14 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     if (isIsland(item)) {
       const newIds: number[] = [];
       for (const t of (item.tabs || [])) {
-        const nt = await chrome.tabs.create({ url: t.url, active: false, index: insertionIndex + newIds.length });
+        const nt = await tabService.createTab({ url: t.url, active: false, index: insertionIndex + newIds.length });
         if (nt.id) newIds.push(nt.id);
       }
       if (newIds.length > 0) {
         await tabService.createIsland(newIds, item.title, item.color as chrome.tabGroups.Color);
       }
     } else {
-      await chrome.tabs.create({ url: item.url, active: false, index: insertionIndex });
+      await tabService.createTab({ url: item.url, active: false, index: insertionIndex });
     }
 
     const newVault = vault.filter((v: VaultItem) => String(v.id) !== String(id));

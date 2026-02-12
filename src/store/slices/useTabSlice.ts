@@ -281,7 +281,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
 
   deleteDuplicateTabs: async () => {
     try {
-      const currentTabs = await chrome.tabs.query({ currentWindow: true });
+      const currentTabs = await tabService.getCurrentWindowTabs();
       const urlMap = new Map<string, chrome.tabs.Tab[]>();
       currentTabs.forEach(tab => {
         const urlString = tab.url || tab.pendingUrl;

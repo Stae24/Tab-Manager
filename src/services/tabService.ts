@@ -304,6 +304,18 @@ export const tabService = {
     return newTabIds;
   },
 
+  getCurrentWindowTabs: async (): Promise<chrome.tabs.Tab[]> => {
+    return chrome.tabs.query({ currentWindow: true });
+  },
+
+  getCurrentWindowGroups: async (): Promise<chrome.tabGroups.TabGroup[]> => {
+    return chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+  },
+
+  createTab: async (options: chrome.tabs.CreateProperties): Promise<chrome.tabs.Tab> => {
+    return chrome.tabs.create(options);
+  },
+
   consolidateAndGroupTabs: async (tabIds: number[], options: { color?: string }) => {
     try {
       const targetWindow = await withRetry(
