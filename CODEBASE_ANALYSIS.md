@@ -1,83 +1,187 @@
 # Opera GX Island Manager — Codebase Analysis
 
-> **Generated:** 2026-02-12  
-> **Codebase:** ~10,500 lines of TypeScript/TSX across 50+ source files  
-> **Test Suite:** ~2,970 lines across 17 test files
+**Generated:** 2026-02-12  
+**Scope:** Full codebase review of the Opera GX Island Manager Chrome Extension  
+**Stack:** React 19 · TypeScript 5.9 · Vite 7 · Tailwind CSS 4 · Zustand 5 · Vitest
 
 ---
 
 ## Table of Contents
 
-1. [Overview / TL;DR](#1-overview--tldr)
+1. [Overview](#1-overview)
 2. [Architecture & Tech Stack](#2-architecture--tech-stack)
 3. [Project Structure](#3-project-structure)
 4. [Key Design Patterns](#4-key-design-patterns)
 5. [Strengths](#5-strengths)
-6. [Areas for Improvement / Issues](#6-areas-for-improvement--issues)
+6. [Areas for Improvement](#6-areas-for-improvement)
 7. [Security Considerations](#7-security-considerations)
 8. [Recommendations](#8-recommendations)
 
 ---
 
-## 1. Overview / TL;DR
+## 1. Overview
 
-**Opera GX Island Manager** is a Chrome/Opera GX browser extension (Manifest V3) that provides tactical tab and tab-group management through a dual-panel UI:
+Opera GX Island Manager is a Chrome/Opera extension that provides tactical tab management through a dual-panel UI: a **Live Workspace** (real-time browser tabs) and a **Neural Vault** (persistent saved tabs). The extension runs as a sidebar panel using Manifest V3, with a background service worker coordinating tab lifecycle events and a React-based frontend for all user interactions.
 
-- **Live Workspace** (left panel) — Real-time view of the browser's open tabs and tab groups ("Islands"), with drag-and-drop reordering, search/filter, bulk operations (deduplication, grouping), and tab freezing (memory optimization via `chrome.tabs.discard`).
-- **Neural Vault** (right panel) — Persistent storage for saved tabs and groups, with cross-device sync via `chrome.storage.sync` (compressed + chunked) and automatic fallback to `chrome.storage.local` when quota is exceeded.
+### Core Capabilities
 
-The extension is built with **React 19**, **TypeScript 5.9**, **Zustand 5** for state management, **@dnd-kit** for drag-and-drop, **@tanstack/react-virtual** for virtualized lists, **Tailwind CSS 4** for styling, and **Vite 7** as the build system. Tests use **Vitest** with **jsdom** and **React Testing Library**.
-
-The UI follows an Opera GX–inspired dark theme with neon accent colors, military/tactical naming conventions ("Neural Vault", "Tactical Island creation", "Syncing Reality"), and polished micro-interactions.
+- **Dual-panel layout** — Live Workspace mirrors the browser's current tab state; Neural Vault persists saved tabs across sessions
+- **Drag-and-drop orchestration** — Optimistic reordering of tabs and tab groups (Islands) with `@dnd-kit`
+- **Vault sync** — Compressed, chunked storage to `chrome.storage.sync` with LZ-String compression, SHA-256 checksums, and automatic local fallback
+- **Memory optimization** — Tab freezing (discarding) via the Chrome `tabs.discard` API
+- **Undo/Redo** — Command pattern for reversible tab/island move operations
+- **Appearance customization** — Extensive theming, density, favicon source, and UI scale settings
+- **Export** — JSON, CSV, and Markdown export of workspace state
 
 ---
 
 ## 2. Architecture & Tech Stack
 
-### 2.1 Framework & Build
+### Runtime Architecture
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| UI Framework | React | 19.2.3 |
-| Language | TypeScript | 5.9.3 (strict mode) |
-| Build Tool | Vite | 7.3.0 |
-| CSS | Tailwind CSS | 4.1.18 |
-| Test Runner | Vitest | 4.0.18 |
-
-The Vite config ([`vite.config.ts`](vite.config.ts)) defines two entry points:
-- `index.html` — the main extension UI (sidebar panel)
-- `src/background.ts` — the service worker
-
-```ts
-// vite.config.ts:8-16
-rollupOptions: {
-  input: {
-    main: 'index.html',
-    background: 'src/background.ts'
-  },
-  output: {
-    entryFileNames: (chunkInfo) => {
-      return chunkInfo.name === 'background' ? '[name].js' : 'assets/[name]-[hash].js';
-    }
-  }
-}
+```
+┌─────────────────────────────────────────────────────────┐
+│  Background Service Worker (src/background.ts)          │
+│  • Listens to chrome.tabs / chrome.tabGroups events     │
+│  • Sends REFRESH_TABS messages to UI                    │
+│  • Handles FREEZE_TAB, island creation gating           │
+│  • Cleans up orphaned vault chunks on startup           │
+└──────────────────────┬──────────────────────────────────┘
+                       │ chrome.runtime.onMessage
+┌──────────────────────▼──────────────────────────────────┐
+│  React UI (sidebar panel / index.html)                  │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  Zustand Store (5 slices)                          │ │
+│  │  TabSlice · VaultSlice · UISlice                   │ │
+│  │  AppearanceSlice · CommandSlice                    │ │
+│  └────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  Service Layer                                     │ │
+│  │  tabService · vaultService · quotaService          │ │
+│  │  settingsService                                   │ │
+│  └────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  Components                                        │ │
+│  │  Dashboard (DnD context) → LivePanel / VaultPanel  │ │
+│  │  Island · TabCard · Sidebar · ErrorBoundary        │ │
+│  └────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│  Chrome Storage                                         │
+│  sync: vault_meta + vault_chunk_* + settings            │
+│  local: vault (legacy/fallback) + vault_backup          │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 State Management
+### Technology Choices
 
-State is managed by a single **Zustand 5** store composed of five slices:
+| Layer | Technology | Version | Purpose |
+|-------|-----------|---------|---------|
+| UI Framework | React | 19.2 | Component rendering with `React.memo` optimization |
+| State Management | Zustand | 5.0 | Lightweight store with slice composition |
+| Drag & Drop | @dnd-kit/core + sortable | 6.3 / 10.0 | Accessible DnD with sortable lists |
+| Virtualization | @tanstack/react-virtual | 3.13 | Efficient rendering of large tab lists |
+| Styling | Tailwind CSS | 4.1 | Utility-first CSS with custom Opera GX theme |
+| Compression | lz-string | 1.5 | UTF-16 compression for sync storage |
+| Icons | lucide-react | 0.562 | Consistent icon set |
+| Build | Vite | 7.3 | Fast HMR dev server + production bundling |
+| Testing | Vitest + Testing Library | 4.0 / 16.3 | Unit and component testing with jsdom |
+| Language | TypeScript | 5.9 | Strict mode, no `any` policy |
 
-| Slice | File | Responsibility |
-|-------|------|---------------|
-| `TabSlice` | [`src/store/slices/useTabSlice.ts`](src/store/slices/useTabSlice.ts) | Live tab/group state, sync, optimistic reordering |
-| `VaultSlice` | [`src/store/slices/useVaultSlice.ts`](src/store/slices/useVaultSlice.ts) | Vault CRUD, persistence, quota management |
-| `UISlice` | [`src/store/slices/useUISlice.ts`](src/store/slices/useUISlice.ts) | Divider position, panel visibility, renaming state |
-| `AppearanceSlice` | [`src/store/slices/useAppearanceSlice.ts`](src/store/slices/useAppearanceSlice.ts) | Theme, UI scale, density, favicon settings |
-| `CommandSlice` | [`src/store/slices/useCommandSlice.ts`](src/store/slices/useCommandSlice.ts) | Undo/redo stack (Command pattern) |
+### Manifest V3 Permissions
 
-The store is composed in [`src/store/useStore.ts`](src/store/useStore.ts:34-40):
+Defined in [`manifest.json`](public/manifest.json):
 
-```ts
+```
+tabs, tabGroups, storage, unlimitedStorage, favicon, sidePanel
+```
+
+Plus `<all_urls>` host permission for favicon access and tab manipulation.
+
+---
+
+## 3. Project Structure
+
+```
+.
+├── public/
+│   ├── manifest.json              # MV3 extension manifest
+│   └── icons/                     # Extension icons (16/48/128)
+├── src/
+│   ├── App.tsx                    # Root: ErrorBoundary + Dashboard
+│   ├── background.ts             # Service worker: event listeners + message routing
+│   ├── constants.ts              # All magic numbers centralized
+│   ├── main.tsx                  # React DOM entry point
+│   ├── index.css                 # Tailwind directives + custom theme
+│   ├── types/
+│   │   └── index.ts              # Core domain types (Tab, Island, VaultItem, etc.)
+│   ├── store/
+│   │   ├── useStore.ts           # Zustand store composition + init + cross-window sync
+│   │   ├── types.ts              # Composite StoreState type
+│   │   ├── utils.ts              # Type guards, debounce, sync helpers
+│   │   ├── slices/
+│   │   │   ├── useTabSlice.ts    # Live tab state + optimistic moves
+│   │   │   ├── useVaultSlice.ts  # Vault CRUD + quota management
+│   │   │   ├── useUISlice.ts     # Layout state (divider, panels)
+│   │   │   ├── useAppearanceSlice.ts  # Theme + display settings
+│   │   │   └── useCommandSlice.ts     # Undo/redo command stack
+│   │   └── commands/
+│   │       ├── types.ts          # Command interface
+│   │       ├── MoveTabCommand.ts # Reversible tab move
+│   │       └── MoveIslandCommand.ts   # Reversible island move
+│   ├── services/
+│   │   ├── tabService.ts         # Chrome tabs/tabGroups API wrappers with retry
+│   │   ├── vaultService.ts       # Chunked sync storage with compression + verification
+│   │   ├── quotaService.ts       # Storage quota monitoring + health checks
+│   │   └── settingsService.ts    # Settings persistence via chrome.storage.sync
+│   ├── hooks/
+│   │   └── useTabSync.ts         # Background ↔ UI message bridge
+│   ├── components/
+│   │   ├── Dashboard.tsx         # Main layout: DnD context, LivePanel, VaultPanel
+│   │   ├── Island.tsx            # Tab group component with context menu
+│   │   ├── TabCard.tsx           # Individual tab card with lazy favicon loading
+│   │   ├── Sidebar.tsx           # Navigation + export + undo/redo controls
+│   │   ├── ErrorBoundary.tsx     # Themed crash recovery UI
+│   │   ├── Favicon.tsx           # Multi-source favicon resolver
+│   │   ├── ContextMenu.tsx       # Right-click context menu
+│   │   ├── AppearanceSettingsPanel.tsx  # Full settings panel
+│   │   ├── QuotaWarningBanner.tsx      # Storage quota warnings
+│   │   └── QuotaExceededModal.tsx      # Quota exceeded action dialog
+│   ├── contexts/
+│   │   └── ScrollContainerContext.tsx   # Shared scroll ref for intersection observers
+│   └── utils/
+│       ├── chromeApi.ts          # Re-exports from tabService (facade)
+│       ├── vaultStorage.ts       # Re-exports from vaultService + quotaService (facade)
+│       ├── cn.ts                 # clsx + tailwind-merge + color/radius helpers
+│       └── logger.ts             # Environment-aware logging (dev-only debug/info)
+├── tests/
+│   └── setup.ts                  # Vitest global setup
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── vitest.config.ts
+```
+
+### Key Architectural Boundaries
+
+| Boundary | Enforced By |
+|----------|-------------|
+| Chrome API isolation | All calls routed through [`src/services/tabService.ts`](src/services/tabService.ts) with retry logic |
+| Storage abstraction | [`src/services/vaultService.ts`](src/services/vaultService.ts) handles chunking, compression, checksums |
+| State ↔ UI separation | Zustand slices in [`src/store/slices/`](src/store/slices/) expose actions; components consume via selectors |
+| ID namespacing | Live items prefixed `live-tab-*` / `live-group-*`; vault items prefixed `vault-*` |
+
+---
+
+## 4. Key Design Patterns
+
+### 4.1 Slice-Based State Composition
+
+The Zustand store in [`useStore.ts`](src/store/useStore.ts:34) composes five independent slices using `StateCreator`:
+
+```typescript
 export const useStore = create<StoreState>()((...a) => ({
   ...createTabSlice(...a),
   ...createVaultSlice(...a),
@@ -87,115 +191,13 @@ export const useStore = create<StoreState>()((...a) => ({
 }));
 ```
 
-### 2.3 Storage Architecture
+Each slice ([`useTabSlice.ts`](src/store/slices/useTabSlice.ts), [`useVaultSlice.ts`](src/store/slices/useVaultSlice.ts), etc.) owns its domain state and actions, while the composite [`StoreState`](src/store/types.ts:7) type ensures cross-slice access.
 
-The extension uses a sophisticated multi-tier storage approach:
+### 4.2 Command Pattern for Undo/Redo
 
-1. **Settings** → `chrome.storage.sync` (debounced, with retry + exponential backoff)
-2. **Vault (sync mode)** → `chrome.storage.sync` with LZ-String compression, chunking (4KB chunks), SHA-256 checksums, and post-write verification
-3. **Vault (local mode)** → `chrome.storage.local` as fallback when sync quota is exceeded
-4. **Backup** → `chrome.storage.local` (`vault_backup` key) always maintained as a safety net
+Reversible operations use the Command pattern defined in [`types.ts`](src/store/commands/types.ts:1):
 
-### 2.4 Extension Architecture (Manifest V3)
-
-- **Service Worker** ([`src/background.ts`](src/background.ts)) — Listens for tab/group events, relays `REFRESH_TABS` messages to the UI, handles `FREEZE_TAB` requests, and performs orphaned chunk cleanup on startup.
-- **Sidebar Panel** ([`public/manifest.json`](public/manifest.json:23-27)) — The main UI renders as a sidebar panel via `sidebar_action`.
-- **Permissions**: `tabs`, `tabGroups`, `storage`, `unlimitedStorage`, `favicon`, `sidePanel`, plus `<all_urls>` host permissions.
-
----
-
-## 3. Project Structure
-
-```
-.
-├── public/
-│   ├── manifest.json          # MV3 extension manifest
-│   └── icons/                 # Extension icons (16/48/128px)
-├── src/
-│   ├── App.tsx                # Root component (ErrorBoundary + Dashboard)
-│   ├── main.tsx               # React entry point
-│   ├── background.ts          # Service worker
-│   ├── constants.ts           # All magic numbers centralized
-│   ├── index.css              # Tailwind + custom theme + scrollbar styles
-│   ├── types/
-│   │   └── index.ts           # Core type definitions (Tab, Island, VaultItem, AppearanceSettings, etc.)
-│   ├── store/
-│   │   ├── useStore.ts        # Zustand store composition + init logic
-│   │   ├── types.ts           # StoreState = union of all slices
-│   │   ├── utils.ts           # Type guards, debounce, sync helpers, defaults
-│   │   ├── slices/            # Five state slices
-│   │   │   ├── useTabSlice.ts
-│   │   │   ├── useVaultSlice.ts
-│   │   │   ├── useUISlice.ts
-│   │   │   ├── useAppearanceSlice.ts
-│   │   │   └── useCommandSlice.ts
-│   │   ├── commands/           # Command pattern implementations
-│   │   │   ├── types.ts
-│   │   │   ├── MoveTabCommand.ts
-│   │   │   └── MoveIslandCommand.ts
-│   │   └── __tests__/          # Store tests (7 files, ~1,133 lines)
-│   ├── services/
-│   │   ├── tabService.ts       # Chrome tabs/tabGroups API wrappers with retry
-│   │   ├── vaultService.ts     # Chunked vault storage (compress/decompress/verify)
-│   │   ├── quotaService.ts     # Quota monitoring, orphan cleanup, health checks
-│   │   └── settingsService.ts  # Settings load/save/watch
-│   ├── hooks/
-│   │   └── useTabSync.ts       # Background ↔ UI message bridge
-│   ├── contexts/
-│   │   └── ScrollContainerContext.tsx  # Scroll container ref for intersection observers
-│   ├── components/
-│   │   ├── Dashboard.tsx       # Main dual-panel layout (1,572 lines — largest file)
-│   │   ├── Island.tsx          # Tab group component with DnD
-│   │   ├── TabCard.tsx         # Individual tab component with DnD
-│   │   ├── Sidebar.tsx         # Top toolbar (theme, export, undo/redo, settings)
-│   │   ├── AppearanceSettingsPanel.tsx  # Settings panel (1,140 lines)
-│   │   ├── Favicon.tsx         # Multi-source favicon with fallback chain
-│   │   ├── ContextMenu.tsx     # Portal-based right-click menu
-│   │   ├── ErrorBoundary.tsx   # Class-based error boundary with themed UI
-│   │   ├── QuotaWarningBanner.tsx  # Storage quota warning
-│   │   ├── QuotaExceededModal.tsx  # Modal for quota exceeded actions
-│   │   └── __tests__/          # Component tests (5 files, ~575 lines)
-│   ├── utils/
-│   │   ├── chromeApi.ts        # Re-exports from tabService (facade)
-│   │   ├── vaultStorage.ts     # Re-exports from vaultService + quotaService (facade)
-│   │   ├── logger.ts           # Dev-only logging utility
-│   │   ├── cn.ts               # Tailwind class merger + color helpers
-│   │   └── __tests__/          # Utility tests (4 files, ~1,184 lines)
-│   └── __tests__/
-│       └── background.test.ts  # Background service worker tests
-├── tests/
-│   └── setup.ts               # Vitest setup with Chrome API mocks
-├── AGENTS.md                  # Project knowledge base
-├── package.json
-├── tsconfig.json              # Strict TS config
-├── vite.config.ts
-├── vitest.config.ts
-└── tailwind.config.js
-```
-
-### Key File Sizes
-
-| File | Lines | Role |
-|------|-------|------|
-| [`src/components/Dashboard.tsx`](src/components/Dashboard.tsx) | 1,572 | Main UI orchestration |
-| [`src/components/AppearanceSettingsPanel.tsx`](src/components/AppearanceSettingsPanel.tsx) | 1,140 | Settings panel |
-| [`src/services/vaultService.ts`](src/services/vaultService.ts) | 516 | Vault storage engine |
-| [`src/store/slices/useVaultSlice.ts`](src/store/slices/useVaultSlice.ts) | 465 | Vault state management |
-| [`src/services/tabService.ts`](src/services/tabService.ts) | 411 | Chrome API wrappers |
-| [`src/store/slices/useTabSlice.ts`](src/store/slices/useTabSlice.ts) | 401 | Tab state management |
-| [`src/components/Island.tsx`](src/components/Island.tsx) | 395 | Island component |
-| [`src/components/TabCard.tsx`](src/components/TabCard.tsx) | 383 | Tab card component |
-
----
-
-## 4. Key Design Patterns
-
-### 4.1 Command Pattern for Undo/Redo
-
-The [`CommandSlice`](src/store/slices/useCommandSlice.ts) implements a classic Command pattern with undo/redo stacks:
-
-```ts
-// src/store/commands/types.ts
+```typescript
 export interface Command {
   execute(): Promise<void>;
   undo(): Promise<void>;
@@ -203,541 +205,272 @@ export interface Command {
 }
 ```
 
-Two concrete commands exist:
-- [`MoveTabCommand`](src/store/commands/MoveTabCommand.ts) — Moves a tab and optionally changes its group
-- [`MoveIslandCommand`](src/store/commands/MoveIslandCommand.ts) — Moves an entire tab group
+Concrete implementations ([`MoveTabCommand`](src/store/commands/MoveTabCommand.ts:14), [`MoveIslandCommand`](src/store/commands/MoveIslandCommand.ts:12)) capture before/after state. The [`CommandSlice`](src/store/slices/useCommandSlice.ts:5) manages undo/redo stacks and triggers `syncLiveTabs()` after each operation.
 
-The redo stack is cleared on new command execution, and `syncLiveTabs()` is called after undo/redo to refresh the UI.
+### 4.3 Optimistic UI Updates
 
-### 4.2 Chunked Storage with Checksums
+[`moveItemOptimistically()`](src/store/slices/useTabSlice.ts:25) in the TabSlice immediately reorders the local `islands` array before the Chrome API call completes. The [`isUpdating`](src/store/slices/useTabSlice.ts:12) flag and [`pendingOperations`](src/store/slices/useTabSlice.ts:15) set prevent background refresh messages from overwriting the optimistic state.
 
-The vault storage system in [`src/services/vaultService.ts`](src/services/vaultService.ts) implements a robust chunked storage protocol:
+### 4.4 Chunked Compressed Storage
 
-1. **Serialize** vault items to JSON
-2. **Compress** with LZ-String (`compressToUTF16`)
-3. **Compute** SHA-256 checksum of the original JSON
-4. **Chunk** the compressed data into pieces that fit within Chrome's 8KB per-item sync limit
-5. **Write** all chunks + metadata atomically via `chrome.storage.sync.set()`
-6. **Verify** by reading back all chunks, decompressing, and comparing checksums
-7. **Cleanup** old chunks only after verification passes
+The vault sync system in [`vaultService.ts`](src/services/vaultService.ts) implements a sophisticated storage pipeline:
 
-The metadata structure ([`VaultMeta`](src/types/index.ts:64-71)):
+1. **Serialize** → `JSON.stringify(vault)`
+2. **Compress** → `LZString.compressToUTF16(json)` ([line 172](src/services/vaultService.ts:172))
+3. **Chunk** → Split into ≤8KB pieces respecting `CHROME_SYNC_ITEM_MAX_BYTES` ([line 231](src/services/vaultService.ts:231))
+4. **Checksum** → SHA-256 via `crypto.subtle.digest` ([line 20](src/services/vaultService.ts:20))
+5. **Atomic write** → Single `chrome.storage.sync.set()` call with meta + all chunks ([line 274](src/services/vaultService.ts:274))
+6. **Verify** → Read-back verification with checksum comparison ([line 278](src/services/vaultService.ts:278))
+7. **Cleanup** → Remove stale chunks only after verification passes ([line 315](src/services/vaultService.ts:315))
 
-```ts
-interface VaultMeta {
-  version: number;
-  chunkCount: number;
-  chunkKeys: string[];
-  checksum: string;
-  timestamp: number;
-  compressed: boolean;
-}
-```
+### 4.5 Graceful Degradation with Local Fallback
 
-### 4.3 Optimistic UI Updates with `requestAnimationFrame`
+When sync storage quota is exceeded, the system automatically falls back to `chrome.storage.local`:
 
-The [`moveItemOptimistically()`](src/store/slices/useTabSlice.ts:140-280) function uses a batched `requestAnimationFrame` pattern to coalesce rapid drag-over events:
+- [`saveVault()`](src/services/vaultService.ts:156) detects quota issues and returns `fallbackToLocal: true`
+- [`loadVault()`](src/services/vaultService.ts:49) loads from backup on chunk mismatch or decompression failure
+- The store [`init()`](src/store/useStore.ts:43) function chains migration → load → quota check → auto-disable sync if critical
 
-```ts
-moveItemOptimistically: (() => {
-  let pendingId: UniqueIdentifier | null = null;
-  let pendingOverId: UniqueIdentifier | null = null;
-  let updateScheduled = false;
+### 4.6 Service Worker Message Bridge
 
-  return (activeId, overId) => {
-    pendingId = activeId;
-    pendingOverId = overId;
-    if (updateScheduled) return;
-    updateScheduled = true;
-    requestAnimationFrame(() => { /* process move */ });
-  };
-})(),
-```
+The [`background.ts`](src/background.ts) service worker listens to all tab/group lifecycle events and broadcasts `REFRESH_TABS` messages. The [`useTabSync`](src/hooks/useTabSync.ts:7) hook debounces these messages and respects the `isUpdating` lock to avoid overwriting in-flight operations.
 
-This prevents excessive re-renders during drag operations while maintaining smooth visual feedback.
+### 4.7 Retry with Exponential Backoff
 
-### 4.4 ID Namespacing Convention
+The [`withRetry()`](src/services/tabService.ts:5) utility in `tabService` retries Chrome API calls that fail with transient errors (tab being dragged, not editable). The [`performSync()`](src/store/utils.ts:198) function applies the same pattern for storage sync operations.
 
-All items use prefixed string IDs to distinguish their origin:
+### 4.8 Virtualized Rendering
 
-| Prefix | Meaning | Example |
-|--------|---------|---------|
-| `live-tab-` | Browser tab | `live-tab-42` |
-| `live-group-` | Browser tab group | `live-group-7` |
-| `vault-` | Saved vault item | `vault-live-tab-42-1707696000000` |
+Both the Live and Vault panels use `@tanstack/react-virtual` ([`Dashboard.tsx`](src/components/Dashboard.tsx:183)) to virtualize long tab lists, rendering only visible rows plus an overscan buffer of 10 items.
 
-The [`parseNumericId()`](src/store/utils.ts:22-50) function extracts the Chrome numeric ID from these prefixed strings, with validation against Chrome's 32-bit signed integer constraint.
+### 4.9 Proximity-Based Droppable Gaps
 
-### 4.5 State Locking Pattern
-
-Chrome API operations use an `isUpdating` flag and a `pendingOperations` Set to prevent concurrent modifications:
-
-```ts
-// src/store/slices/useTabSlice.ts:64-66
-syncLiveTabs: async () => {
-  if (get().isUpdating || get().hasPendingOperations()) return;
-  // ...
-}
-```
-
-The [`useTabSync`](src/hooks/useTabSync.ts) hook adds timeout-based safety nets (5 seconds) to auto-clear stale pending operations.
-
-### 4.6 Service Layer Abstraction
-
-Chrome API calls are wrapped in a service layer with retry logic:
-
-- [`tabService`](src/services/tabService.ts) — All `chrome.tabs.*` and `chrome.tabGroups.*` calls with exponential backoff retry for transient errors
-- [`vaultService`](src/services/vaultService.ts) — Vault CRUD with compression, chunking, and verification
-- [`quotaService`](src/services/quotaService.ts) — Storage quota monitoring and orphan cleanup
-- [`settingsService`](src/services/settingsService.ts) — Settings persistence with debounced sync
-
-Facade modules ([`src/utils/chromeApi.ts`](src/utils/chromeApi.ts), [`src/utils/vaultStorage.ts`](src/utils/vaultStorage.ts)) re-export service methods for backward compatibility.
-
-### 4.7 Proximity-Based Droppable Gaps
-
-The [`useProximityGap`](src/components/Dashboard.tsx:60-111) hook implements a custom proximity detection system for drag-and-drop gaps between islands. It tracks pointer position relative to gap elements and uses asymmetric detection zones (1rem above, 3rem below) to create smooth expansion/contraction animations.
-
-### 4.8 Virtualized Lists
-
-Both panels use [`@tanstack/react-virtual`](src/components/Dashboard.tsx:183-189) for efficient rendering of large tab lists, with configurable estimate sizes and overscan values defined in [`constants.ts`](src/constants.ts:39-41).
+The [`useProximityGap`](src/components/Dashboard.tsx:60) hook creates invisible drop zones between islands that expand when the pointer approaches during a drag operation, using asymmetric detection thresholds (1rem up, 3rem down).
 
 ---
 
 ## 5. Strengths
 
-### 5.1 Robust Type System
+### 5.1 Robust Storage Layer
 
-- **Strict TypeScript** with `strict: true` in [`tsconfig.json`](tsconfig.json:10)
-- **Comprehensive type definitions** in [`src/types/index.ts`](src/types/index.ts) covering all domain entities
-- **Runtime type guards** ([`isTab()`](src/store/utils.ts:52-66), [`isIsland()`](src/store/utils.ts:68-79), [`isVaultItem()`](src/store/utils.ts:81-89), [`isAppearanceSettings()`](src/store/utils.ts:95-125)) that validate every field
-- **Union types** for settings (`ThemeMode`, `AnimationIntensity`, `BorderRadius`, etc.) preventing invalid values
-- **`UniversalId`](src/types/index.ts:1) type (`number | string`) properly handles Chrome's numeric IDs and the extension's string-prefixed IDs
+The vault storage system is production-grade:
+- **Compression** reduces sync storage usage significantly via LZ-String UTF-16 encoding
+- **SHA-256 checksums** detect corruption from partial writes or sync conflicts
+- **Write verification** reads back all chunks after save and validates the checksum
+- **Automatic fallback** to local storage prevents data loss when sync quota is exhausted
+- **Orphaned chunk cleanup** runs on both background startup ([`background.ts`](src/background.ts:10)) and store init
 
-### 5.2 Storage Robustness
+### 5.2 Well-Defined Type System
 
-The vault storage system is exceptionally well-engineered:
-
-- **LZ-String compression** reduces sync storage usage significantly
-- **SHA-256 checksums** detect data corruption
-- **Post-write verification** reads back and validates all chunks after saving
-- **Automatic fallback** from sync to local storage when quota is exceeded
-- **Orphaned chunk cleanup** runs on startup and during quota checks
-- **Local backup** is always maintained regardless of sync mode
-- **Migration support** handles legacy storage formats gracefully
+The [`types/index.ts`](src/types/index.ts) file provides comprehensive type definitions with discriminated unions (`LiveItem`, `VaultItem`). Type guards in [`store/utils.ts`](src/store/utils.ts:52) (`isTab()`, `isIsland()`, `isVaultItem()`, `isAppearanceSettings()`) validate data at runtime boundaries.
 
 ### 5.3 Centralized Constants
 
-All magic numbers are extracted to [`src/constants.ts`](src/constants.ts) — storage limits, timing values, UI dimensions, and color values. This makes tuning and auditing straightforward.
+All magic numbers live in [`constants.ts`](src/constants.ts) — from Chrome API limits (`CHROME_32BIT_INT_MAX`, `CHROME_SYNC_QUOTA_BYTES`) to UI timing values (`DEBOUNCE_DEFAULT_MS`, `REFRESH_TABS_DEBOUNCE_MS`). This eliminates scattered literals and makes tuning straightforward.
 
-### 5.4 Comprehensive Error Handling
+### 5.4 Clean Separation of Concerns
 
-- **Retry logic** with exponential backoff in [`tabService.ts`](src/services/tabService.ts:5-29) for transient Chrome API errors
-- **Error boundary** ([`ErrorBoundary.tsx`](src/components/ErrorBoundary.tsx)) with themed recovery UI
-- **Graceful degradation** — vault operations fall back to local storage rather than failing
-- **Quota exceeded modal** ([`QuotaExceededModal.tsx`](src/components/QuotaExceededModal.tsx)) gives users actionable choices
+- **Services** ([`tabService`](src/services/tabService.ts), [`vaultService`](src/services/vaultService.ts), [`quotaService`](src/services/quotaService.ts)) encapsulate all Chrome API interactions
+- **Store slices** manage domain state without direct API calls
+- **Components** consume state via Zustand selectors and delegate mutations to store actions
+- **Facade modules** ([`chromeApi.ts`](src/utils/chromeApi.ts), [`vaultStorage.ts`](src/utils/vaultStorage.ts)) provide stable import paths
 
-### 5.5 Well-Structured State Management
+### 5.5 Defensive Chrome API Handling
 
-The Zustand store is cleanly decomposed into five focused slices, each with a clear responsibility. The slice composition pattern avoids the complexity of Redux while maintaining type safety.
+[`tabService.ts`](src/services/tabService.ts) wraps every Chrome API call with:
+- Retry logic for transient failures (tab being dragged/moved)
+- Exponential backoff ([`TAB_ACTION_RETRY_DELAY_BASE`](src/constants.ts:32) × 2^attempt)
+- Structured error logging with operation labels
+- Null-safe tab validation before grouping operations
 
-### 5.6 Documentation
+### 5.6 Thoughtful UX Patterns
 
-- **`AGENTS.md`** provides a comprehensive project knowledge base
-- **Component-level `AGENTS.md`** files in [`src/components/`](src/components/AGENTS.md), [`src/store/`](src/store/AGENTS.md), and [`src/utils/`](src/utils/AGENTS.md)
-- **Multiple planning/review documents** (`ROADMAP.md`, `CODE_REVIEW.md`, `PRIORITY_RANKINGS.md`, `SETTINGS.md`, `STORAGE_IMPROVEMENTS.md`)
+- **Optimistic updates** prevent UI lag during drag operations
+- **State locking** (`isUpdating`, `pendingOperations`) prevents refresh storms from overwriting user actions
+- **Proximity gaps** provide intuitive drop targets without cluttering the UI
+- **Error boundary** ([`ErrorBoundary.tsx`](src/components/ErrorBoundary.tsx)) provides themed crash recovery with retry/reload options
+- **Quota warnings** ([`QuotaWarningBanner.tsx`](src/components/QuotaWarningBanner.tsx), [`QuotaExceededModal.tsx`](src/components/QuotaExceededModal.tsx)) proactively inform users before data loss
 
-### 5.7 Test Coverage
+### 5.7 Environment-Aware Logging
 
-17 test files covering:
-- Store logic (type guards, commands, race conditions, storage consistency, sync)
-- Utility functions (Chrome API wrappers, vault storage, error cases, logger)
-- Components (ErrorBoundary, Favicon, export, DnD scaling, proximity gap)
-- Background service worker
-
-### 5.8 Performance Optimizations
-
-- **Virtualized lists** via `@tanstack/react-virtual` for both panels
-- **`React.memo`** on [`Island`](src/components/Island.tsx:30) and [`TabCard`](src/components/TabCard.tsx:32) components
-- **`requestAnimationFrame` batching** for drag-over events
-- **Debounced settings sync** (5-second debounce in [`src/store/utils.ts`](src/store/utils.ts:215-217))
-- **Intersection Observer** for lazy favicon loading in [`TabCard`](src/components/TabCard.tsx)
-- **Stable reference optimization** for filtered tabs to prevent animation re-triggering ([`Dashboard.tsx:1160-1176`](src/components/Dashboard.tsx:1160))
+The [`logger`](src/utils/logger.ts) suppresses `debug` and `info` messages in production builds while always surfacing `warn` and `error` — a simple but effective approach for extension debugging.
 
 ---
 
-## 6. Areas for Improvement / Issues
+## 6. Areas for Improvement
 
-### 6.1 Critical Issues
+### 6.1 Dashboard Component Size
 
-#### 6.1.1 Debug Logging Left in Production Code
+[`Dashboard.tsx`](src/components/Dashboard.tsx) is **1,572 lines** — the largest file in the codebase. It contains:
+- `useProximityGap` hook (should be in `src/hooks/`)
+- `LivePanel` component (should be in `src/components/LivePanel.tsx`)
+- `VaultPanel` component (should be in `src/components/VaultPanel.tsx`)
+- `DroppableGap` component (should be in `src/components/DroppableGap.tsx`)
+- `DashboardRow` type and row-building logic
 
-[`src/services/vaultService.ts`](src/services/vaultService.ts:160-161) contains `console.error` and `console.trace` calls that bypass the logger and will appear in production:
+**Impact:** Difficult to test individual panels, slower IDE performance, merge conflicts.
 
-```ts
-// vaultService.ts:160-161
+### 6.2 Debug Logging Left in Production Code
+
+[`vaultService.ts`](src/services/vaultService.ts:160) contains `console.error()` and `console.trace()` calls that bypass the logger:
+
+```typescript
 console.error(`[DEBUG] saveVault CALLED: syncEnabled=${config.syncEnabled}, vaultSize=${vault.length}`);
 console.trace('[DEBUG] saveVault call stack');
 ```
 
-This pattern repeats at:
-- [`vaultService.ts:386-387`](src/services/vaultService.ts:386-387) (`migrateFromLegacy`)
-- [`vaultService.ts:452-453`](src/services/vaultService.ts:452-453) (`toggleSyncMode`)
+These appear at lines [160–161](src/services/vaultService.ts:160), [386–387](src/services/vaultService.ts:386), and [452–453](src/services/vaultService.ts:452). They will output to the browser console in production.
 
-**Impact:** Noisy console output in production, potential information leakage.
+### 6.3 Empty Catch Blocks
 
-#### 6.1.2 Empty Catch Blocks in `MoveTabCommand`
+[`MoveTabCommand.ts`](src/store/commands/MoveTabCommand.ts:25) has empty catch blocks:
 
-[`src/store/commands/MoveTabCommand.ts:27`](src/store/commands/MoveTabCommand.ts:27) and [`line 38`](src/store/commands/MoveTabCommand.ts:38) silently swallow errors:
-
-```ts
+```typescript
 try {
   await chrome.tabs.ungroup(this.params.tabId);
-} catch (e) {}  // Silent failure
+} catch (e) {}
 ```
 
-This violates the project's own anti-pattern rule from `AGENTS.md`: *"Empty Catches: Swallowing Chrome API errors leads to out-of-sync UI."*
+This violates the project's own anti-pattern rule ("Empty Catches: Swallowing Chrome API errors leads to out-of-sync UI" — [`AGENTS.md`](AGENTS.md)).
 
-#### 6.1.3 `as any` Usage in Store Init
+### 6.4 `as any` Usage
 
-[`src/store/useStore.ts:62`](src/store/useStore.ts:62) uses `as any`:
+Despite the "No `as any`" convention, [`useStore.ts`](src/store/useStore.ts:62) uses `as any`:
 
-```ts
+```typescript
 storedVaultSyncEnabled: sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) 
   ? (sync.appearanceSettings as any).vaultSyncEnabled : undefined,
 ```
 
-This violates the project's strict typing convention. Since `isAppearanceSettings()` already validates the type, a proper cast to `AppearanceSettings` should be used.
+And [`settingsService.ts`](src/services/settingsService.ts:10):
 
-#### 6.1.4 `as any` in Settings Service
-
-[`src/services/settingsService.ts:10`](src/services/settingsService.ts:10):
-
-```ts
+```typescript
 vaultSyncEnabled: (result.appearanceSettings as any)?.vaultSyncEnabled
 ```
 
-Same issue — should use the type guard or proper typing.
+### 6.5 Duplicated Helper Functions
 
-### 6.2 Code Smells
+[`getVaultChunkKeys()`](src/services/vaultService.ts:28) is duplicated identically in both [`vaultService.ts`](src/services/vaultService.ts:28) and [`quotaService.ts`](src/services/quotaService.ts:27). Similarly, `countOrphanedChunks()` logic is duplicated. These should be extracted to a shared storage utility.
 
-#### 6.2.1 Dashboard.tsx is 1,572 Lines
+### 6.6 Missing Test Coverage for Key Flows
 
-[`src/components/Dashboard.tsx`](src/components/Dashboard.tsx) is the largest file and contains:
-- `useProximityGap` hook (should be in `src/hooks/`)
-- `LivePanel` component (should be its own file)
-- `VaultPanel` component (should be its own file)
-- `DroppableGap` component (defined twice — once inside `LivePanel` at line 358 and once inside `VaultPanel` at line 881)
-- `DragOverlayContent` component
-- The main `Dashboard` component
+While there are tests for store operations, type guards, and race conditions, several critical paths lack test coverage:
+- **`vaultService.saveVault()`** — the most complex function (chunking, compression, verification)
+- **`Dashboard.tsx` drag-and-drop handlers** — `handleDragEnd` cross-panel flows
+- **`useTabSync` hook** — message debouncing and operation timeout behavior
+- **`quotaService.getVaultQuota()`** — quota calculation accuracy
 
-**Impact:** Hard to navigate, test, and maintain. The duplicated `DroppableGap` is a DRY violation.
+### 6.7 Inconsistent Error Handling in Store Init
 
-#### 6.2.2 AppearanceSettingsPanel.tsx is 1,140 Lines
+The [`init()`](src/store/useStore.ts:43) function in `useStore.ts` has no top-level try/catch. If `settingsService.loadSettings()` or `vaultService.migrateFromLegacy()` throws, the entire initialization fails silently, leaving the store in a partially initialized state.
 
-[`src/components/AppearanceSettingsPanel.tsx`](src/components/AppearanceSettingsPanel.tsx) is the second-largest file. It could be decomposed into individual settings tab components.
+### 6.8 Direct Chrome API Calls in Commands
 
-#### 6.2.3 Duplicated `getVaultChunkKeys()` Function
+[`MoveTabCommand.ts`](src/store/commands/MoveTabCommand.ts:23) calls `chrome.tabs.group()` and `chrome.tabs.ungroup()` directly instead of going through `tabService`, bypassing retry logic:
 
-The function `getVaultChunkKeys()` is defined identically in both:
-- [`src/services/vaultService.ts:28-39`](src/services/vaultService.ts:28-39)
-- [`src/services/quotaService.ts:27-39`](src/services/quotaService.ts:27-39)
-
-This should be extracted to a shared utility.
-
-#### 6.2.4 Duplicated `VAULT_META_KEY` and `VAULT_CHUNK_PREFIX` Constants
-
-These string constants are defined in both [`vaultService.ts:14-16`](src/services/vaultService.ts:14-16) and [`quotaService.ts:15-17`](src/services/quotaService.ts:15-17). They should be in [`constants.ts`](src/constants.ts).
-
-#### 6.2.5 Facade Modules Add Indirection Without Value
-
-[`src/utils/chromeApi.ts`](src/utils/chromeApi.ts) and [`src/utils/vaultStorage.ts`](src/utils/vaultStorage.ts) are pure re-export facades. Components that import from these could import directly from the services. The facades add a layer of indirection that may confuse new developers.
-
-#### 6.2.6 Loose Equality in `moveItemOptimistically`
-
-[`src/store/slices/useTabSlice.ts:173`](src/store/slices/useTabSlice.ts:173) uses `==` (loose equality):
-
-```ts
-const activeInLive = islands.some((i: LiveItem) => i && (i.id == activeIdVal || ...));
+```typescript
+await chrome.tabs.group({ tabIds: this.params.tabId, groupId: this.params.toGroupId });
 ```
 
-The project's `AGENTS.md` recommends `String(id) === String(otherId)` for mixed numeric/string IDs. This pattern appears at multiple points in the `moveItemOptimistically` function (lines 173, 180-181).
+### 6.9 Facade Modules Add Indirection Without Value
 
-### 6.3 Missing Error Handling
+[`chromeApi.ts`](src/utils/chromeApi.ts) and [`vaultStorage.ts`](src/utils/vaultStorage.ts) are pure re-export facades. While they provide stable import paths, they add a layer of indirection that can confuse new contributors. The services themselves are already well-organized.
 
-#### 6.3.1 `handleTabClick` Doesn't Handle Errors
+### 6.10 No Input Sanitization on Vault Data
 
-[`src/components/Dashboard.tsx:1225-1230`](src/components/Dashboard.tsx:1225-1230):
+When loading vault data from `chrome.storage.sync`, the parsed JSON is cast directly to `VaultItem[]` ([`vaultService.ts`](src/services/vaultService.ts:135)):
 
-```ts
-const handleTabClick = (tabId: UniversalId) => {
-  const numericId = parseNumericId(tabId);
-  if (numericId !== null) {
-    chrome.tabs.update(numericId, { active: true }); // No error handling, no await
-  }
-};
+```typescript
+parsed = JSON.parse(jsonData) as VaultItem[];
 ```
 
-The `chrome.tabs.update` call is not awaited and has no error handling. If the tab no longer exists, this will throw an unhandled promise rejection.
-
-#### 6.3.2 `restoreFromVault` Uses Direct Chrome API Calls
-
-[`src/store/slices/useVaultSlice.ts:368-397`](src/store/slices/useVaultSlice.ts:368-397) calls `chrome.tabs.create()` and `chrome.tabGroups.query()` directly instead of going through `tabService`, bypassing retry logic:
-
-```ts
-const currentWindowTabs = await chrome.tabs.query({ currentWindow: true });
-const currentWindowGroups = await chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT });
-// ...
-const nt = await chrome.tabs.create({ url: t.url, active: false, index: insertionIndex + newIds.length });
-```
-
-#### 6.3.3 `deleteDuplicateTabs` Uses Direct Chrome API
-
-[`src/store/slices/useTabSlice.ts:284`](src/store/slices/useTabSlice.ts:284) calls `chrome.tabs.query()` directly:
-
-```ts
-const currentTabs = await chrome.tabs.query({ currentWindow: true });
-```
-
-### 6.4 Potential Performance Issues
-
-#### 6.4.1 `cleanupOrphanedChunks` Called on Every Quota Check
-
-[`src/services/quotaService.ts:65`](src/services/quotaService.ts:65) calls `cleanupOrphanedChunks()` at the start of every `getVaultQuota()` call:
-
-```ts
-getVaultQuota: async (): Promise<VaultQuotaInfo> => {
-  const orphanedCount = await quotaService.cleanupOrphanedChunks();
-  // ...
-}
-```
-
-Since `getVaultQuota()` is called frequently (after every vault save, during init, on storage changes), this results in redundant `chrome.storage.sync.get(null)` calls. The cleanup should be periodic, not on every quota check.
-
-#### 6.4.2 Full Vault Serialization for Quota Pre-Check
-
-[`src/store/slices/useVaultSlice.ts:39-42`](src/store/slices/useVaultSlice.ts:39-42) performs a full JSON serialize + LZ-String compress of the entire vault just to estimate size:
-
-```ts
-const testVault = [...currentVault, { ...item, savedAt: Date.now(), originalId: item.id } as VaultItem];
-const testJson = JSON.stringify(testVault);
-const compressed = LZString.compressToUTF16(testJson);
-```
-
-For large vaults, this is expensive and happens before every `moveToVault` and `saveToVault` operation.
-
-#### 6.4.3 `handleCollapseAll` / `handleExpandAll` Sequential API Calls
-
-[`src/components/Dashboard.tsx:405-429`](src/components/Dashboard.tsx:405-429) toggles each group sequentially in a loop:
-
-```ts
-const handleCollapseAll = async () => {
-  const groupIds = (islands || []).filter(i => i && 'tabs' in i).map(i => i.id);
-  for (const id of groupIds) {
-    // ...
-    onToggleCollapse(id);
-  }
-};
-```
-
-Each `onToggleCollapse` triggers a Chrome API call. For many groups, this could be slow. Consider batching.
-
-### 6.5 Missing Tests
-
-#### 6.5.1 No Tests for Key Components
-
-The following components have no test coverage:
-- `Dashboard.tsx` (the largest and most complex component)
-- `Island.tsx`
-- `TabCard.tsx`
-- `Sidebar.tsx`
-- `AppearanceSettingsPanel.tsx`
-- `ContextMenu.tsx`
-- `QuotaWarningBanner.tsx`
-- `QuotaExceededModal.tsx`
-
-#### 6.5.2 No Integration Tests
-
-There are no end-to-end or integration tests that verify the full drag-and-drop → Chrome API → state update flow.
-
-#### 6.5.3 No Tests for Services
-
-[`src/services/tabService.ts`](src/services/tabService.ts), [`src/services/settingsService.ts`](src/services/settingsService.ts), and [`src/services/quotaService.ts`](src/services/quotaService.ts) have no dedicated test files (though some are tested indirectly through store tests).
-
-### 6.6 Other Issues
-
-#### 6.6.1 `isLoading` Overlay Blocks Entire UI
-
-[`src/components/Dashboard.tsx:1553-1562`](src/components/Dashboard.tsx:1553-1562) renders a full-screen loading overlay during internal live moves:
-
-```tsx
-{isLoading && (
-  <div className="absolute inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-[1000]">
-    ...
-  </div>
-)}
-```
-
-This blocks all user interaction during what should be a quick tab move operation. The overlay is set at [`line 1387`](src/components/Dashboard.tsx:1387) and cleared in the `finally` block, but any Chrome API delay will freeze the UI.
-
-#### 6.6.2 `LivePanel` Renders Search Results Twice
-
-The `LivePanel` component has two separate render paths for search results:
-1. [`renderSearchList()`](src/components/Dashboard.tsx:199-247) — defined but never called
-2. The inline JSX at [`lines 666-709`](src/components/Dashboard.tsx:666-709)
-
-Similarly, `renderLiveList()` at [`line 249`](src/components/Dashboard.tsx:249) is defined but the actual rendering happens inline at [`lines 711-810`](src/components/Dashboard.tsx:711-810). This suggests incomplete refactoring — the extracted methods exist but the inline versions are what's actually used.
-
-#### 6.6.3 `@ts-ignore` in Test Setup
-
-[`tests/setup.ts:53`](tests/setup.ts:53) uses `@ts-ignore`:
-
-```ts
-// @ts-ignore
-global.chrome = chromeMock as any;
-```
-
-While acceptable in test setup, the `as any` could be replaced with a proper type assertion.
-
-#### 6.6.4 `getFallbackSource` Has Unused Parameter
-
-[`src/components/Favicon.tsx:91-96`](src/components/Favicon.tsx:91-96):
-
-```ts
-const getFallbackSource = (fallback: FaviconFallback, primary: FaviconSource): FaviconSource | null => {
-  if (fallback === 'none') return null;
-  return fallback;  // 'primary' parameter is never used
-};
-```
-
-The `primary` parameter is accepted but never used, suggesting an incomplete implementation (e.g., it should perhaps prevent using the same source as fallback).
-
-#### 6.6.5 Inconsistent `import.meta.env` Access
-
-[`src/utils/logger.ts:3`](src/utils/logger.ts:3) uses `(import.meta as any).env.DEV`:
-
-```ts
-const isDev = (import.meta as any).env.DEV;
-```
-
-The `as any` cast is unnecessary since `vite/client` types are included in [`tsconfig.json`](tsconfig.json:19). This should be `import.meta.env.DEV` directly.
+While `Array.isArray()` is checked, individual items are not validated with `isVaultItem()` — corrupted or malicious data could propagate through the store.
 
 ---
 
 ## 7. Security Considerations
 
-### 7.1 `<all_urls>` Host Permission
+### 7.1 Broad Host Permissions
 
-[`public/manifest.json:7`](public/manifest.json:7) requests `<all_urls>` host permissions. While needed for favicon access and tab management, this is the broadest possible permission and may trigger warnings during Chrome Web Store review. Consider whether more specific host permissions would suffice.
+[`manifest.json`](public/manifest.json:7) requests `<all_urls>` host permission. While necessary for favicon access and cross-origin tab manipulation, this grants the extension access to all web page content. Consider documenting the justification and exploring whether `activeTab` could suffice for some operations.
 
-### 7.2 `unlimitedStorage` Permission
+### 7.2 Clipboard Access Without User Gesture Verification
 
-The `unlimitedStorage` permission is requested but the codebase carefully manages `chrome.storage.sync` quota limits. This permission primarily benefits `chrome.storage.local` for the vault backup. Document why this is needed.
+[`tabService.copyTabUrl()`](src/services/tabService.ts:256) writes to the clipboard:
 
-### 7.3 Clipboard Access Without Permission
-
-[`src/services/tabService.ts:258-260`](src/services/tabService.ts:258-260) uses `navigator.clipboard.writeText()`:
-
-```ts
-copyTabUrl: async (tabId: number) => {
-  const tab = await chrome.tabs.get(tabId);
-  if (tab.url) {
-    await navigator.clipboard.writeText(tab.url);
-  }
-}
+```typescript
+await navigator.clipboard.writeText(tab.url);
 ```
 
-The Clipboard API requires either the `clipboardWrite` permission or a user gesture. This may fail silently in some contexts. No error handling is present.
+This should always be called from a user-initiated event handler. The current call chain appears safe, but there's no explicit guard.
 
-### 7.4 No Input Sanitization on Vault Data
+### 7.3 Unvalidated Storage Data
 
-When loading vault data from `chrome.storage.sync`, the JSON is parsed and used directly without sanitization beyond type checking. While the data originates from the extension itself, a compromised sync account could inject malicious data. The type guards ([`isVaultItem()`](src/store/utils.ts:81-89)) provide some protection but don't validate URL formats or string lengths.
+Data loaded from `chrome.storage.sync` and `chrome.storage.local` is trusted without full validation:
+- [`loadVault()`](src/services/vaultService.ts:135) casts parsed JSON to `VaultItem[]` without per-item validation
+- [`settingsService.loadSettings()`](src/services/settingsService.ts:7) returns raw storage data
+- Cross-window sync in [`useStore.ts`](src/store/useStore.ts:148) trusts `vault_meta.timestamp` without bounds checking
 
-### 7.5 Tab URLs Exposed in Export
+A compromised or buggy sync could inject malformed data.
 
-The export functionality in [`Sidebar.tsx`](src/components/Sidebar.tsx:46) exports all tab URLs (including potentially sensitive ones) to JSON/CSV/Markdown files. There's no warning to the user about this.
+### 7.4 URL Handling in Favicon Resolution
 
-### 7.6 `web_accessible_resources` Exposes Favicon API
+[`Favicon.tsx`](src/components/Favicon.tsx:27) constructs external URLs for favicon fetching:
 
-[`public/manifest.json:9-15`](public/manifest.json:9-15) makes `_favicon/*` accessible to all URLs and all extensions:
-
-```json
-"web_accessible_resources": [{
-  "resources": ["_favicon/*"],
-  "matches": ["<all_urls>"],
-  "extension_ids": ["*"]
-}]
+```typescript
+return `https://www.google.com/s2/favicons?domain=${hostname}&sz=${size}`;
 ```
 
-This is necessary for favicon functionality but could be tightened by restricting `extension_ids`.
+While `new URL()` is used for parsing, the hostname is passed directly to external services. Malicious tab URLs could potentially be used for information leakage (the extension reveals which domains the user has open to Google/DuckDuckGo favicon services).
+
+### 7.5 No Content Security Policy
+
+The [`manifest.json`](public/manifest.json) does not define a `content_security_policy`. While MV3 has restrictive defaults, explicitly defining a CSP would harden the extension against XSS in the sidebar panel.
+
+### 7.6 `console.trace()` in Production
+
+The `console.trace()` calls in [`vaultService.ts`](src/services/vaultService.ts:161) expose internal call stacks in the browser console, which could aid reverse engineering.
 
 ---
 
 ## 8. Recommendations
 
-### Priority 1 — Critical (Fix Immediately)
+### High Priority
 
-1. **Remove debug `console.error`/`console.trace` calls** from [`vaultService.ts`](src/services/vaultService.ts:160-161,386-387,452-453). Replace with `logger.debug()` calls.
+| # | Recommendation | Files Affected |
+|---|---------------|----------------|
+| 1 | **Remove debug `console.error`/`console.trace` calls** from vault service | [`vaultService.ts`](src/services/vaultService.ts:160) |
+| 2 | **Add top-level try/catch to `init()`** with fallback to default state | [`useStore.ts`](src/store/useStore.ts:43) |
+| 3 | **Validate vault items on load** using `isVaultItem()` type guard | [`vaultService.ts`](src/services/vaultService.ts:135) |
+| 4 | **Route all Chrome API calls through services** — fix `MoveTabCommand` direct calls | [`MoveTabCommand.ts`](src/store/commands/MoveTabCommand.ts:23) |
+| 5 | **Fix empty catch blocks** in command implementations | [`MoveTabCommand.ts`](src/store/commands/MoveTabCommand.ts:25) |
 
-2. **Fix empty catch blocks** in [`MoveTabCommand.ts`](src/store/commands/MoveTabCommand.ts:27,38). At minimum, log the error:
-   ```ts
-   try {
-     await chrome.tabs.ungroup(this.params.tabId);
-   } catch (e) {
-     logger.warn('[MoveTabCommand] Failed to ungroup tab:', e);
-   }
-   ```
+### Medium Priority
 
-3. **Replace `as any` casts** in [`useStore.ts:62`](src/store/useStore.ts:62) and [`settingsService.ts:10`](src/services/settingsService.ts:10) with proper type assertions.
+| # | Recommendation | Files Affected |
+|---|---------------|----------------|
+| 6 | **Extract `Dashboard.tsx` into sub-components** — `LivePanel`, `VaultPanel`, `DroppableGap` | [`Dashboard.tsx`](src/components/Dashboard.tsx) |
+| 7 | **Extract `useProximityGap` to `src/hooks/`** | [`Dashboard.tsx`](src/components/Dashboard.tsx:60) |
+| 8 | **Deduplicate `getVaultChunkKeys()`** into a shared storage utility | [`vaultService.ts`](src/services/vaultService.ts:28), [`quotaService.ts`](src/services/quotaService.ts:27) |
+| 9 | **Eliminate `as any` casts** — use proper type narrowing after `isAppearanceSettings()` | [`useStore.ts`](src/store/useStore.ts:62), [`settingsService.ts`](src/services/settingsService.ts:10) |
+| 10 | **Add explicit CSP** to `manifest.json` | [`manifest.json`](public/manifest.json) |
 
-### Priority 2 — High (Next Sprint)
+### Low Priority
 
-4. **Decompose `Dashboard.tsx`** into separate files:
-   - Extract `LivePanel` → `src/components/LivePanel.tsx`
-   - Extract `VaultPanel` → `src/components/VaultPanel.tsx`
-   - Extract `useProximityGap` → `src/hooks/useProximityGap.ts`
-   - Extract shared `DroppableGap` → `src/components/DroppableGap.tsx`
-   - Remove dead code (`renderSearchList()`, `renderLiveList()`)
+| # | Recommendation | Files Affected |
+|---|---------------|----------------|
+| 11 | **Add integration tests** for `vaultService.saveVault()` chunking pipeline | [`src/services/vaultService.ts`](src/services/vaultService.ts) |
+| 12 | **Add tests for `useTabSync` hook** — message debouncing, operation timeouts | [`src/hooks/useTabSync.ts`](src/hooks/useTabSync.ts) |
+| 13 | **Consider removing facade modules** or documenting their purpose | [`chromeApi.ts`](src/utils/chromeApi.ts), [`vaultStorage.ts`](src/utils/vaultStorage.ts) |
+| 14 | **Document favicon privacy implications** — external service requests reveal browsing domains | [`Favicon.tsx`](src/components/Favicon.tsx:27) |
+| 15 | **Add bounds checking** on `vault_meta.timestamp` during cross-window sync | [`useStore.ts`](src/store/useStore.ts:149) |
 
-5. **Deduplicate `getVaultChunkKeys()`** — Extract to a shared module (e.g., `src/services/storageKeys.ts`) and import in both `vaultService` and `quotaService`.
+### Architecture Evolution
 
-6. **Move storage key constants** (`VAULT_META_KEY`, `VAULT_CHUNK_PREFIX`, `LEGACY_VAULT_KEY`) to [`constants.ts`](src/constants.ts).
-
-7. **Fix loose equality** in [`moveItemOptimistically`](src/store/slices/useTabSlice.ts:173,180-181) — use `String(id) === String(otherId)` consistently.
-
-8. **Add error handling to `handleTabClick`** in [`Dashboard.tsx:1225-1230`](src/components/Dashboard.tsx:1225-1230) — await the call and catch errors.
-
-### Priority 3 — Medium (Backlog)
-
-9. **Route all Chrome API calls through services** — Fix direct `chrome.*` calls in [`useVaultSlice.ts:368-397`](src/store/slices/useVaultSlice.ts:368-397) and [`useTabSlice.ts:284`](src/store/slices/useTabSlice.ts:284).
-
-10. **Optimize `cleanupOrphanedChunks`** — Don't call it on every `getVaultQuota()`. Instead, run it on startup and after vault saves only.
-
-11. **Optimize quota pre-check** — Cache the last known compressed size or use a size estimator that doesn't require full serialization + compression.
-
-12. **Add tests for untested components** — Prioritize `Dashboard.tsx`, `Island.tsx`, and `TabCard.tsx` since they contain the most complex logic.
-
-13. **Add service-level tests** — Create dedicated test files for `tabService`, `quotaService`, and `settingsService`.
-
-14. **Replace full-screen loading overlay** with a more subtle indicator (e.g., skeleton loading or a progress bar) that doesn't block user interaction.
-
-15. **Remove unused `primary` parameter** from [`getFallbackSource()`](src/components/Favicon.tsx:91) or implement the intended deduplication logic.
-
-### Priority 4 — Low (Nice to Have)
-
-16. **Decompose `AppearanceSettingsPanel.tsx`** into per-tab components to improve maintainability.
-
-17. **Consider removing facade modules** (`chromeApi.ts`, `vaultStorage.ts`) or document their purpose clearly if they serve a migration path.
-
-18. **Fix `import.meta` cast** in [`logger.ts:3`](src/utils/logger.ts:3) — remove the `as any`.
-
-19. **Add clipboard permission** or wrap `navigator.clipboard.writeText()` in a try/catch in [`tabService.ts:258`](src/services/tabService.ts:258).
-
-20. **Batch `handleCollapseAll`/`handleExpandAll`** — Use `Promise.all` or a single Chrome API call if available.
-
-21. **Add URL validation** when loading vault data to prevent potential XSS via malicious URLs in restored tabs.
-
-22. **Tighten `web_accessible_resources`** — Restrict `extension_ids` to the extension's own ID rather than `"*"`.
+- **Consider a message bus abstraction** between background worker and UI to replace raw `chrome.runtime.sendMessage` calls — this would simplify testing and enable typed message contracts
+- **Evaluate IndexedDB** for vault storage as an alternative to the chunked sync approach — it removes the 102KB quota constraint entirely for local-only vaults
+- **Add E2E tests** using Puppeteer with the Chrome extension testing API to validate the full drag-and-drop → Chrome API → UI refresh cycle
 
 ---
 
-*This analysis was generated by reviewing all 50+ source files, 17 test files, configuration files, and documentation in the repository.*
+*This analysis covers the `src/` directory and configuration files. The `TidyTabGroups/` legacy directory was excluded per project conventions (frozen/read-only reference only).*
