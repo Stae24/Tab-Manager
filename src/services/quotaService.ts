@@ -10,11 +10,8 @@ import {
   QUOTA_WARNING_THRESHOLD, 
   QUOTA_CRITICAL_THRESHOLD 
 } from '../constants';
+import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY, getVaultChunkKeys } from './storageKeys';
 import { logger } from '../utils/logger';
-
-const VAULT_META_KEY = 'vault_meta';
-const VAULT_CHUNK_PREFIX = 'vault_chunk_';
-const LEGACY_VAULT_KEY = 'vault';
 
 export type StorageHealthStatus = 'healthy' | 'degraded' | 'critical';
 
@@ -22,20 +19,6 @@ function getWarningLevel(percentage: number): QuotaWarningLevel {
   if (percentage >= QUOTA_CRITICAL_THRESHOLD) return 'critical';
   if (percentage >= QUOTA_WARNING_THRESHOLD) return 'warning';
   return 'none';
-}
-
-async function getVaultChunkKeys(): Promise<string[]> {
-  const metaResult = await chrome.storage.sync.get(VAULT_META_KEY);
-  const meta = metaResult[VAULT_META_KEY] as VaultMeta | undefined;
-  
-  if (meta && Array.isArray(meta.chunkKeys)) {
-    return [VAULT_META_KEY, ...meta.chunkKeys];
-  }
-
-  const allKeys = await chrome.storage.sync.get(null);
-  return Object.keys(allKeys).filter(
-    key => key === VAULT_META_KEY || key.startsWith(VAULT_CHUNK_PREFIX)
-  );
 }
 
 async function countOrphanedChunks(): Promise<number> {

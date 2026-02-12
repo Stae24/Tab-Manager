@@ -219,10 +219,14 @@ export const Dashboard: React.FC = () => {
     };
   }, [isResizing, setDividerPosition]);
 
-  const handleTabClick = (tabId: UniversalId) => {
+  const handleTabClick = async (tabId: UniversalId) => {
     const numericId = parseNumericId(tabId);
     if (numericId !== null) {
-      chrome.tabs.update(numericId, { active: true });
+      try {
+        await chrome.tabs.update(numericId, { active: true });
+      } catch (e) {
+        logger.error('[Dashboard] Failed to activate tab:', e);
+      }
     }
   };
 
