@@ -9,11 +9,8 @@ import type {
 } from '../types/index';
 import { quotaService } from './quotaService';
 import { STORAGE_VERSION, VAULT_CHUNK_SIZE, CHROME_SYNC_ITEM_MAX_BYTES, VAULT_QUOTA_SAFETY_MARGIN_BYTES, SYNC_SETTINGS_RESERVE_BYTES } from '../constants';
+import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY, getVaultChunkKeys } from './storageKeys';
 import { logger } from '../utils/logger';
-
-const VAULT_META_KEY = 'vault_meta';
-const VAULT_CHUNK_PREFIX = 'vault_chunk_';
-const LEGACY_VAULT_KEY = 'vault';
 
 const getByteLength = (str: string): number => new TextEncoder().encode(str).length;
 
@@ -23,20 +20,6 @@ async function computeChecksum(data: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function getVaultChunkKeys(): Promise<string[]> {
-  const metaResult = await chrome.storage.sync.get(VAULT_META_KEY);
-  const meta = metaResult[VAULT_META_KEY] as VaultMeta | undefined;
-  
-  if (meta && Array.isArray(meta.chunkKeys)) {
-    return [VAULT_META_KEY, ...meta.chunkKeys];
-  }
-
-  const allKeys = await chrome.storage.sync.get(null);
-  return Object.keys(allKeys).filter(
-    key => key === VAULT_META_KEY || key.startsWith(VAULT_CHUNK_PREFIX)
-  );
 }
 
 async function loadFromBackup(): Promise<VaultItem[]> {
@@ -512,5 +495,3 @@ export const vaultService = {
     }
   }
 };
-
-export { getVaultChunkKeys };

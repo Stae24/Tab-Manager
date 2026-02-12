@@ -170,15 +170,15 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
 
         if (!active) return;
 
-        const activeInLive = islands.some((i: LiveItem) => i && (i.id == activeIdVal || ('tabs' in i && i.tabs?.some((t: Tab) => t && t.id == activeIdVal))));
+        const activeInLive = islands.some((i: LiveItem) => i && (String(i.id) === String(activeIdVal) || ('tabs' in i && i.tabs?.some((t: Tab) => t && String(t.id) === String(activeIdVal)))));
 
         let targetIsLive = activeInLive;
 
         if (overIdVal === 'live-panel-dropzone' || overIdVal === 'live-bottom') targetIsLive = true;
         else if (overIdVal === 'vault-dropzone' || overIdVal === 'vault-bottom') targetIsLive = false;
         else if (over) {
-          const overInIslands = islands.some((i: LiveItem) => i && (i.id == overIdVal || ('tabs' in i && i.tabs?.some((t: Tab) => t && t.id == overIdVal))));
-          const overInVault = vault.some((v: VaultItem) => v && (v.id == overIdVal || ('tabs' in v && v.tabs?.some((t: Tab) => t && t.id == overIdVal))));
+          const overInIslands = islands.some((i: LiveItem) => i && (String(i.id) === String(overIdVal) || ('tabs' in i && i.tabs?.some((t: Tab) => t && String(t.id) === String(overIdVal)))));
+          const overInVault = vault.some((v: VaultItem) => v && (String(v.id) === String(overIdVal) || ('tabs' in v && v.tabs?.some((t: Tab) => t && String(t.id) === String(overIdVal)))));
 
           if (overInIslands) targetIsLive = true;
           else if (overInVault) targetIsLive = false;

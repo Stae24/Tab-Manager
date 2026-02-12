@@ -51,3 +51,7 @@ export const GX_ACCENT_COLOR = '#7f22fe';
 export const GX_RED_COLOR = '#ff1b1b';
 export const GX_CYAN_COLOR = '#00d4ff';
 export const GX_GREEN_COLOR = '#00ff88';
+
+export const VAULT_META_KEY = 'vault_meta';
+export const VAULT_CHUNK_PREFIX = 'vault_chunk_';
+export const LEGACY_VAULT_KEY = 'vault';
