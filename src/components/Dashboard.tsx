@@ -826,9 +826,9 @@ const VaultPanel: React.FC<{
   restoreFromVault: (id: UniversalId) => void,
   vaultQuota: VaultQuotaInfo | null,
   effectiveSyncEnabled?: boolean,
-  vaultCount?: number,
+  vaultTabCount?: number,
   onManageStorage?: () => void
-}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault, vaultQuota, effectiveSyncEnabled, vaultCount, onManageStorage }) => {
+}> = ({ dividerPosition, vault, removeFromVault, isDraggingLiveItem, createVaultGroup, onRenameGroup, onToggleCollapse, sortVaultGroupsToTop, restoreFromVault, vaultQuota, effectiveSyncEnabled, vaultTabCount, onManageStorage }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'vault-dropzone',
   });
@@ -843,14 +843,14 @@ const VaultPanel: React.FC<{
   useEffect(() => {
     logger.debug('[VaultPanel] Banner state:', {
       effectiveSyncEnabled,
-      vaultCount,
+      vaultTabCount,
       showLocalStorageWarning,
-      bannerWouldShow: effectiveSyncEnabled === false && (vaultCount || 0) > 0 && showLocalStorageWarning,
+      bannerWouldShow: effectiveSyncEnabled === false && (vaultTabCount || 0) > 0 && showLocalStorageWarning,
       condition1: effectiveSyncEnabled === false,
-      condition2: (vaultCount || 0) > 0,
+      condition2: (vaultTabCount || 0) > 0,
       condition3: showLocalStorageWarning
     });
-  }, [effectiveSyncEnabled, vaultCount, showLocalStorageWarning]);
+  }, [effectiveSyncEnabled, vaultTabCount, showLocalStorageWarning]);
 
   const rowItems = useMemo(() => {
     const rows: DashboardRow[] = [];
@@ -992,11 +992,11 @@ const VaultPanel: React.FC<{
           <button onClick={createVaultGroup} title="Add Group" className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all">
             <Plus className="w-4 h-4" />
           </button>
-          <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">{vaultCount} ARCHIVED</span>
+          <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">{vaultTabCount} TABS</span>
         </div>
       </div>
 
-      {effectiveSyncEnabled === false && (vaultCount || 0) > 0 && showLocalStorageWarning && (
+      {effectiveSyncEnabled === false && (vaultTabCount || 0) > 0 && showLocalStorageWarning && (
         <div className="bg-gx-red/20 border-b border-gx-red/30 px-4 py-2 flex items-center justify-between flex-shrink-0">
           <span className="text-xs text-gx-red">
             ⚠️ Vault too large for sync. Using local storage. Clear vault and re-enable sync in settings to retry.
@@ -1108,7 +1108,13 @@ export const Dashboard: React.FC = () => {
   } | null>(null);
   const lastFilteredTabsRef = useRef<TabType[]>([]);
 
-  // Flatten all tabs from islands and standalone tabs for search mode
+  const vaultTabCount = useMemo(() => {
+    return (vault || []).reduce((acc, i) => {
+      if (!i) return acc;
+      if ('tabs' in i && i.tabs) return acc + i.tabs.length;
+      return acc + 1;
+    }, 0);
+  }, [vault]);
   const allTabs = useMemo(() => {
     const tabs: TabType[] = [];
     (islands || []).forEach((item: LiveItem) => {
@@ -1533,7 +1539,7 @@ export const Dashboard: React.FC = () => {
                   restoreFromVault={restoreFromVault}
                   vaultQuota={vaultQuota}
                   effectiveSyncEnabled={effectiveSyncEnabled}
-                  vaultCount={(vault || []).length}
+                  vaultTabCount={vaultTabCount}
                 />
               </>
             )}

@@ -58,6 +58,7 @@ export interface VaultQuotaInfo {
   total: number;
   percentage: number;
   warningLevel: QuotaWarningLevel;
+  orphanedChunks?: number;
 }
 
 export interface VaultMeta {

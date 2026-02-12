@@ -62,26 +62,29 @@ async function countOrphanedChunks(): Promise<number> {
 
 export const quotaService = {
   getVaultQuota: async (): Promise<VaultQuotaInfo> => {
+    const orphanedCount = await quotaService.cleanupOrphanedChunks();
+
     const settingsKeys = ['appearanceSettings', 'dividerPosition', 'showVault', 'vaultSyncEnabled', 'settingsPanelWidth'];
     const [settingsBytes, vaultKeys] = await Promise.all([
       chrome.storage.sync.getBytesInUse(settingsKeys),
       getVaultChunkKeys()
     ]);
-    
-    const vaultBytes = vaultKeys.length > 0 
+
+    const vaultBytes = vaultKeys.length > 0
       ? await chrome.storage.sync.getBytesInUse(vaultKeys)
       : 0;
-    
+
     const settingsTotal = Math.max(settingsBytes, SYNC_SETTINGS_RESERVE_BYTES);
     const available = CHROME_SYNC_QUOTA_BYTES - settingsTotal;
     const percentage = available > 0 ? vaultBytes / available : 1;
-    
+
     return {
       used: vaultBytes,
       available: available - vaultBytes,
       total: available,
       percentage,
-      warningLevel: getWarningLevel(percentage)
+      warningLevel: getWarningLevel(percentage),
+      orphanedChunks: orphanedCount
     };
   },
 
@@ -210,5 +213,18 @@ export const quotaService = {
         lastSyncTime: null
       };
     }
+  },
+
+  logQuotaDetails: async (): Promise<VaultQuotaInfo> => {
+    const quota = await quotaService.getVaultQuota();
+    logger.info('[QuotaService] 📊 Detailed quota status:');
+    logger.info(`[QuotaService]   - Settings reserve: ${SYNC_SETTINGS_RESERVE_BYTES} bytes`);
+    logger.info(`[QuotaService]   - Total sync quota: ${CHROME_SYNC_QUOTA_BYTES} bytes`);
+    logger.info(`[QuotaService]   - Available for vault (capacity): ${quota.total} bytes`);
+    logger.info(`[QuotaService]   - Currently used by vault: ${quota.used} bytes`);
+    logger.info(`[QuotaService]   - Free space: ${quota.available} bytes`);
+    logger.info(`[QuotaService]   - Usage percentage: ${Math.round(quota.percentage * 100)}%`);
+    logger.info(`[QuotaService]   - Warning level: ${quota.warningLevel}`);
+    return quota;
   }
 };
