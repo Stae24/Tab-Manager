@@ -101,12 +101,11 @@ const init = async () => {
          logger.warn(`[Store Init]   - This vault has fallen back to LOCAL storage due to full sync quota`);
          const currentSettings = sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? sync.appearanceSettings : defaultAppearanceSettings;
          const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
-         try {
-           await vaultService.disableVaultSync(loadResult.vault);
-         } catch (error) {
-           logger.error('[Store Init] Failed to disable vault sync:', error);
-           return;
-         }
+          try {
+            await vaultService.disableVaultSync(loadResult.vault);
+          } catch (error) {
+            logger.error('[Store Init] Failed to disable vault sync:', error);
+          }
          useStore.setState({
            appearanceSettings: updatedSettings,
            effectiveSyncEnabled: false,

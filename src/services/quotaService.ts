@@ -62,7 +62,7 @@ async function countOrphanedChunks(): Promise<number> {
 
 export const quotaService = {
   getVaultQuota: async (): Promise<VaultQuotaInfo> => {
-    const orphanedCount = await quotaService.cleanupOrphanedChunks();
+    const orphanedCount = await countOrphanedChunks();
 
     const settingsKeys = ['appearanceSettings', 'dividerPosition', 'showVault', 'vaultSyncEnabled', 'settingsPanelWidth'];
     const [settingsBytes, vaultKeys] = await Promise.all([
