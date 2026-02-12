@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { useProximityGap } from '../Dashboard';
+import { useProximityGap } from '../../hooks/useProximityGap';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Active } from '@dnd-kit/core';
 
@@ -29,11 +29,12 @@ describe('useProximityGap memory leak', () => {
   });
 
   it('should clean up listeners when active toggles', () => {
+    const mockNode = document.createElement('div');
     const { rerender, unmount } = renderHook(
       (props: { active: Active | null; isDraggingGroup: boolean }) => {
         const result = useProximityGap('gap-1', props.active, props.isDraggingGroup);
-        if (result.gapRef) {
-           (result.gapRef as any).current = document.createElement('div');
+        if (result.ref) {
+          result.ref(mockNode);
         }
         return result;
       },
@@ -58,11 +59,12 @@ describe('useProximityGap memory leak', () => {
   });
 
   it('should handle rapid toggling without accumulating listeners', () => {
+    const mockNode = document.createElement('div');
     const { rerender, unmount } = renderHook(
       (props: { active: Active | null }) => {
         const result = useProximityGap('gap-1', props.active);
-        if (result.gapRef) {
-          (result.gapRef as any).current = document.createElement('div');
+        if (result.ref) {
+          result.ref(mockNode);
         }
         return result;
       },

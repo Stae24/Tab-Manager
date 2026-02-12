@@ -25,6 +25,10 @@ export interface Island {
 
 export type LiveItem = Island | Tab;
 
+export type DashboardRow =
+  | { type: 'gap'; id: string; index: number }
+  | { type: 'item'; id: UniversalId; item: Island | Tab };
+
 export type VaultItem = (Island | Tab) & {
   savedAt: number;
   originalId: UniversalId;
