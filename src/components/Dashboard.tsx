@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { GripVertical, Loader2 } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
 
 import {
   DndContext,
@@ -528,14 +528,8 @@ export const Dashboard: React.FC = () => {
       </ErrorBoundary>
 
       {isLoading && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-[1000]">
-          <div className="flex flex-col items-center gap-6">
-            <div className="relative">
-              <div className="absolute inset-0 blur-xl bg-gx-accent/20 animate-pulse" />
-              <Loader2 className="w-12 h-12 text-gx-accent animate-spin relative z-10" />
-            </div>
-            <span className="text-[10px] font-black tracking-[0.4em] uppercase text-gx-accent animate-pulse">Syncing Reality</span>
-          </div>
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gx-gray z-[1000] overflow-hidden">
+          <div className="h-full w-1/3 bg-gx-accent animate-loading-slide" />
         </div>
       )}
       <QuotaExceededModal

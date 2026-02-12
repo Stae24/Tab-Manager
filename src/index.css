@@ -104,3 +104,19 @@ body {
     transform: translateY(0);
   }
 }
+
+@keyframes loading-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(200%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-loading-slide {
+  animation: loading-slide 1.5s ease-in-out infinite;
+}
