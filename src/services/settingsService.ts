@@ -7,7 +7,7 @@ export const settingsService = {
     const result = await chrome.storage.sync.get(['appearanceSettings', 'dividerPosition', 'showVault', 'settingsPanelWidth']);
     logger.info('[SettingsService] Loaded settings:', {
       hasAppearanceSettings: !!result.appearanceSettings,
-      vaultSyncEnabled: (result.appearanceSettings as any)?.vaultSyncEnabled
+      vaultSyncEnabled: (result.appearanceSettings as AppearanceSettings)?.vaultSyncEnabled
     });
     return result;
   },
