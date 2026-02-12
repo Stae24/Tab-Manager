@@ -45,8 +45,6 @@ async function countOrphanedChunks(): Promise<number> {
 
 export const quotaService = {
   getVaultQuota: async (): Promise<VaultQuotaInfo> => {
-    const orphanedCount = await countOrphanedChunks();
-
     const settingsKeys = ['appearanceSettings', 'dividerPosition', 'showVault', 'vaultSyncEnabled', 'settingsPanelWidth'];
     const [settingsBytes, vaultKeys] = await Promise.all([
       chrome.storage.sync.getBytesInUse(settingsKeys),
@@ -67,7 +65,7 @@ export const quotaService = {
       total: available,
       percentage,
       warningLevel: getWarningLevel(percentage),
-      orphanedChunks: orphanedCount
+      orphanedChunks: 0
     };
   },
 
