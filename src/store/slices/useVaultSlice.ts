@@ -56,7 +56,8 @@ export interface VaultSlice {
   vaultQuota: VaultQuotaInfo | null;
   quotaExceededPending: VaultStorageResult | null;
   lastVaultTimestamp: number;
-  effectiveSyncEnabled?: boolean;
+  effectiveSyncEnabled: boolean;
+  syncRecovered: boolean;
   
   moveToVault: (id: UniversalId) => Promise<void>;
   saveToVault: (item: LiveItem) => Promise<void>;
@@ -69,6 +70,7 @@ export interface VaultSlice {
   refreshVaultQuota: () => Promise<void>;
   clearQuotaExceeded: () => void;
   setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
+  clearSyncRecovered: () => void;
   
   persistVault: (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]) => Promise<VaultStorageResult>;
 }
@@ -78,21 +80,22 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   vaultQuota: null,
   quotaExceededPending: null,
   lastVaultTimestamp: 0,
-  effectiveSyncEnabled: undefined,
+  effectiveSyncEnabled: true,
+  syncRecovered: false,
+
+  clearSyncRecovered: () => set({ syncRecovered: false }),
 
   persistVault: async (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]): Promise<VaultStorageResult> => {
     const capturedPreviousVault = previousVault ?? get().vault;
     const { effectiveSyncEnabled } = get();
-    const actualSyncEnabled = effectiveSyncEnabled !== undefined ? effectiveSyncEnabled : syncEnabled;
     
     logger.info('[VaultSlice] persistVault called:', { 
       syncEnabledParam: syncEnabled, 
       effectiveSyncEnabled, 
-      actualSyncEnabled,
       vaultItemCount: vault.length 
     });
     
-    if (actualSyncEnabled) {
+    if (effectiveSyncEnabled) {
       const quota = await quotaService.getVaultQuota();
       if (quota.percentage >= 1.0) {
         logger.warn(`[VaultSlice] Already at ${Math.round(quota.percentage * 100)}%, forcing local fallback`);
@@ -118,7 +121,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       }
     }
     
-    const result = await vaultService.saveVault(vault, { syncEnabled: actualSyncEnabled });
+    const result = await vaultService.saveVault(vault, { syncEnabled: effectiveSyncEnabled });
 
     if (!result.success) {
       set({ vault: capturedPreviousVault });
@@ -222,9 +225,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     logger.info(`[VaultSlice] moveToVault: Current vault has ${vault.length} items, syncEnabled=${appearanceSettings.vaultSyncEnabled}`);
 
     const { effectiveSyncEnabled } = get();
-    const syncEnabled = effectiveSyncEnabled !== undefined ? effectiveSyncEnabled : appearanceSettings.vaultSyncEnabled;
-    
-    const quotaCheck = await checkQuotaBeforeSave(item, vault, syncEnabled);
+    const quotaCheck = await checkQuotaBeforeSave(item, vault, effectiveSyncEnabled);
     if (!quotaCheck.allowed) {
       if (quotaCheck.shouldSwitchToLocal && appearanceSettings.vaultSyncEnabled) {
         logger.info('[VaultSlice] moveToVault: Auto-switching to local storage due to quota');
@@ -311,8 +312,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     const { vault, appearanceSettings, persistVault, effectiveSyncEnabled } = get();
     const previousVault = vault;
     
-    const syncEnabled = effectiveSyncEnabled !== undefined ? effectiveSyncEnabled : appearanceSettings.vaultSyncEnabled;
-    const quotaCheck = await checkQuotaBeforeSave(item, vault, syncEnabled);
+    const quotaCheck = await checkQuotaBeforeSave(item, vault, effectiveSyncEnabled);
     if (!quotaCheck.allowed) {
       if (quotaCheck.shouldSwitchToLocal && appearanceSettings.vaultSyncEnabled) {
         logger.info('[VaultSlice] saveToVault: Auto-switching to local storage due to quota');

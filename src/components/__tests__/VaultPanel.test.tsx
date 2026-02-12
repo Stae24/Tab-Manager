@@ -64,6 +64,7 @@ const defaultProps = {
   sortVaultGroupsToTop: vi.fn(),
   restoreFromVault: vi.fn(),
   vaultQuota: null,
+  effectiveSyncEnabled: true,
 };
 
 describe('VaultPanel Component', () => {

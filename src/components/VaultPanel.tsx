@@ -24,7 +24,9 @@ interface VaultPanelProps {
   sortVaultGroupsToTop: () => Promise<void>;
   restoreFromVault: (id: UniversalId) => void;
   vaultQuota: VaultQuotaInfo | null;
-  effectiveSyncEnabled?: boolean;
+  effectiveSyncEnabled: boolean;
+  syncRecovered?: boolean;
+  onClearSyncRecovered?: () => void;
   vaultTabCount?: number;
   onManageStorage?: () => void;
 }
@@ -41,6 +43,8 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   restoreFromVault,
   vaultQuota,
   effectiveSyncEnabled,
+  syncRecovered,
+  onClearSyncRecovered,
   vaultTabCount,
   onManageStorage
 }) => {
@@ -54,6 +58,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLocalStorageWarning, setShowLocalStorageWarning] = useState(true);
+  const [showRecoveryBanner, setShowRecoveryBanner] = useState(true);
 
   useEffect(() => {
     logger.debug('[VaultPanel] Banner state:', {
@@ -196,6 +201,24 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
           <button
             onClick={() => setShowLocalStorageWarning(false)}
             className="text-gx-red hover:text-white transition-colors p-1"
+            title="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {syncRecovered && showRecoveryBanner && (
+        <div className="bg-green-500/20 border-b border-green-500/30 px-4 py-2 flex items-center justify-between flex-shrink-0">
+          <span className="text-xs text-green-400">
+            ✅ Sync data repaired from backup. Your vault is now syncing across devices.
+          </span>
+          <button
+            onClick={() => {
+              setShowRecoveryBanner(false);
+              onClearSyncRecovered?.();
+            }}
+            className="text-green-400 hover:text-white transition-colors p-1"
             title="Dismiss"
           >
             <X size={14} />

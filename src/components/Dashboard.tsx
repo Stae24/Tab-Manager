@@ -75,6 +75,8 @@ export const Dashboard: React.FC = () => {
   const isRenaming = useStore(state => state.isRenaming);
   const appearanceSettings = useStore(state => state.appearanceSettings);
   const effectiveSyncEnabled = useStore(state => state.effectiveSyncEnabled);
+  const syncRecovered = useStore(state => state.syncRecovered);
+  const clearSyncRecovered = useStore(state => state.clearSyncRecovered);
   const vaultQuota = useStore(state => state.vaultQuota);
   const quotaExceededPending = useStore(state => state.quotaExceededPending);
   const clearQuotaExceeded = useStore(state => state.clearQuotaExceeded);
@@ -516,6 +518,8 @@ export const Dashboard: React.FC = () => {
                   restoreFromVault={restoreFromVault}
                   vaultQuota={vaultQuota}
                   effectiveSyncEnabled={effectiveSyncEnabled}
+                  syncRecovered={syncRecovered}
+                  onClearSyncRecovered={clearSyncRecovered}
                   vaultTabCount={vaultTabCount}
                 />
               </>
