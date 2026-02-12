@@ -88,7 +88,7 @@ const getFaviconUrl = (source: FaviconSource, effectiveUrl: string, size: string
   }
 };
 
-const getFallbackSource = (fallback: FaviconFallback, primary: FaviconSource): FaviconSource | null => {
+const getFallbackSource = (fallback: FaviconFallback): FaviconSource | null => {
   if (fallback === 'none') {
     return null;
   }
@@ -146,7 +146,7 @@ export const Favicon: React.FC<FaviconProps> = ({
     }
 
     if (tier === 1 && fallback !== 'none') {
-      const fallbackSource = getFallbackSource(fallback, source);
+      const fallbackSource = getFallbackSource(fallback);
       if (fallbackSource) {
         return getFaviconUrl(fallbackSource, effectiveUrl, size);
       }
