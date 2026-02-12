@@ -28,6 +28,18 @@ async function loadFromBackup(): Promise<VaultItem[]> {
   return (local.vault_backup as VaultItem[]) || [];
 }
 
+async function clearAllVaultChunks(): Promise<void> {
+  logger.info('[VaultStorage] Clearing all vault sync chunks...');
+  const allSyncData = await chrome.storage.sync.get(null);
+  const vaultKeys = Object.keys(allSyncData).filter(
+    key => key === VAULT_META_KEY || key.startsWith(VAULT_CHUNK_PREFIX)
+  );
+  if (vaultKeys.length > 0) {
+    await chrome.storage.sync.remove(vaultKeys);
+    logger.info(`[VaultStorage] Removed ${vaultKeys.length} vault-related keys from sync`);
+  }
+}
+
 export const vaultService = {
   loadVault: async (config: VaultStorageConfig): Promise<VaultLoadResult> => {
     if (!config.syncEnabled) {
@@ -495,5 +507,21 @@ export const vaultService = {
         bytesAvailable: 0
       };
     }
+  },
+
+  recoverVaultSync: async (vault: VaultItem[]): Promise<VaultStorageResult> => {
+    logger.info('[VaultStorage] Starting vault sync recovery...');
+    
+    await clearAllVaultChunks();
+    
+    const result = await vaultService.saveVault(vault, { syncEnabled: true });
+    
+    if (result.success && !result.fallbackToLocal) {
+      logger.info('[VaultStorage] ✅ Recovery successful');
+    } else {
+      logger.warn('[VaultStorage] 🔴 Recovery failed, falling back to local');
+    }
+    
+    return result;
   }
 };
