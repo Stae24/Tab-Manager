@@ -120,7 +120,8 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     !!s.faviconFallback && ['chrome', 'google', 'google-hd', 'duckduckgo', 'icon-horse', 'none'].includes(s.faviconFallback) &&
     !!s.faviconSize && ['16', '32', '64', '128'].includes(s.faviconSize) &&
     typeof s.sortGroupsByCount === 'boolean' &&
-    typeof s.sortVaultGroupsByCount === 'boolean'
+    typeof s.sortVaultGroupsByCount === 'boolean' &&
+    typeof s.autoPinTabManager === 'boolean'
   );
 };
 
@@ -186,6 +187,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   faviconSize: '32',
   sortGroupsByCount: true,
   sortVaultGroupsByCount: true,
+  autoPinTabManager: true,
 };
 
 export type SyncState = Partial<{

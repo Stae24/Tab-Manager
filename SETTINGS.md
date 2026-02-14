@@ -116,6 +116,12 @@ A comprehensive list of customizable settings for the Island Manager Chrome exte
   - `next`: Activate the next tab
   - `previous`: Activate the previous tab
 
+### Auto-Pin Tab Manager
+- **Setting:** `autoPinTabManager`
+- **Type:** Toggle (on/off)
+- **Default:** `on`
+- **Description:** Automatically pin the Tab Manager page when opened via the extension icon.
+
 ### Double-Click to Pin
 - **Setting:** `doubleClickToPin`
 - **Type:** Toggle (on/off)
