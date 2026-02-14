@@ -6,10 +6,15 @@ chrome.action.onClicked.addListener(async () => {
   const tab = await chrome.tabs.create({ url: 'index.html' });
   console.log('[Background] Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
   
-  const result = await chrome.storage.sync.get(['appearanceSettings']);
-  const settings = result.appearanceSettings && isAppearanceSettings(result.appearanceSettings)
-    ? result.appearanceSettings
-    : defaultAppearanceSettings;
+  let settings = defaultAppearanceSettings;
+  try {
+    const result = await chrome.storage.sync.get(['appearanceSettings']);
+    settings = result.appearanceSettings && isAppearanceSettings(result.appearanceSettings)
+      ? result.appearanceSettings
+      : defaultAppearanceSettings;
+  } catch (error) {
+    console.error('[Background] Failed to load appearance settings:', error);
+  }
   
   console.log('[Background] Auto-pin setting:', settings.autoPinTabManager);
   
