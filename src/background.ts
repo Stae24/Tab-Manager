@@ -1,8 +1,27 @@
 import { ISLAND_CREATION_REFRESH_DELAY_MS, REFRESH_UI_DELAY_MS } from './constants';
 import { quotaService } from './services/quotaService';
+import { isAppearanceSettings, defaultAppearanceSettings } from './store/utils';
 
-chrome.action.onClicked.addListener(() => {
-  chrome.tabs.create({ url: 'index.html' });
+chrome.action.onClicked.addListener(async () => {
+  const tab = await chrome.tabs.create({ url: 'index.html' });
+  console.log('[Background] Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
+  
+  const result = await chrome.storage.sync.get(['appearanceSettings']);
+  const settings = result.appearanceSettings && isAppearanceSettings(result.appearanceSettings)
+    ? result.appearanceSettings
+    : defaultAppearanceSettings;
+  
+  console.log('[Background] Auto-pin setting:', settings.autoPinTabManager);
+  
+  if (settings.autoPinTabManager && tab.id) {
+    try {
+      console.log('[Background] Attempting to pin tab:', tab.id);
+      const updatedTab = await chrome.tabs.update(tab.id, { pinned: true });
+      console.log('[Background] Pin result:', { id: updatedTab?.id, pinned: updatedTab?.pinned });
+    } catch (error) {
+      console.error('[Background] Failed to pin tab:', error);
+    }
+  }
 });
 
 (async () => {

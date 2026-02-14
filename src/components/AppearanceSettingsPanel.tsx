@@ -30,6 +30,7 @@ import {
   Cloud,
   HardDrive,
   ArrowUp,
+  Pin,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
@@ -1111,6 +1112,21 @@ export const AppearanceSettingsPanel: React.FC<{
                     { value: 'large', label: 'Large' },
                   ]}
                   label="UI Action Size"
+                />
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                id="auto-pin"
+                title="Tab Manager Pin"
+                icon={Pin}
+                isExpanded={expandedSections.has('auto-pin')}
+                onToggle={() => toggleSection('auto-pin')}
+              >
+                <ToggleSwitch
+                  checked={appearanceSettings.autoPinTabManager}
+                  onChange={(checked) => setAppearanceSettings({ autoPinTabManager: checked })}
+                  label="Auto-Pin Tab Manager"
+                  description="Automatically pin the Tab Manager page when opened via extension icon"
                 />
               </CollapsibleSection>
             </>

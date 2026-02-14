@@ -137,4 +137,5 @@ export interface AppearanceSettings {
 
   sortGroupsByCount: boolean;
   sortVaultGroupsByCount: boolean;
+  autoPinTabManager: boolean;
 }
