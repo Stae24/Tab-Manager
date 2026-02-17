@@ -1,6 +1,7 @@
 import { Tab, Island, LiveItem } from '../types/index';
 import { MAX_SYNC_RETRIES, TAB_ACTION_RETRY_DELAY_BASE } from '../constants';
 import { logger } from '../utils/logger';
+import { setGroupCollapseSupport, getCachedCapabilities } from '../utils/browser';
 
 const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = MAX_SYNC_RETRIES): Promise<T> => {
   let lastError: unknown;
@@ -231,7 +232,31 @@ export const tabService = {
   },
 
   updateTabGroupCollapse: async (groupId: number, collapsed: boolean): Promise<boolean> => {
-    return tabService.updateTabGroup(groupId, { collapsed: !!collapsed });
+    const success = await tabService.updateTabGroup(groupId, { collapsed: !!collapsed });
+    
+    if (success) {
+      try {
+        const group = await chrome.tabGroups.get(groupId);
+        const changeApplied = group.collapsed === collapsed;
+        
+        const cached = getCachedCapabilities();
+        if (cached !== null && cached.supportsGroupCollapse === null) {
+          setGroupCollapseSupport(changeApplied);
+          
+          if (!changeApplied) {
+            logger.warn(`[updateTabGroupCollapse] Browser does not support group collapse API. Expected: ${collapsed}, Got: ${group.collapsed}`);
+          }
+        }
+        
+        if (!changeApplied) {
+          return false;
+        }
+      } catch (error) {
+        logger.warn('[updateTabGroupCollapse] Could not verify collapse state:', error);
+      }
+    }
+    
+    return success;
   },
 
   discardTab: async (tabId: number) => {
