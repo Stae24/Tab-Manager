@@ -6,7 +6,7 @@ import { TabCard } from './TabCard';
 import { ContextMenu } from './ContextMenu';
 import { cn, getIslandBorderColor, getBorderRadiusClass, getBottomBorderRadiusClass } from '../utils/cn';
 import { Island as IslandType, Tab, UniversalId } from '../types/index';
-import { ungroupTab, updateTabGroupCollapse, discardTabs, duplicateIsland } from '../utils/chromeApi';
+import { ungroupTab, discardTabs, duplicateIsland } from '../utils/chromeApi';
 import { useStore, parseNumericId } from '../store/useStore';
 import { VIRTUAL_ROW_ESTIMATE_SIZE } from '../constants';
 
@@ -44,7 +44,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
   isVault,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const { appearanceSettings, setIsRenaming } = useStore();
+  const { appearanceSettings, setIsRenaming, toggleLiveGroupCollapse } = useStore();
   const [editTitle, setEditTitle] = useState(island.title);
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
@@ -98,11 +98,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
     if (onToggleCollapse) {
       onToggleCollapse();
     } else {
-      const numericId = parseNumericId(island.id);
-      if (numericId !== null) {
-        updateTabGroupCollapse(numericId, !island.collapsed);
-      }
-
+      toggleLiveGroupCollapse(island.id);
     }
   };
 

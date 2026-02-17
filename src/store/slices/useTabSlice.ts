@@ -4,6 +4,7 @@ import { Island, Tab, LiveItem, UniversalId, VaultItem } from '../../types/index
 import { tabService } from '../../services/tabService';
 import { logger } from '../../utils/logger';
 import { parseNumericId, findItemInList, isIsland, cloneWithDeepGroups } from '../utils';
+import { detectGroupCollapseSupport } from '../../utils/browser';
 
 import type { StoreState } from '../types';
 
@@ -13,6 +14,7 @@ export interface TabSlice {
   pendingRefresh: boolean;
   isRefreshing: boolean;
   pendingOperations: Set<number>;
+  supportsGroupCollapse: boolean | null;
 
   syncLiveTabs: () => Promise<void>;
   setIsUpdating: (val: boolean) => void;
@@ -22,6 +24,7 @@ export interface TabSlice {
   hasPendingOperations: () => boolean;
   renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
   toggleLiveGroupCollapse: (id: UniversalId) => Promise<void>;
+  detectCollapseSupport: () => Promise<void>;
   moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
   deleteDuplicateTabs: () => Promise<void>;
   sortGroupsToTop: () => Promise<void>;
@@ -35,6 +38,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
   pendingRefresh: false,
   isRefreshing: false,
   pendingOperations: new Set<number>(),
+  supportsGroupCollapse: null,
 
   setIsUpdating: (isUpdating) => set({ isUpdating }),
 
@@ -103,11 +107,15 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
   },
 
   toggleLiveGroupCollapse: async (id) => {
-    const { islands, setIsUpdating } = get();
+    const { islands, setIsUpdating, supportsGroupCollapse } = get();
     const idStr = String(id);
     const numericId = parseNumericId(id);
 
     if (idStr.startsWith('vault-') || numericId === null) return;
+
+    if (supportsGroupCollapse === false) {
+      return;
+    }
 
     const targetIsland = islands.find((i: LiveItem) => String(i.id) === idStr && 'tabs' in i);
     if (!targetIsland) return;
@@ -134,6 +142,23 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         return item;
       });
       set({ islands: revertIslands });
+    }
+  },
+
+  detectCollapseSupport: async () => {
+    const { supportsGroupCollapse } = get();
+    if (supportsGroupCollapse !== null) return;
+
+    try {
+      const supported = await detectGroupCollapseSupport();
+      set({ supportsGroupCollapse: supported });
+      
+      if (!supported) {
+        logger.info('[detectCollapseSupport] Browser does not support group collapse API');
+      }
+    } catch (error) {
+      logger.warn('[detectCollapseSupport] Failed to detect collapse support:', error);
+      set({ supportsGroupCollapse: true });
     }
   },
 
