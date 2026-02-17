@@ -111,6 +111,8 @@ const init = async () => {
     finalSyncEnabled: syncEnabled
   });
 
+  state.detectCollapseSupport();
+
   const migrationResult = await vaultService.migrateFromLegacy({ syncEnabled });
   if (migrationResult.migrated) {
     logger.info('[VaultStorage] Migration complete:', migrationResult);
