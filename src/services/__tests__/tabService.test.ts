@@ -53,12 +53,27 @@ vi.stubGlobal('navigator', {
   },
 });
 
+const mockNeedsCompanionTab = vi.fn(() => false);
+const mockGetBrowserCapabilities = vi.fn(() => Promise.resolve({
+  vendor: 'chrome' as const,
+  supportsGroupCollapse: null,
+  supportsSingleTabGroups: true,
+}));
+
+vi.mock('../../utils/browser', () => ({
+  setGroupCollapseSupport: vi.fn(),
+  getCachedCapabilities: vi.fn(() => null),
+  needsCompanionTabForSingleTabGroup: () => mockNeedsCompanionTab(),
+  getBrowserCapabilities: () => mockGetBrowserCapabilities(),
+}));
+
 describe('tabService', () => {
   let tabService: typeof import('../tabService').tabService;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     mockRuntimeLastError = null;
+    mockNeedsCompanionTab.mockReturnValue(false);
     vi.resetModules();
     tabService = (await import('../tabService')).tabService;
   });
@@ -275,6 +290,8 @@ describe('tabService', () => {
     });
 
     it('creates companion tab for single tab group (Opera GX hack)', async () => {
+      mockNeedsCompanionTab.mockReturnValue(true);
+      
       mockTabsGet.mockResolvedValue({ id: 1, windowId: 1, index: 0, pinned: false });
       mockTabsCreate.mockResolvedValue({ id: 2 });
       mockTabsGroup.mockResolvedValue(100);
@@ -288,6 +305,24 @@ describe('tabService', () => {
       expect(mockTabsCreate).toHaveBeenCalled();
       expect(mockTabsGroup).toHaveBeenCalledWith(expect.objectContaining({
         tabIds: expect.arrayContaining([1, 2]),
+      }));
+    });
+
+    it('creates single tab group without companion on Brave/Chrome', async () => {
+      mockNeedsCompanionTab.mockReturnValue(false);
+      
+      mockTabsGet.mockResolvedValue({ id: 1, windowId: 1, index: 0, pinned: false });
+      mockTabsGroup.mockResolvedValue(100);
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        if (callback) callback();
+        return Promise.resolve({ id });
+      });
+
+      const result = await tabService.createIsland([1]);
+
+      expect(mockTabsCreate).not.toHaveBeenCalled();
+      expect(mockTabsGroup).toHaveBeenCalledWith(expect.objectContaining({
+        tabIds: [1],
       }));
     });
 
