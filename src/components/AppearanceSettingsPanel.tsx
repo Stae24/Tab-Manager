@@ -31,6 +31,7 @@ import {
   HardDrive,
   ArrowUp,
   Pin,
+  Terminal,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
@@ -53,7 +54,7 @@ import {
 } from '../constants';
 import type { ThemeMode, AnimationIntensity, AudioIndicatorMode, BorderRadius, ButtonSize, IconPack, MenuPosition, FaviconSource, FaviconFallback, FaviconSize } from '../store/useStore';
 
-type TabId = 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced';
+type TabId = 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced' | 'dev';
 
 // Section types for collapsible settings
 interface SettingsSection {
@@ -472,6 +473,7 @@ export const AppearanceSettingsPanel: React.FC<{
     { id: 'groups' as TabId, label: 'Groups', icon: Layers },
     { id: 'vault' as TabId, label: 'Vault', icon: Box },
     { id: 'general' as TabId, label: 'General', icon: Settings },
+    { id: 'dev' as TabId, label: 'Dev', icon: Terminal },
   ];
 
   const toggleSection = (id: string) => {
@@ -621,7 +623,7 @@ export const AppearanceSettingsPanel: React.FC<{
                   ))}
                 </div>
                 <div className="flex justify-center gap-1">
-                  {tabs.slice(3, 5).map((tab) => (
+                  {tabs.slice(3, 6).map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
@@ -1127,6 +1129,25 @@ export const AppearanceSettingsPanel: React.FC<{
                   onChange={(checked) => setAppearanceSettings({ autoPinTabManager: checked })}
                   label="Auto-Pin Tab Manager"
                   description="Automatically pin the Tab Manager page when opened via extension icon"
+                />
+              </CollapsibleSection>
+            </>
+          )}
+
+          {activeTab === 'dev' && filterSettings('Dev') && (
+            <>
+              <CollapsibleSection
+                id="debug-mode"
+                title="Debug Mode"
+                icon={Terminal}
+                isExpanded={expandedSections.has('debug-mode')}
+                onToggle={() => toggleSection('debug-mode')}
+              >
+                <ToggleSwitch
+                  checked={appearanceSettings.debugMode}
+                  onChange={(checked) => setAppearanceSettings({ debugMode: checked })}
+                  label="Enable Debug Logs"
+                  description="Show detailed logs in the browser console for troubleshooting"
                 />
               </CollapsibleSection>
             </>

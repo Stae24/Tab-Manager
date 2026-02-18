@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { vaultService } from '../services/vaultService';
 import { quotaService } from '../services/quotaService';
 import { settingsService } from '../services/settingsService';
-import { logger } from '../utils/logger';
+import { logger, setDebugMode } from '../utils/logger';
 import { isAppearanceSettings, isVaultItems, defaultAppearanceSettings } from './utils';
+import { detectBrowser } from '../utils/browser';
 
 import { createTabSlice } from './slices/useTabSlice';
 import { createVaultSlice } from './slices/useVaultSlice';
@@ -99,6 +100,11 @@ const init = async () => {
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
   if (sync.settingsPanelWidth !== undefined) state.setSettingsPanelWidth(Number(sync.settingsPanelWidth));
 
+  const debugMode = (sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings))
+    ? sync.appearanceSettings.debugMode
+    : defaultAppearanceSettings.debugMode;
+  setDebugMode(debugMode);
+
   const syncEnabled = (sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings))
     ? sync.appearanceSettings.vaultSyncEnabled
     : defaultAppearanceSettings.vaultSyncEnabled;
@@ -111,7 +117,10 @@ const init = async () => {
     finalSyncEnabled: syncEnabled
   });
 
-  state.detectCollapseSupport();
+  const browserVendor = await detectBrowser();
+  logger.info(`[Store Init] Browser detected: ${browserVendor}`);
+
+  await state.detectCollapseSupport();
 
   const migrationResult = await vaultService.migrateFromLegacy({ syncEnabled });
   if (migrationResult.migrated) {

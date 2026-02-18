@@ -2,7 +2,7 @@ import { StateCreator } from 'zustand';
 import { AppearanceSettings, ThemeMode } from '../../types/index';
 import { settingsService } from '../../services/settingsService';
 import { defaultAppearanceSettings } from '../utils';
-import { logger } from '../../utils/logger';
+import { logger, setDebugMode } from '../../utils/logger';
 
 export interface AppearanceSlice {
   appearanceSettings: AppearanceSettings;
@@ -25,6 +25,10 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
         to: newSettings.vaultSyncEnabled,
         stack: new Error().stack
       });
+    }
+
+    if ('debugMode' in newSettings) {
+      setDebugMode(newSettings.debugMode ?? false);
     }
     
     set({ appearanceSettings: updated });
