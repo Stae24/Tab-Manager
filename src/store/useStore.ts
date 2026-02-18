@@ -94,14 +94,17 @@ const init = async () => {
   const state = useStore.getState();
 
   if (sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings)) {
-    state.setAppearanceSettings(sync.appearanceSettings);
+    const mergedSettings = { ...defaultAppearanceSettings, ...sync.appearanceSettings };
+    state.setAppearanceSettings(mergedSettings);
+  } else {
+    state.setAppearanceSettings(defaultAppearanceSettings);
   }
   if (sync.dividerPosition) state.setDividerPosition(Number(sync.dividerPosition));
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
   if (sync.settingsPanelWidth !== undefined) state.setSettingsPanelWidth(Number(sync.settingsPanelWidth));
 
   const debugMode = (sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings))
-    ? sync.appearanceSettings.debugMode
+    ? sync.appearanceSettings.debugMode ?? defaultAppearanceSettings.debugMode
     : defaultAppearanceSettings.debugMode;
   setDebugMode(debugMode);
 
