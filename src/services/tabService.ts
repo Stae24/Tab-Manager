@@ -1,7 +1,7 @@
 import { Tab, Island, LiveItem } from '../types/index';
 import { MAX_SYNC_RETRIES, TAB_ACTION_RETRY_DELAY_BASE } from '../constants';
 import { logger } from '../utils/logger';
-import { setGroupCollapseSupport, getCachedCapabilities } from '../utils/browser';
+import { setGroupCollapseSupport, getCachedCapabilities, needsCompanionTabForSingleTabGroup, getBrowserCapabilities } from '../utils/browser';
 
 const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = MAX_SYNC_RETRIES): Promise<T> => {
   let lastError: unknown;
@@ -152,7 +152,9 @@ export const tabService = {
           return null;
       }
       
-      if (finalTabIds.length === 1) {
+      await getBrowserCapabilities();
+      
+      if (finalTabIds.length === 1 && needsCompanionTabForSingleTabGroup()) {
         try {
           const sourceTab = sameWindowTabs[0];
           const newTab = await chrome.tabs.create({ 
@@ -359,7 +361,7 @@ export const tabService = {
         tabIds.map(id => chrome.tabs.get(id).catch(() => null))
       );
       
-      const restrictedUrlPatterns = ['about:', 'chrome:', 'edge:', 'opera:', 'chrome-extension:'];
+      const restrictedUrlPatterns = ['about:', 'chrome:', 'edge:', 'opera:', 'brave:', 'chrome-extension:'];
       
       const validTabs = tabs.filter((t): t is chrome.tabs.Tab => {
         if (!t || t.id === undefined) return false;

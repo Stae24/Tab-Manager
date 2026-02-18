@@ -1,14 +1,17 @@
+import { logger } from './logger';
+
 interface NavigatorWithBrave extends Navigator {
   brave?: {
     isBrave: () => Promise<boolean>;
   };
 }
 
-type BrowserVendor = 'brave' | 'chrome' | 'opera' | 'edge' | 'firefox' | 'unknown';
+export type BrowserVendor = 'brave' | 'chrome' | 'opera' | 'edge' | 'firefox' | 'unknown';
 
 interface BrowserCapabilities {
   vendor: BrowserVendor;
   supportsGroupCollapse: boolean | null;
+  supportsSingleTabGroups: boolean | null;
 }
 
 let cachedCapabilities: BrowserCapabilities | null = null;
@@ -48,6 +51,13 @@ export async function detectBrowser(): Promise<BrowserVendor> {
 }
 
 export async function detectGroupCollapseSupport(): Promise<boolean> {
+  const browser = await detectBrowser();
+  
+  if (browser === 'brave') {
+    logger.info('[detectCollapseSupport] Brave detected - group collapse NOT supported');
+    return false;
+  }
+  
   if (collapseDetectionAttempted && cachedCapabilities !== null && cachedCapabilities.supportsGroupCollapse !== null) {
     return cachedCapabilities.supportsGroupCollapse;
   }
@@ -83,7 +93,8 @@ export async function detectGroupCollapseSupport(): Promise<boolean> {
     } else {
       cachedCapabilities = {
         vendor: 'unknown',
-        supportsGroupCollapse: changeApplied
+        supportsGroupCollapse: changeApplied,
+        supportsSingleTabGroups: null
       };
     }
     
@@ -104,7 +115,8 @@ export async function getBrowserCapabilities(): Promise<BrowserCapabilities> {
   
   cachedCapabilities = {
     vendor,
-    supportsGroupCollapse: null
+    supportsGroupCollapse: null,
+    supportsSingleTabGroups: vendor !== 'opera'
   };
   
   return cachedCapabilities;
@@ -116,7 +128,8 @@ export function setGroupCollapseSupport(supported: boolean): void {
   } else {
     cachedCapabilities = {
       vendor: 'unknown',
-      supportsGroupCollapse: supported
+      supportsGroupCollapse: supported,
+      supportsSingleTabGroups: null
     };
   }
 }
@@ -128,4 +141,12 @@ export function getCachedCapabilities(): BrowserCapabilities | null {
 export function resetCapabilitiesCache(): void {
   cachedCapabilities = null;
   collapseDetectionAttempted = false;
+}
+
+export function needsCompanionTabForSingleTabGroup(): boolean {
+  const cached = getCachedCapabilities();
+  if (cached && cached.supportsSingleTabGroups !== null) {
+    return !cached.supportsSingleTabGroups;
+  }
+  return false;
 }
