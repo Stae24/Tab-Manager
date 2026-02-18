@@ -68,7 +68,6 @@ export const Dashboard: React.FC = () => {
   const createVaultGroup = useStore(state => state.createVaultGroup);
   const toggleVaultGroupCollapse = useStore(state => state.toggleVaultGroupCollapse);
   const toggleLiveGroupCollapse = useStore(state => state.toggleLiveGroupCollapse);
-  const supportsGroupCollapse = useStore(state => state.supportsGroupCollapse);
   const deleteDuplicateTabs = useStore(state => state.deleteDuplicateTabs);
   const sortGroupsToTop = useStore(state => state.sortGroupsToTop);
   const sortVaultGroupsToTop = useStore(state => state.sortVaultGroupsToTop);
@@ -96,6 +95,7 @@ export const Dashboard: React.FC = () => {
   const showAppearancePanel = useStore(state => state.showAppearancePanel);
   const executeCommand = useStore(state => state.executeCommand);
   const addPendingOperation = useStore(state => state.addPendingOperation);
+  const removePendingOperation = useStore(state => state.removePendingOperation);
 
   const [isResizing, setIsResizing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -254,6 +254,12 @@ export const Dashboard: React.FC = () => {
         groupId: (item as TabType).groupId ?? -1,
         windowId: (item as TabType).windowId ?? -1
       });
+
+      // Add to pending operations to block background sync during drag
+      const numericId = parseNumericId(event.active.id);
+      if (numericId !== null) {
+        addPendingOperation(numericId);
+      }
     }
 
     const isGroup = data && 'island' in data && data.type === 'island';
@@ -281,13 +287,25 @@ export const Dashboard: React.FC = () => {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    const activeId = active.id;
+    const numericActiveId = parseNumericId(activeId);
+
+    // Ensure we clean up pending operation on drag end
+    const cleanupPendingOperation = () => {
+      if (numericActiveId !== null) {
+        removePendingOperation(numericActiveId);
+      }
+    };
+
     setActiveItem(null);
     setIsDraggingVaultItem(false);
     setIsDraggingGroup(false);
 
-    if (!over) return;
+    if (!over) {
+      cleanupPendingOperation();
+      return;
+    }
 
-    const activeId = active.id;
     const overId = over.id;
 
     const { islands: finalIslands, vault: finalVault } = useStore.getState();
@@ -300,6 +318,7 @@ export const Dashboard: React.FC = () => {
 
     if (isVaultSource && isVaultTarget) {
       await useStore.getState().reorderVault(finalVault);
+      cleanupPendingOperation();
       return;
     }
 
@@ -307,6 +326,7 @@ export const Dashboard: React.FC = () => {
       if (activeId) {
         await moveToVault(activeId);
       }
+      cleanupPendingOperation();
       return;
     }
 
@@ -328,6 +348,7 @@ export const Dashboard: React.FC = () => {
 
       if (!tabId) {
         logger.error(`[FAILED] Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
+        cleanupPendingOperation();
         return;
       }
 
@@ -335,6 +356,7 @@ export const Dashboard: React.FC = () => {
         const tab = await chrome.tabs.get(tabId);
         if (tab.pinned) {
           logger.warn('[ISLAND] Cannot create island from pinned tab');
+          cleanupPendingOperation();
           return;
         }
 
@@ -363,6 +385,7 @@ export const Dashboard: React.FC = () => {
         setIsCreatingIsland(false);
         setCreatingTabId(null);
       }
+      cleanupPendingOperation();
       return;
     }
 
@@ -395,7 +418,10 @@ export const Dashboard: React.FC = () => {
           }
         }
 
-        if (!targetItem) return;
+        if (!targetItem) {
+          cleanupPendingOperation();
+          return;
+        }
 
         if (isMovingGroup) {
           const numericGroupId = parseNumericId(targetItem.id);
@@ -431,6 +457,7 @@ export const Dashboard: React.FC = () => {
       } finally {
         setIsLoading(false);
       }
+      cleanupPendingOperation();
       return;
     }
 
@@ -445,8 +472,12 @@ export const Dashboard: React.FC = () => {
       } finally {
         setIsLoading(false);
       }
+      cleanupPendingOperation();
       return;
     }
+
+    // Fallback cleanup for any other exit paths
+    cleanupPendingOperation();
   };
 
   return (
@@ -475,7 +506,6 @@ export const Dashboard: React.FC = () => {
             <LivePanel
               dividerPosition={dividerPosition}
               islands={islands}
-              supportsGroupCollapse={supportsGroupCollapse}
               handleTabClick={handleTabClick}
               moveToVault={moveToVault}
               saveToVault={saveToVault}

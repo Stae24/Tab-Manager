@@ -12,7 +12,6 @@ import { VIRTUAL_ROW_ESTIMATE_SIZE } from '../constants';
 
 interface IslandProps {
   island: IslandType;
-  supportsGroupCollapse?: boolean | null;
   onTabClick?: (tab: Tab) => void;
   onToggleCollapse?: () => void;
   onDelete?: () => void;
@@ -30,7 +29,6 @@ interface IslandProps {
 
 export const Island: React.FC<IslandProps> = React.memo(({
   island,
-  supportsGroupCollapse,
   onTabClick,
   onDelete,
   onSave,
@@ -47,6 +45,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const { appearanceSettings, setIsRenaming, toggleLiveGroupCollapse } = useStore();
+  const supportsGroupCollapse = useStore(state => state.supportsGroupCollapse);
   const [editTitle, setEditTitle] = useState(island.title);
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
