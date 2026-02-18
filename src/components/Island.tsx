@@ -12,6 +12,7 @@ import { VIRTUAL_ROW_ESTIMATE_SIZE } from '../constants';
 
 interface IslandProps {
   island: IslandType;
+  supportsGroupCollapse?: boolean | null;
   onTabClick?: (tab: Tab) => void;
   onToggleCollapse?: () => void;
   onDelete?: () => void;
@@ -29,6 +30,7 @@ interface IslandProps {
 
 export const Island: React.FC<IslandProps> = React.memo(({
   island,
+  supportsGroupCollapse,
   onTabClick,
   onDelete,
   onSave,
@@ -174,7 +176,8 @@ export const Island: React.FC<IslandProps> = React.memo(({
         <button
           onClick={handleToggleCollapse}
           className={cn(
-            "hover:bg-white/10 rounded pointer-events-auto relative z-10",
+            supportsGroupCollapse !== false && "hover:bg-white/10",
+            "rounded pointer-events-auto relative z-10",
             buttonPadding[appearanceSettings.buttonSize]
           )}
         >

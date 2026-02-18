@@ -19,6 +19,7 @@ import {
 interface LivePanelProps {
   dividerPosition: number;
   islands: (IslandType | TabType)[];
+  supportsGroupCollapse: boolean | null;
   handleTabClick: (id: UniversalId) => void;
   moveToVault: (id: UniversalId) => void;
   saveToVault: (island: IslandType | TabType) => void;
@@ -43,6 +44,7 @@ interface LivePanelProps {
 export const LivePanel: React.FC<LivePanelProps> = ({
   dividerPosition,
   islands,
+  supportsGroupCollapse,
   handleTabClick,
   moveToVault,
   saveToVault,
@@ -265,6 +267,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                     row.item && 'tabs' in row.item ? (
                       <Island
                         island={row.item as IslandType}
+                        supportsGroupCollapse={supportsGroupCollapse}
                         onTabClick={(tab) => handleTabClick(tab.id)}
                         onNonDestructiveSave={() => saveToVault(row.item)}
                         onSave={() => moveToVault(row.item.id)}

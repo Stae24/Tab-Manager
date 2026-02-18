@@ -68,6 +68,7 @@ export const Dashboard: React.FC = () => {
   const createVaultGroup = useStore(state => state.createVaultGroup);
   const toggleVaultGroupCollapse = useStore(state => state.toggleVaultGroupCollapse);
   const toggleLiveGroupCollapse = useStore(state => state.toggleLiveGroupCollapse);
+  const supportsGroupCollapse = useStore(state => state.supportsGroupCollapse);
   const deleteDuplicateTabs = useStore(state => state.deleteDuplicateTabs);
   const sortGroupsToTop = useStore(state => state.sortGroupsToTop);
   const sortVaultGroupsToTop = useStore(state => state.sortVaultGroupsToTop);
@@ -474,6 +475,7 @@ export const Dashboard: React.FC = () => {
             <LivePanel
               dividerPosition={dividerPosition}
               islands={islands}
+              supportsGroupCollapse={supportsGroupCollapse}
               handleTabClick={handleTabClick}
               moveToVault={moveToVault}
               saveToVault={saveToVault}
