@@ -121,7 +121,8 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     !!s.faviconSize && ['16', '32', '64', '128'].includes(s.faviconSize) &&
     typeof s.sortGroupsByCount === 'boolean' &&
     typeof s.sortVaultGroupsByCount === 'boolean' &&
-    typeof s.autoPinTabManager === 'boolean'
+    typeof s.autoPinTabManager === 'boolean' &&
+    typeof s.debugMode === 'boolean'
   );
 };
 
@@ -188,6 +189,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   sortGroupsByCount: true,
   sortVaultGroupsByCount: true,
   autoPinTabManager: true,
+  debugMode: false,
 };
 
 export type SyncState = Partial<{

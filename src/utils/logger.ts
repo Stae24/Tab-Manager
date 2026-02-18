@@ -1,9 +1,13 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const isDev = (import.meta as any).env.DEV;
+let debugModeEnabled = false;
+
+export const setDebugMode = (enabled: boolean) => {
+  debugModeEnabled = enabled;
+};
 
 const log = (level: LogLevel, ...args: any[]) => {
-  if ((level === 'debug' || level === 'info') && !isDev) {
+  if ((level === 'debug' || level === 'info') && !debugModeEnabled) {
     return;
   }
 
