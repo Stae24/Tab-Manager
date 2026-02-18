@@ -122,7 +122,7 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     typeof s.sortGroupsByCount === 'boolean' &&
     typeof s.sortVaultGroupsByCount === 'boolean' &&
     typeof s.autoPinTabManager === 'boolean' &&
-    typeof s.debugMode === 'boolean'
+    (typeof s.debugMode === 'boolean' || s.debugMode === undefined)
   );
 };
 
