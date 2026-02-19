@@ -88,8 +88,13 @@ export const tabService = {
 
   moveIsland: async (groupId: number, index: number, windowId?: number) => {
     try {
+      let targetWindowId = windowId;
+      if (targetWindowId === chrome.windows.WINDOW_ID_CURRENT || targetWindowId === -1) {
+        const currentWindow = await chrome.windows.getCurrent();
+        targetWindowId = currentWindow.id;
+      }
       return await withRetry(
-        () => chrome.tabGroups.move(groupId, { index, windowId }),
+        () => chrome.tabGroups.move(groupId, { index, windowId: targetWindowId }),
         'moveIsland'
       );
     } catch (error) {

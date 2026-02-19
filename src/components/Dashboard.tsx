@@ -248,11 +248,14 @@ export const Dashboard: React.FC = () => {
     const found = findItemInList(islands, event.active.id) || findItemInList(vault, event.active.id);
     if (found) {
       const { item, index, containerId } = found;
+    const isIslandItem = 'tabs' in item;
       setDragStartInfo({
         index,
         containerId,
-        groupId: (item as TabType).groupId ?? -1,
-        windowId: (item as TabType).windowId ?? -1
+        groupId: isIslandItem ? -1 : (item as TabType).groupId ?? -1,
+        windowId: isIslandItem
+          ? ((item as IslandType).tabs[0]?.windowId ?? -1)
+          : (item as TabType).windowId ?? -1
       });
 
       // Add to pending operations to block background sync during drag
