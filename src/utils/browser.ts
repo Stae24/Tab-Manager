@@ -53,9 +53,14 @@ export async function detectBrowser(): Promise<BrowserVendor> {
 export async function detectGroupCollapseSupport(): Promise<boolean> {
   const browser = await detectBrowser();
   
+  // TEMP: Enable collapse for Brave testing
+  // if (browser === 'brave') {
+  //   logger.info('[detectCollapseSupport] Brave detected - group collapse NOT supported');
+  //   return false;
+  // }
+  
   if (browser === 'brave') {
-    logger.info('[detectCollapseSupport] Brave detected - group collapse NOT supported');
-    return false;
+    logger.info('[detectCollapseSupport] Brave detected - testing collapse support...');
   }
   
   if (collapseDetectionAttempted && cachedCapabilities !== null && cachedCapabilities.supportsGroupCollapse !== null) {
