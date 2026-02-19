@@ -246,6 +246,21 @@ export const tabService = {
         const group = await chrome.tabGroups.get(groupId);
         const changeApplied = group.collapsed === collapsed;
         
+        if (changeApplied) {
+          const cached = getCachedCapabilities();
+          if (cached?.vendor === 'brave') {
+            const tabs = await chrome.tabs.query({ groupId });
+            if (tabs.length > 0 && tabs[0].id !== undefined) {
+              const dummyTab = await chrome.tabs.create({ url: 'about:blank', windowId: tabs[0].windowId, active: false });
+              if (dummyTab.id !== undefined) {
+                await chrome.tabs.group({ groupId, tabIds: dummyTab.id });
+                await chrome.tabs.ungroup(dummyTab.id);
+                await chrome.tabs.remove(dummyTab.id);
+              }
+            }
+          }
+        }
+        
         const cached = getCachedCapabilities();
         if (cached !== null && cached.supportsGroupCollapse === null) {
           setGroupCollapseSupport(changeApplied);
