@@ -19,34 +19,25 @@ let cachedCapabilities: BrowserCapabilities | null = null;
 export async function detectBrowser(): Promise<BrowserVendor> {
   const nav = navigator as NavigatorWithBrave;
   
-  if (nav.brave && typeof nav.brave.isBrave === 'function') {
+  // 1. Brave API (most reliable for Brave)
+  if (nav.brave?.isBrave) {
     try {
-      const isBrave = await nav.brave.isBrave();
-      if (isBrave) return 'brave';
+      if (await nav.brave.isBrave()) return 'brave';
     } catch {
-      // Fall through to other detection
+      // Fall through to UA checks
     }
   }
   
-  const userAgent = navigator.userAgent;
+  const ua = navigator.userAgent;
   
-  if (userAgent.includes('OPR') || userAgent.includes('Opera')) {
-    return 'opera';
-  }
+  // 2. Order matters - check specific browsers before generic
+  if (ua.includes('Edg/')) return 'edge';     // Edge contains "Chrome" in UA
+  if (ua.includes('OPR') || ua.includes('Opera')) return 'opera';
+  if (ua.includes('Firefox')) return 'firefox';
+  if (ua.includes('Chrome')) return 'chrome';  // Must be last
   
-  if (userAgent.includes('Edg/')) {
-    return 'edge';
-  }
-  
-  if (userAgent.includes('Firefox')) {
-    return 'firefox';
-  }
-  
-  if (userAgent.includes('Chrome')) {
-    return 'chrome';
-  }
-  
-  return 'unknown';
+  // 3. Unknown - treat as Chrome-like (safest default for extensions)
+  return 'chrome';
 }
 
 export async function initBrowserCapabilities(): Promise<boolean> {
