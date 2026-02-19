@@ -1,7 +1,7 @@
 import { Tab, Island, LiveItem } from '../types/index';
 import { MAX_SYNC_RETRIES, TAB_ACTION_RETRY_DELAY_BASE } from '../constants';
 import { logger } from '../utils/logger';
-import { setGroupCollapseSupport, getCachedCapabilities, needsCompanionTabForSingleTabGroup, getBrowserCapabilities } from '../utils/browser';
+import { getCachedCapabilities, needsCompanionTabForSingleTabGroup, getBrowserCapabilities } from '../utils/browser';
 
 const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = MAX_SYNC_RETRIES): Promise<T> => {
   let lastError: unknown;
@@ -258,15 +258,6 @@ export const tabService = {
                 await chrome.tabs.remove(dummyTab.id);
               }
             }
-          }
-        }
-        
-        const cached = getCachedCapabilities();
-        if (cached !== null && cached.supportsGroupCollapse === null) {
-          setGroupCollapseSupport(changeApplied);
-          
-          if (!changeApplied) {
-            logger.warn(`[updateTabGroupCollapse] Browser does not support group collapse API. Expected: ${collapsed}, Got: ${group.collapsed}`);
           }
         }
         

@@ -15,7 +15,6 @@ interface BrowserCapabilities {
 }
 
 let cachedCapabilities: BrowserCapabilities | null = null;
-let collapseDetectionAttempted = false;
 
 export async function detectBrowser(): Promise<BrowserVendor> {
   const nav = navigator as NavigatorWithBrave;
@@ -50,59 +49,25 @@ export async function detectBrowser(): Promise<BrowserVendor> {
   return 'unknown';
 }
 
-export async function detectGroupCollapseSupport(): Promise<boolean> {
+export async function initBrowserCapabilities(): Promise<boolean> {
+  if (cachedCapabilities !== null) {
+    return cachedCapabilities.supportsGroupCollapse ?? true;
+  }
+  
   const browser = await detectBrowser();
+  const supported = browser !== 'firefox';
+  
+  cachedCapabilities = {
+    vendor: browser,
+    supportsGroupCollapse: supported,
+    supportsSingleTabGroups: browser !== 'opera'
+  };
   
   if (browser === 'brave') {
-    logger.info('[detectCollapseSupport] Brave detected - enabling with visual refresh workaround');
+    logger.info('[initBrowserCapabilities] Brave detected - visual refresh workaround enabled');
   }
   
-  if (collapseDetectionAttempted && cachedCapabilities !== null && cachedCapabilities.supportsGroupCollapse !== null) {
-    return cachedCapabilities.supportsGroupCollapse;
-  }
-  
-  try {
-    const groups = await chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT });
-    
-    if (groups.length === 0) {
-      return true;
-    }
-    
-    const testGroup = groups[0];
-    if (!testGroup || testGroup.id === undefined) {
-      return true;
-    }
-    
-    const originalCollapsed = testGroup.collapsed;
-    const targetCollapsed = !originalCollapsed;
-    
-    await chrome.tabGroups.update(testGroup.id, { collapsed: targetCollapsed });
-    
-    const verifyGroup = await chrome.tabGroups.get(testGroup.id);
-    const changeApplied = verifyGroup.collapsed === targetCollapsed;
-    
-    if (changeApplied) {
-      await chrome.tabGroups.update(testGroup.id, { collapsed: originalCollapsed });
-    }
-    
-    collapseDetectionAttempted = true;
-    
-    if (cachedCapabilities) {
-      cachedCapabilities.supportsGroupCollapse = changeApplied;
-    } else {
-      cachedCapabilities = {
-        vendor: 'unknown',
-        supportsGroupCollapse: changeApplied,
-        supportsSingleTabGroups: null
-      };
-    }
-    
-    return changeApplied;
-  } catch (error) {
-    console.warn('[Browser] Could not detect group collapse support:', error);
-    collapseDetectionAttempted = true;
-    return true;
-  }
+  return supported;
 }
 
 export async function getBrowserCapabilities(): Promise<BrowserCapabilities> {
@@ -121,25 +86,12 @@ export async function getBrowserCapabilities(): Promise<BrowserCapabilities> {
   return cachedCapabilities;
 }
 
-export function setGroupCollapseSupport(supported: boolean): void {
-  if (cachedCapabilities) {
-    cachedCapabilities.supportsGroupCollapse = supported;
-  } else {
-    cachedCapabilities = {
-      vendor: 'unknown',
-      supportsGroupCollapse: supported,
-      supportsSingleTabGroups: null
-    };
-  }
-}
-
 export function getCachedCapabilities(): BrowserCapabilities | null {
   return cachedCapabilities;
 }
 
 export function resetCapabilitiesCache(): void {
   cachedCapabilities = null;
-  collapseDetectionAttempted = false;
 }
 
 export function needsCompanionTabForSingleTabGroup(): boolean {

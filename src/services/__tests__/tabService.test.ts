@@ -61,7 +61,7 @@ const mockGetBrowserCapabilities = vi.fn(() => Promise.resolve({
 }));
 
 vi.mock('../../utils/browser', () => ({
-  setGroupCollapseSupport: vi.fn(),
+  initBrowserCapabilities: vi.fn(() => Promise.resolve(true)),
   getCachedCapabilities: vi.fn(() => null),
   needsCompanionTabForSingleTabGroup: () => mockNeedsCompanionTab(),
   getBrowserCapabilities: () => mockGetBrowserCapabilities(),

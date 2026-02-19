@@ -4,7 +4,7 @@ import { Island, Tab, LiveItem, UniversalId, VaultItem } from '../../types/index
 import { tabService } from '../../services/tabService';
 import { logger } from '../../utils/logger';
 import { parseNumericId, findItemInList, isIsland, cloneWithDeepGroups } from '../utils';
-import { detectGroupCollapseSupport } from '../../utils/browser';
+import { initBrowserCapabilities } from '../../utils/browser';
 
 import type { StoreState } from '../types';
 
@@ -24,7 +24,7 @@ export interface TabSlice {
   hasPendingOperations: () => boolean;
   renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
   toggleLiveGroupCollapse: (id: UniversalId) => Promise<void>;
-  detectCollapseSupport: () => Promise<void>;
+  initBrowserCapabilities: () => Promise<void>;
   moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
   deleteDuplicateTabs: () => Promise<void>;
   sortGroupsToTop: () => Promise<void>;
@@ -145,22 +145,17 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     }
   },
 
-  detectCollapseSupport: async () => {
+  initBrowserCapabilities: async () => {
     const { supportsGroupCollapse } = get();
     if (supportsGroupCollapse !== null) return;
 
-    try {
-      const supported = await detectGroupCollapseSupport();
-      set({ supportsGroupCollapse: supported });
-      
-      if (supported) {
-        logger.info('[detectCollapseSupport] Browser supports group collapse API');
-      } else {
-        logger.info('[detectCollapseSupport] Browser does NOT support group collapse API - collapse will be disabled');
-      }
-    } catch (error) {
-      logger.warn('[detectCollapseSupport] Failed to detect collapse support:', error);
-      set({ supportsGroupCollapse: true });
+    const supported = await initBrowserCapabilities();
+    set({ supportsGroupCollapse: supported });
+    
+    if (supported) {
+      logger.info('[initBrowserCapabilities] Browser supports group collapse');
+    } else {
+      logger.info('[initBrowserCapabilities] Browser does NOT support group collapse');
     }
   },
 

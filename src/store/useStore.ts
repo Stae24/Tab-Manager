@@ -123,7 +123,7 @@ const init = async () => {
   const browserVendor = await detectBrowser();
   logger.info(`[Store Init] Browser detected: ${browserVendor}`);
 
-  await state.detectCollapseSupport();
+  await state.initBrowserCapabilities();
 
   const migrationResult = await vaultService.migrateFromLegacy({ syncEnabled });
   if (migrationResult.migrated) {
