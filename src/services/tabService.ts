@@ -253,9 +253,16 @@ export const tabService = {
             if (tabs.length > 0 && tabs[0].id !== undefined) {
               const dummyTab = await chrome.tabs.create({ url: 'about:blank', windowId: tabs[0].windowId, active: false });
               if (dummyTab.id !== undefined) {
-                await chrome.tabs.group({ groupId, tabIds: dummyTab.id });
-                await chrome.tabs.ungroup(dummyTab.id);
-                await chrome.tabs.remove(dummyTab.id);
+                try {
+                  await chrome.tabs.group({ groupId, tabIds: dummyTab.id });
+                  await chrome.tabs.ungroup(dummyTab.id);
+                } finally {
+                  try {
+                    await chrome.tabs.remove(dummyTab.id);
+                  } catch {
+                    // Tab may already be removed; ignore errors
+                  }
+                }
               }
             }
           }
