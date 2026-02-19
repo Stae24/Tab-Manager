@@ -50,8 +50,8 @@ export async function detectBrowser(): Promise<BrowserVendor> {
 }
 
 export async function initBrowserCapabilities(): Promise<boolean> {
-  if (cachedCapabilities !== null) {
-    return cachedCapabilities.supportsGroupCollapse ?? true;
+  if (cachedCapabilities !== null && cachedCapabilities.supportsGroupCollapse !== null) {
+    return cachedCapabilities.supportsGroupCollapse;
   }
   
   const browser = await detectBrowser();
@@ -75,15 +75,8 @@ export async function getBrowserCapabilities(): Promise<BrowserCapabilities> {
     return cachedCapabilities;
   }
   
-  const vendor = await detectBrowser();
-  
-  cachedCapabilities = {
-    vendor,
-    supportsGroupCollapse: null,
-    supportsSingleTabGroups: vendor !== 'opera'
-  };
-  
-  return cachedCapabilities;
+  await initBrowserCapabilities();
+  return cachedCapabilities!;
 }
 
 export function getCachedCapabilities(): BrowserCapabilities | null {

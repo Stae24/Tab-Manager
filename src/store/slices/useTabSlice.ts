@@ -149,13 +149,18 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     const { supportsGroupCollapse } = get();
     if (supportsGroupCollapse !== null) return;
 
-    const supported = await initBrowserCapabilities();
-    set({ supportsGroupCollapse: supported });
-    
-    if (supported) {
-      logger.info('[initBrowserCapabilities] Browser supports group collapse');
-    } else {
-      logger.info('[initBrowserCapabilities] Browser does NOT support group collapse');
+    try {
+      const supported = await initBrowserCapabilities();
+      set({ supportsGroupCollapse: supported });
+      
+      if (supported) {
+        logger.info('[initBrowserCapabilities] Browser supports group collapse');
+      } else {
+        logger.info('[initBrowserCapabilities] Browser does NOT support group collapse');
+      }
+    } catch (error) {
+      logger.error('[initBrowserCapabilities] error:', error);
+      set({ supportsGroupCollapse: false });
     }
   },
 
