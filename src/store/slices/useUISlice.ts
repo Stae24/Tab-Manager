@@ -1,11 +1,12 @@
 import { StateCreator } from 'zustand';
 import { settingsService } from '../../services/settingsService';
-import { 
-  DIVIDER_POSITION_DEFAULT, 
-  SETTINGS_PANEL_DEFAULT_WIDTH, 
-  SETTINGS_PANEL_MIN_WIDTH, 
-  SETTINGS_PANEL_MAX_WIDTH 
+import {
+  DIVIDER_POSITION_DEFAULT,
+  SETTINGS_PANEL_DEFAULT_WIDTH,
+  SETTINGS_PANEL_MIN_WIDTH,
+  SETTINGS_PANEL_MAX_WIDTH
 } from '../../constants';
+import type { SearchResult, ParsedQuery } from '../../search';
 
 export interface UISlice {
   dividerPosition: number;
@@ -18,6 +19,16 @@ export interface UISlice {
   setIsRenaming: (val: boolean) => void;
   setShowAppearancePanel: (show: boolean) => void;
   setSettingsPanelWidth: (width: number) => void;
+  showSearchHelp: boolean;
+  searchScope: 'current' | 'all';
+  searchResults: SearchResult[];
+  isSearching: boolean;
+  parsedQuery: ParsedQuery | null;
+  setShowSearchHelp: (show: boolean) => void;
+  setSearchScope: (scope: 'current' | 'all') => void;
+  setSearchResults: (results: SearchResult[]) => void;
+  setIsSearching: (isSearching: boolean) => void;
+  setParsedQuery: (parsed: ParsedQuery | null) => void;
 }
 
 export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
@@ -26,6 +37,11 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
   isRenaming: false,
   showAppearancePanel: false,
   settingsPanelWidth: SETTINGS_PANEL_DEFAULT_WIDTH,
+  showSearchHelp: false,
+  searchScope: 'current',
+  searchResults: [],
+  isSearching: false,
+  parsedQuery: null,
 
   setDividerPosition: (dividerPosition) => {
     set({ dividerPosition });
@@ -46,4 +62,14 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
     set({ settingsPanelWidth: clampedWidth });
     settingsService.saveSettings({ settingsPanelWidth: clampedWidth });
   },
+
+  setShowSearchHelp: (showSearchHelp) => set({ showSearchHelp }),
+
+  setSearchScope: (searchScope) => set({ searchScope }),
+
+  setSearchResults: (searchResults) => set({ searchResults }),
+
+  setIsSearching: (isSearching) => set({ isSearching }),
+
+  setParsedQuery: (parsedQuery) => set({ parsedQuery }),
 });
