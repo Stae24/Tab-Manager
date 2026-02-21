@@ -4,7 +4,7 @@ export interface SearchToken {
   type: 'text' | 'bang' | 'command' | 'exclude';
   raw: string;
   value: string;
-  bangType?: string;
+  bangType?: BangType;
   bangValue?: string;
   position: { start: number; end: number };
 }

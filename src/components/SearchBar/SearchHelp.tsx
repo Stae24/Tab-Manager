@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { BANG_REGISTRY, COMMAND_REGISTRY, SORT_OPTIONS, CHROME_GROUP_COLORS } from '../../search';
@@ -9,13 +9,35 @@ interface SearchHelpProps {
 }
 
 export const SearchHelp: React.FC<SearchHelpProps> = ({ isOpen, onClose }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-      <div className="bg-[#1a1a1a] border border-gx-gray/30 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
+    <div
+      className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="search-help-title"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#1a1a1a] border border-gx-gray/30 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gx-gray/30">
-          <h2 className="text-lg font-semibold text-white">Search Syntax</h2>
+          <h2 id="search-help-title" className="text-lg font-semibold text-white">Search Syntax</h2>
           <button
             onClick={onClose}
             className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"

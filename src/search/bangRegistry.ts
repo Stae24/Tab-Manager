@@ -138,7 +138,6 @@ export const CHROME_GROUP_COLORS: readonly string[] = [
 const BANG_ALIAS_MAP: Record<string, BangType> = {};
 for (const [key, def] of Object.entries(BANG_REGISTRY)) {
   BANG_ALIAS_MAP[key.toLowerCase()] = key as BangType;
-  BANG_ALIAS_MAP[key.toLowerCase()] = key as BangType;
   if (def.short) {
     BANG_ALIAS_MAP[def.short.toLowerCase()] = key as BangType;
   }

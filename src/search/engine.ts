@@ -24,7 +24,7 @@ export async function getAllTabs(scope: 'current' | 'all' = 'current'): Promise<
   const queryOpts: chrome.tabs.QueryInfo = scope === 'all' ? {} : { currentWindow: true };
   const chromeTabs = await chrome.tabs.query(queryOpts);
 
-  return chromeTabs.map((t) => ({
+  return chromeTabs.filter((t) => t.id !== undefined).map((t) => ({
     id: `live-tab-${t.id}`,
     title: t.title || 'Untitled',
     url: t.url || '',

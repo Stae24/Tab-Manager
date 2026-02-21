@@ -124,6 +124,8 @@ export function tokenize(query: string): SearchToken[] {
         value: text,
         position: { start: actualStart, end: actualStart + text.length },
       });
+    } else if (i < len && query[i] === ',') {
+      i++;
     }
   }
 
@@ -175,15 +177,26 @@ export function parseQuery(query: string): ParsedQuery {
             break;
           }
           if (nextToken.type === 'text') {
-            const textValue = nextToken.value.includes(',')
-              ? nextToken.value.split(',')[0].trim()
-              : nextToken.value;
-            if (textValue) {
-              collectedText.push(textValue);
-              currentEnd = nextToken.position.end;
-              if (nextToken.value.includes(',')) {
-                break;
+            if (nextToken.value.includes(',')) {
+              const parts = nextToken.value.split(',');
+              const firstPart = parts[0].trim();
+              if (firstPart) {
+                collectedText.push(firstPart);
+                currentEnd = nextToken.position.start + firstPart.length;
               }
+              const remainder = parts.slice(1).join(',').trim();
+              if (remainder) {
+                tokens.splice(j + 1, 0, {
+                  type: 'text',
+                  raw: remainder,
+                  value: remainder,
+                  position: { start: nextToken.position.start + firstPart.length + 1, end: nextToken.position.end },
+                });
+              }
+              break;
+            } else {
+              collectedText.push(nextToken.value);
+              currentEnd = nextToken.position.end;
             }
           }
           j++;
@@ -222,12 +235,6 @@ export function parseQuery(query: string): ParsedQuery {
     }
 
     i++;
-  }
-
-  const sortTextBang = bangs.find((b) => b.value === 'sort');
-  if (sortTextBang && typeof sortTextBang.value === 'string') {
-    const idx = bangs.indexOf(sortTextBang);
-    bangs.splice(idx, 1);
   }
 
   const sortIdx = textTerms.findIndex((t) => t.toLowerCase().startsWith('sort:'));
