@@ -126,6 +126,17 @@ export function tokenize(query: string): SearchToken[] {
       });
     } else if (i < len && query[i] === ',') {
       i++;
+    } else if (i < len) {
+      const ch = query[i];
+      if (ch === '!' || ch === '/' || ch === '"') {
+        tokens.push({
+          type: 'text',
+          raw: ch,
+          value: ch,
+          position: { start: i, end: i + 1 },
+        });
+        i++;
+      }
     }
   }
 
