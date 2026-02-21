@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Plus, FolderOpen, Loader2, ChevronUp, ChevronDown, Search, ChevronDown as SortDown, X, Trash2, LayoutGrid, Group } from 'lucide-react';
+import { Plus, FolderOpen, Loader2, ChevronUp, ChevronDown, Search, Group } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Island } from './Island';
 import { TabCard } from './TabCard';
 import { DroppableGap } from './DroppableGap';
+import { SearchBar } from './SearchBar';
+import { SearchHelp } from './SearchBar/SearchHelp';
 import { cn } from '../utils/cn';
 import { logger } from '../utils/logger';
 import { Island as IslandType, Tab as TabType, UniversalId, DashboardRow } from '../types';
@@ -15,6 +17,8 @@ import {
   VIRTUAL_ROW_GAP_PX,
   CLEANUP_ANIMATION_DELAY_MS
 } from '../constants';
+import { search, searchAndExecute, parseQuery, isSearchActive, hasCommands } from '../search';
+import type { SearchResult, ParsedQuery } from '../search';
 
 interface LivePanelProps {
   dividerPosition: number;
@@ -26,11 +30,6 @@ interface LivePanelProps {
   onRenameGroup: (id: UniversalId, title: string) => void;
   onToggleCollapse: (id: UniversalId) => void;
   isDraggingGroup?: boolean;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  sortOption: 'browser-order' | 'alpha-title' | 'alpha-url';
-  setSortOption: (option: 'browser-order' | 'alpha-title' | 'alpha-url') => void;
-  filteredTabs: TabType[];
   groupSearchResults: (tabs: TabType[]) => Promise<void>;
   groupUngroupedTabs: () => Promise<void>;
   deleteDuplicateTabs: () => Promise<void>;
@@ -38,7 +37,10 @@ interface LivePanelProps {
   showVault: boolean;
   isCreatingIsland: boolean;
   creatingTabId: UniversalId | null;
+  vaultItems?: ReturnType<typeof useStore.getState>['vault'];
 }
+
+import { useStore } from '../store/useStore';
 
 export const LivePanel: React.FC<LivePanelProps> = ({
   dividerPosition,
@@ -50,18 +52,14 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   onRenameGroup,
   onToggleCollapse,
   isDraggingGroup,
-  searchQuery,
-  setSearchQuery,
-  sortOption,
-  setSortOption,
-  filteredTabs,
   groupSearchResults,
   groupUngroupedTabs,
   deleteDuplicateTabs,
   sortGroupsToTop,
   showVault,
   isCreatingIsland,
-  creatingTabId
+  creatingTabId,
+  vaultItems = [],
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'live-panel-dropzone',
@@ -75,9 +73,89 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     id: 'live-bottom',
   });
 
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
+  const [showSearchHelp, setShowSearchHelp] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const searchScope = useStore((s) => s.searchScope);
+  const setSearchScope = useStore((s) => s.setSearchScope);
+  const searchResults = useStore((s) => s.searchResults);
+  const setSearchResults = useStore((s) => s.setSearchResults);
+  const isSearching = useStore((s) => s.isSearching);
+  const setIsSearching = useStore((s) => s.setIsSearching);
+  const parsedQuery = useStore((s) => s.parsedQuery);
+  const setParsedQuery = useStore((s) => s.setParsedQuery);
+
+  const syncLiveTabs = useStore((s) => s.syncLiveTabs);
+
+  const runSearch = useCallback(async (query: string) => {
+    const parsed = parseQuery(query);
+    setParsedQuery(parsed);
+
+    if (!isSearchActive(parsed)) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const result = await search(query, {
+        scope: searchScope,
+        vaultItems,
+      });
+      setSearchResults(result.results);
+    } catch (error) {
+      logger.error('[LivePanel] Search failed:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchScope, vaultItems, setSearchResults, setIsSearching, setParsedQuery]);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    searchDebounceRef.current = setTimeout(() => {
+      runSearch(searchQuery);
+    }, 150);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [searchQuery, runSearch]);
+
+  const handleExecuteCommands = useCallback(async () => {
+    if (!parsedQuery || !hasCommands(parsedQuery) || searchResults.length === 0) return;
+
+    setIsSearching(true);
+    try {
+      await searchAndExecute(searchQuery, {
+        scope: searchScope,
+        vaultItems,
+      });
+      setSearchQuery('');
+      setSearchResults([]);
+      await syncLiveTabs();
+    } catch (error) {
+      logger.error('[LivePanel] Command execution failed:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [parsedQuery, searchResults, searchQuery, searchScope, vaultItems, setSearchQuery, setSearchResults, setIsSearching, syncLiveTabs]);
+
+  const displayTabs = useMemo(() => {
+    if (searchQuery && searchResults.length > 0) {
+      return searchResults.map((r) => r.tab);
+    }
+    return [];
+  }, [searchQuery, searchResults]);
 
   const rowItems = useMemo(() => {
     if (searchQuery) return [];
@@ -105,10 +183,10 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   });
 
   const searchVirtualizer = useVirtualizer({
-    count: searchQuery ? filteredTabs.length : 0,
+    count: searchQuery ? displayTabs.length : 0,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => VIRTUAL_ROW_ESTIMATE_SIZE,
-    getItemKey: (index) => filteredTabs[index].id,
+    getItemKey: (index) => displayTabs[index].id,
     overscan: VIRTUAL_ROW_OVERSCAN,
   });
 
@@ -121,22 +199,25 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   }, [islands]);
 
   useEffect(() => {
-    const handleClickOutside = () => setShowSortDropdown(false);
-    if (showSortDropdown) {
-      document.addEventListener('click', handleClickOutside);
-    }
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [showSortDropdown]);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && !searchQuery) {
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+          return;
+        }
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+
       if (e.key === 'Escape' && searchQuery) {
         setSearchQuery('');
+        searchInputRef.current?.blur();
       }
     };
+
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [searchQuery, setSearchQuery]);
+  }, [searchQuery]);
 
   const handleCollapseAll = async () => {
     const groupIds = (islands || []).filter(i => i && 'tabs' in i).map(i => i.id);
@@ -158,10 +239,6 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     }
   };
 
-  const handleClearSearch = () => {
-    setSearchQuery('');
-  };
-
   const handleDeleteDuplicates = async () => {
     setIsCleaning(true);
     await deleteDuplicateTabs();
@@ -171,21 +248,26 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const handleGroupResults = async () => {
     logger.debug('[Dashboard] Grouping search results...');
     try {
-      await groupSearchResults(filteredTabs);
+      await groupSearchResults(displayTabs);
       setSearchQuery('');
     } catch (error) {
       logger.error('[Dashboard] Failed to group search results:', error);
     }
   };
 
-  const sortOptions = [
-    { value: 'browser-order' as const, label: 'Browser Order' },
-    { value: 'alpha-title' as const, label: 'Alphabetical (Title)' },
-    { value: 'alpha-url' as const, label: 'Alphabetical (URL)' },
-  ];
-
   const renderSearchResults = () => {
-    if (filteredTabs.length === 0) {
+    if (isSearching) {
+      return (
+        <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40">
+          <Loader2 size={32} className="mb-4 animate-spin" />
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-center">
+            Searching...
+          </p>
+        </div>
+      );
+    }
+
+    if (displayTabs.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40">
           <Search size={48} className="mb-4" />
@@ -204,7 +286,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
         style={{ height: `${searchVirtualizer.getTotalSize()}px`, width: '100%' }}
       >
         {searchVirtualizer.getVirtualItems().map((virtualRow) => {
-          const tab = filteredTabs[virtualRow.index];
+          const tab = displayTabs[virtualRow.index];
           return (
             <div
               key={virtualRow.key}
@@ -349,82 +431,17 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             <h2 className="text-sm font-bold tracking-widest uppercase italic">Live Workspace</h2>
           </div>
           <div className="flex items-center gap-3">
-            <div className="relative group">
-              <div className={cn(
-                "flex items-center bg-gx-gray/80 rounded-lg border transition-all duration-300",
-                "border-white/5 shadow-inner",
-                searchQuery ? "border-gx-accent/30 ring-1 ring-gx-accent/10 shadow-[0_0_12px_rgba(127,34,254,0.15)]" : "group-hover:border-gx-accent/20",
-                "group-focus-within:border-gx-accent/40 group-focus-within:ring-1 group-focus-within:ring-gx-accent/20"
-              )}>
-                <div className="pl-2.5 pr-1.5 py-1.5">
-                  <Search className={cn(
-                    "w-3.5 h-3.5 transition-colors",
-                    searchQuery ? "text-gx-accent" : "text-gray-500 group-focus-within:text-gx-accent"
-                  )} />
-                </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={searchQuery ? '' : 'Search tabs...'}
-                  className={cn(
-                    "bg-transparent text-xs outline-none transition-all duration-300",
-                    "text-white placeholder-gray-600",
-                    searchQuery ? "w-32" : "w-24"
-                  )}
-                />
-                {searchQuery && (
-                  <button
-                    onClick={handleClearSearch}
-                    className="px-1.5 py-1.5 hover:bg-gx-red/20 rounded-r transition-all"
-                    title="Clear search"
-                  >
-                    <X size={12} className="text-gray-500 hover:text-gx-red" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {searchQuery && (
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowSortDropdown(!showSortDropdown);
-                  }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gx-gray/80 rounded-lg border border-white/5 hover:border-gx-accent/30 transition-all text-[10px] font-bold tracking-wider text-gray-400 hover:text-gx-accent"
-                >
-                  {sortOptions.find(o => o.value === sortOption)?.label || 'Sort'}
-                  <SortDown size={10} className={cn("transition-transform", showSortDropdown && "rotate-180")} />
-                </button>
-                {showSortDropdown && (
-                  <div
-                    className="absolute top-full right-0 mt-1 bg-gx-gray border border-gx-accent/20 rounded-lg shadow-xl overflow-hidden z-50 min-w-[160px]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {sortOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSortOption(option.value);
-                          setShowSortDropdown(false);
-                        }}
-                        className={cn(
-                          "w-full px-3 py-2 text-[10px] font-bold text-left transition-all",
-                          "hover:bg-gx-accent/20",
-                          sortOption === option.value
-                            ? "text-gx-accent bg-gx-accent/10"
-                            : "text-gray-400 hover:text-gray-200"
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            <SearchBar
+              ref={searchInputRef}
+              query={searchQuery}
+              onQueryChange={setSearchQuery}
+              scope={searchScope}
+              onScopeChange={setSearchScope}
+              onExecute={handleExecuteCommands}
+              onHelp={() => setShowSearchHelp(true)}
+              resultCount={displayTabs.length}
+              isSearching={isSearching}
+            />
 
             {!searchQuery && (
               <div className="flex items-center bg-gx-gray/80 rounded-lg p-0.5 border border-white/5 shadow-inner">
@@ -452,7 +469,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                 title="Sort Groups to Top"
                 className="p-1.5 bg-gx-gray/80 rounded-lg border border-white/5 hover:border-gx-accent/30 hover:bg-gx-accent/10 transition-all group shadow-inner"
               >
-                <LayoutGrid size={14} className="text-gray-400 group-hover:text-gx-accent transition-colors" />
+                <Plus className="w-3.5 h-3.5 text-gray-400 group-hover:text-gx-accent transition-colors rotate-45" />
               </button>
             )}
 
@@ -467,8 +484,8 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                   !isCleaning && "hover:bg-gx-red/20 hover:border-gx-red/30"
                 )}
               >
-                <Trash2 size={14} className={cn(
-                  "transition-colors",
+                <Plus size={14} className={cn(
+                  "transition-colors rotate-45",
                   isCleaning ? "text-gx-red" : "text-gray-400 hover:text-gx-red"
                 )} />
                 {isCleaning && (
@@ -497,7 +514,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             )}
 
             <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">
-              {searchQuery ? `${filteredTabs.length}` : (islands || []).reduce((acc, i) => acc + (i && 'tabs' in i && i.tabs ? i.tabs.length : 1), 0)}
+              {searchQuery ? `${displayTabs.length}` : (islands || []).reduce((acc, i) => acc + (i && 'tabs' in i && i.tabs ? i.tabs.length : 1), 0)}
             </span>
           </div>
         </div>
@@ -512,11 +529,11 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             </div>
             <div className="flex items-center gap-3">
               <span className="text-[10px] text-gray-500 font-medium">
-                {filteredTabs.length} {filteredTabs.length === 1 ? 'tab' : 'tabs'} found
+                {displayTabs.length} {displayTabs.length === 1 ? 'tab' : 'tabs'} found
               </span>
               <button
                 onClick={handleGroupResults}
-                disabled={filteredTabs.filter(t => !t.pinned).length < 2}
+                disabled={displayTabs.filter(t => !t.pinned).length < 2}
                 className={cn(
                   "flex items-center gap-1.5 px-2 py-1 rounded border transition-all duration-300",
                   "text-[10px] font-bold uppercase tracking-wider",
@@ -542,6 +559,8 @@ export const LivePanel: React.FC<LivePanelProps> = ({
       >
         {searchQuery ? renderSearchResults() : renderLiveList()}
       </div>
+
+      <SearchHelp isOpen={showSearchHelp} onClose={() => setShowSearchHelp(false)} />
     </div>
   );
 };

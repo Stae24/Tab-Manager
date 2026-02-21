@@ -102,8 +102,6 @@ export const Dashboard: React.FC = () => {
   const [activeItem, setActiveItem] = useState<DragData | null>(null);
   const [isDraggingVaultItem, setIsDraggingVaultItem] = useState(false);
   const [isDraggingGroup, setIsDraggingGroup] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortOption, setSortOption] = useState<'browser-order' | 'alpha-title' | 'alpha-url'>('browser-order');
   const [isCreatingIsland, setIsCreatingIsland] = useState(false);
   const [creatingTabId, setCreatingTabId] = useState<UniversalId | null>(null);
   const [dragStartInfo, setDragStartInfo] = useState<{
@@ -112,7 +110,6 @@ export const Dashboard: React.FC = () => {
     groupId: number;
     windowId: number;
   } | null>(null);
-  const lastFilteredTabsRef = useRef<TabType[]>([]);
 
   const vaultTabCount = useMemo(() => {
     return (vault || []).reduce((acc, i) => {
@@ -121,60 +118,6 @@ export const Dashboard: React.FC = () => {
       return acc + 1;
     }, 0);
   }, [vault]);
-  const allTabs = useMemo(() => {
-    const tabs: TabType[] = [];
-    (islands || []).forEach((item: LiveItem) => {
-      if (item && 'tabs' in item && item.tabs) {
-        tabs.push(...item.tabs);
-      } else if (item) {
-        tabs.push(item as TabType);
-      }
-    });
-    return tabs;
-  }, [islands]);
-
-  const filteredTabs = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-
-    const filtered = allTabs.filter(tab => {
-      const query = searchQuery.toLowerCase();
-      return (
-        tab.title?.toLowerCase().includes(query) ||
-        tab.url?.toLowerCase().includes(query)
-      );
-    });
-
-    switch (sortOption) {
-      case 'alpha-title':
-        filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-        break;
-      case 'alpha-url':
-        filtered.sort((a, b) => (a.url || '').localeCompare(b.url || ''));
-        break;
-      case 'browser-order':
-      default:
-        filtered.sort((a, b) => (a.index || 0) - (b.index || 0));
-        break;
-    }
-
-    const isIdentical =
-      filtered.length === lastFilteredTabsRef.current.length &&
-      filtered.every((tab, i) => {
-        const prev = lastFilteredTabsRef.current[i];
-        return tab.id === prev.id &&
-          tab.title === prev.title &&
-          tab.url === prev.url &&
-          tab.active === prev.active &&
-          tab.discarded === prev.discarded;
-      });
-
-    if (isIdentical) {
-      return lastFilteredTabsRef.current;
-    }
-
-    lastFilteredTabsRef.current = filtered;
-    return filtered;
-  }, [searchQuery, allTabs, sortOption]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -516,11 +459,6 @@ export const Dashboard: React.FC = () => {
               onRenameGroup={renameGroup}
               onToggleCollapse={toggleLiveGroupCollapse}
               isDraggingGroup={isDraggingGroup}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              sortOption={sortOption}
-              setSortOption={setSortOption}
-              filteredTabs={filteredTabs}
               groupSearchResults={groupSearchResults}
               groupUngroupedTabs={groupUngroupedTabs}
               deleteDuplicateTabs={deleteDuplicateTabs}
@@ -528,6 +466,7 @@ export const Dashboard: React.FC = () => {
               showVault={showVault}
               isCreatingIsland={isCreatingIsland}
               creatingTabId={creatingTabId}
+              vaultItems={vault}
             />
             {showVault && (
               <>
