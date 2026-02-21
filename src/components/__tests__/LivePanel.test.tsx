@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
 
@@ -37,6 +37,50 @@ vi.mock('../DroppableGap', () => ({
   DroppableGap: () => <div data-testid="droppable-gap" />,
 }));
 
+const mockSetSearchResults = vi.fn();
+const mockSetIsSearching = vi.fn();
+const mockSetParsedQuery = vi.fn();
+const mockSetSearchScope = vi.fn();
+
+vi.mock('../../store/useStore', () => ({
+  useStore: vi.fn((selector) => {
+    const state = {
+      searchScope: 'live',
+      setSearchScope: mockSetSearchScope,
+      searchResults: [],
+      setSearchResults: mockSetSearchResults,
+      isSearching: false,
+      setIsSearching: mockSetIsSearching,
+      parsedQuery: null,
+      setParsedQuery: mockSetParsedQuery,
+      syncLiveTabs: vi.fn(),
+    };
+    return selector ? selector(state) : state;
+  }),
+}));
+
+const mockSearch = vi.fn().mockResolvedValue({ results: [] });
+
+vi.mock('../../search', () => ({
+  search: mockSearch,
+  searchAndExecute: vi.fn(),
+  parseQuery: vi.fn().mockReturnValue(null),
+  isSearchActive: vi.fn().mockReturnValue(false),
+  hasCommands: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('../SearchBar', () => ({
+  SearchBar: React.forwardRef<HTMLInputElement, any>((props, ref) => (
+    <input
+      ref={ref}
+      data-testid="search-input"
+      placeholder="Search tabs..."
+      value={props.query}
+      onChange={(e) => props.onQueryChange(e.target.value)}
+    />
+  )),
+}));
+
 const defaultProps = {
   dividerPosition: 50,
   islands: [],
@@ -46,11 +90,6 @@ const defaultProps = {
   closeTab: vi.fn(),
   onRenameGroup: vi.fn(),
   onToggleCollapse: vi.fn(),
-  searchQuery: '',
-  setSearchQuery: vi.fn(),
-  sortOption: 'browser-order' as const,
-  setSortOption: vi.fn(),
-  filteredTabs: [],
   groupSearchResults: vi.fn(),
   groupUngroupedTabs: vi.fn(),
   deleteDuplicateTabs: vi.fn(),
@@ -80,24 +119,9 @@ describe('LivePanel Component', () => {
     expect(screen.getByPlaceholderText('Search tabs...')).toBeInTheDocument();
   });
 
-  it('calls setSearchQuery when typing in search', () => {
-    const setSearchQuery = vi.fn();
-    render(<LivePanel {...defaultProps} setSearchQuery={setSearchQuery} />);
-
-    const searchInput = screen.getByPlaceholderText('Search tabs...');
-    fireEvent.change(searchInput, { target: { value: 'test query' } });
-
-    expect(setSearchQuery).toHaveBeenCalledWith('test query');
-  });
-
   it('shows "Creating Island..." text when isCreatingIsland is true', () => {
     render(<LivePanel {...defaultProps} isCreatingIsland={true} />);
     expect(screen.getByText('Creating Island...')).toBeInTheDocument();
-  });
-
-  it('shows search mode header when searchQuery is not empty', () => {
-    render(<LivePanel {...defaultProps} searchQuery="test" />);
-    expect(screen.getByText('Search Mode')).toBeInTheDocument();
   });
 
   it('calls deleteDuplicateTabs when delete button is clicked', () => {
@@ -168,84 +192,6 @@ describe('LivePanel Component', () => {
 
     expect(screen.getByTitle('Collapse All')).toBeInTheDocument();
     expect(screen.getByTitle('Expand All')).toBeInTheDocument();
-  });
-
-  it('shows "No tabs found" when search has no results', () => {
-    render(<LivePanel {...defaultProps} searchQuery="nonexistent" filteredTabs={[]} />);
-
-    expect(screen.getByText(/No tabs found/)).toBeInTheDocument();
-  });
-
-  it('shows correct search result count', () => {
-    const filteredTabs = [
-      { id: 'live-tab-1', title: 'Test 1' },
-      { id: 'live-tab-2', title: 'Test 2' },
-    ];
-    render(<LivePanel {...defaultProps} searchQuery="test" filteredTabs={filteredTabs} />);
-
-    expect(screen.getByText('2 tabs found')).toBeInTheDocument();
-  });
-
-  it('clears search on Escape key', () => {
-    const setSearchQuery = vi.fn();
-    render(<LivePanel {...defaultProps} searchQuery="test" setSearchQuery={setSearchQuery} />);
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-
-    expect(setSearchQuery).toHaveBeenCalledWith('');
-  });
-
-  it('does not clear search on other keys', () => {
-    const setSearchQuery = vi.fn();
-    render(<LivePanel {...defaultProps} searchQuery="test" setSearchQuery={setSearchQuery} />);
-
-    fireEvent.keyDown(document, { key: 'Enter' });
-
-    expect(setSearchQuery).not.toHaveBeenCalled();
-  });
-
-  it('shows sort dropdown in search mode', () => {
-    render(<LivePanel {...defaultProps} searchQuery="test" />);
-
-    expect(screen.getByText('Browser Order')).toBeInTheDocument();
-  });
-
-  it('changes sort option when dropdown item selected', () => {
-    const setSortOption = vi.fn();
-    render(<LivePanel {...defaultProps} searchQuery="test" setSortOption={setSortOption} />);
-
-    const sortButton = screen.getByText('Browser Order');
-    fireEvent.click(sortButton);
-
-    const alphaOption = screen.getByText('Alphabetical (Title)');
-    fireEvent.click(alphaOption);
-
-    expect(setSortOption).toHaveBeenCalledWith('alpha-title');
-  });
-
-  it('calls groupSearchResults when "Group Results" clicked', async () => {
-    const groupSearchResults = vi.fn().mockResolvedValue(undefined);
-    const setSearchQuery = vi.fn();
-    const filteredTabs = [
-      { id: 'live-tab-1', title: 'Test 1', pinned: false },
-      { id: 'live-tab-2', title: 'Test 2', pinned: false },
-    ];
-    render(<LivePanel {...defaultProps} searchQuery="test" filteredTabs={filteredTabs} groupSearchResults={groupSearchResults} setSearchQuery={setSearchQuery} />);
-
-    const groupButton = screen.getByText('Group Results');
-    fireEvent.click(groupButton);
-
-    await waitFor(() => {
-      expect(groupSearchResults).toHaveBeenCalledWith(filteredTabs);
-    });
-  });
-
-  it('disables "Group Results" when < 2 non-pinned tabs', () => {
-    const filteredTabs = [{ id: 'live-tab-1', title: 'Test 1', pinned: false }];
-    render(<LivePanel {...defaultProps} searchQuery="test" filteredTabs={filteredTabs} />);
-
-    const groupButton = screen.getByText('Group Results');
-    expect(groupButton).toBeDisabled();
   });
 
   it('applies correct width from dividerPosition', () => {

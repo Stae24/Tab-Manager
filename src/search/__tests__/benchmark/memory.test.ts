@@ -193,7 +193,7 @@ describe('Memory Leak Detection', () => {
       const initial = getHeapUsedMB();
 
       for (let i = 0; i < 100; i++) {
-        buildSearchContext(tabs);
+        buildSearchContext(tabs, [], new Map());
       }
 
       forceGC();
@@ -264,21 +264,13 @@ describe('Memory Leak Detection', () => {
   describe('sustained operation memory', () => {
     test('repeated search operations maintain stable memory', () => {
       const tabs = generateTabs(200);
-      const context: SearchContext = {
-        allTabs: tabs,
-        vaultItems: [],
-        groups: new Map(),
-        scope: 'current',
-        duplicateMap: buildDuplicateMap(tabs),
-        localPatterns: [],
-      };
 
       forceGC();
       const measurements: number[] = [];
 
       for (let iter = 0; iter < 10; iter++) {
         for (let i = 0; i < 1000; i++) {
-          const filtered = tabs.filter(tab => 
+          tabs.filter(tab => 
             tab.title?.includes('Tab') || tab.url?.includes('example')
           );
         }

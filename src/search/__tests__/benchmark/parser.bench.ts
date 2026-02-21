@@ -71,19 +71,16 @@ describe('parseQuery benchmarks', () => {
   });
 });
 
-describe('combined tokenize + parseQuery', () => {
+describe('parseQuery (includes internal tokenization)', () => {
   bench('simple query', () => {
-    const tokens = tokenize(SIMPLE_QUERY);
     parseQuery(SIMPLE_QUERY);
   });
 
   bench('complex query', () => {
-    tokenize(COMPLEX_QUERY);
     parseQuery(COMPLEX_QUERY);
   });
 
   bench('mixed query', () => {
-    tokenize(MIXED_QUERY);
     parseQuery(MIXED_QUERY);
   });
 });

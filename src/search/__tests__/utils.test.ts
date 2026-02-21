@@ -88,15 +88,15 @@ describe('isLocalUrl', () => {
 
   describe('private IPv6', () => {
     it('returns true for IPv6 loopback hostname', () => {
-      expect(isIpAddress('::1')).toBe(true);
+      expect(isLocalUrl('http://[::1]/')).toBe(true);
     });
 
     it('returns true for fc00: (ULA)', () => {
-      expect(isIpAddress('fc00::1')).toBe(true);
+      expect(isLocalUrl('http://[fc00::1]/')).toBe(true);
     });
 
     it('returns true for fe80: (link-local)', () => {
-      expect(isIpAddress('fe80::1')).toBe(true);
+      expect(isLocalUrl('http://[fe80::1]/')).toBe(true);
     });
   });
 
@@ -326,7 +326,7 @@ describe('buildDuplicateMap', () => {
     const tabs = [
       createMockTab({ id: 'live-tab-1', url: 'https://example.com' }),
       createMockTab({ id: 'live-tab-2', url: '' }),
-      createMockTab({ id: 'live-tab-3' }),
+      createMockTab({ id: 'live-tab-3', url: undefined }),
     ];
 
     const map = buildDuplicateMap(tabs as Tab[]);

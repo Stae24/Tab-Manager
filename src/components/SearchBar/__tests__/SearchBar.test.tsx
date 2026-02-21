@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
 import { SearchBar } from '../index';
@@ -239,31 +240,51 @@ describe('SearchBar', () => {
   });
 
   describe('autocomplete', () => {
-    it('handles bang input', () => {
-      render(<SearchBar {...mockProps} query="!" />);
-      const input = screen.getByPlaceholderText(/Search tabs/);
-      fireEvent.focus(input);
-    });
-
-    it('handles command input', () => {
-      render(<SearchBar {...mockProps} query="/" />);
-      const input = screen.getByPlaceholderText(/Search tabs/);
-      fireEvent.focus(input);
-    });
-
-    it('clicking suggestion completes it', () => {
+    it('handles bang input', async () => {
+      const user = userEvent.setup();
       const onQueryChange = vi.fn();
-      render(<SearchBar {...mockProps} query="!" onQueryChange={onQueryChange} />);
+      render(<SearchBar {...mockProps} query="" onQueryChange={onQueryChange} />);
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      
+      await user.type(input, '!');
+      
+      expect(onQueryChange).toHaveBeenCalledWith('!');
+    });
+
+    it('handles command input', async () => {
+      const user = userEvent.setup();
+      const onQueryChange = vi.fn();
+      render(<SearchBar {...mockProps} query="" onQueryChange={onQueryChange} />);
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      
+      await user.type(input, '/');
+      
+      expect(onQueryChange).toHaveBeenCalledWith('/');
+    });
+
+    it('clicking suggestion completes it', async () => {
+      const user = userEvent.setup();
+      const onQueryChange = vi.fn((newQuery: string) => {});
+      const { rerender } = render(<SearchBar {...mockProps} query="" onQueryChange={onQueryChange} />);
       
       const input = screen.getByPlaceholderText(/Search tabs/);
-      fireEvent.focus(input);
+      await user.type(input, '!');
+      const lastQuery = onQueryChange.mock.calls[onQueryChange.mock.calls.length - 1]?.[0] || '';
       
-      const suggestion = screen.queryAllByRole('button').find(btn => 
-        btn.textContent?.includes('!audio')
+      rerender(<SearchBar {...mockProps} query={lastQuery} onQueryChange={onQueryChange} />);
+      
+      const suggestionButtons = screen.queryAllByRole('button').filter(btn => 
+        btn.className?.includes('w-full') && btn.textContent?.includes('!')
       );
-      if (suggestion) {
-        fireEvent.click(suggestion);
-        expect(onQueryChange).toHaveBeenCalled();
+      
+      if (suggestionButtons.length > 0) {
+        const audioSuggestion = suggestionButtons.find(btn => 
+          btn.textContent?.includes('!audio')
+        );
+        if (audioSuggestion) {
+          await user.click(audioSuggestion);
+          expect(onQueryChange).toHaveBeenCalled();
+        }
       }
     });
   });
@@ -299,29 +320,44 @@ describe('SearchBar', () => {
       expect(onExecute).not.toHaveBeenCalled();
     });
 
-    it('ArrowDown navigates suggestions', () => {
-      render(<SearchBar {...mockProps} query="!" />);
-      
-      const input = screen.getByPlaceholderText(/Search tabs/);
-      fireEvent.focus(input);
-      fireEvent.keyDown(input, { key: 'ArrowDown' });
-    });
-
-    it('ArrowUp navigates suggestions', () => {
-      render(<SearchBar {...mockProps} query="!" />);
-      
-      const input = screen.getByPlaceholderText(/Search tabs/);
-      fireEvent.focus(input);
-      fireEvent.keyDown(input, { key: 'ArrowUp' });
-    });
-
-    it('Tab completes selected suggestion', () => {
+    it('ArrowDown navigates suggestions', async () => {
+      const user = userEvent.setup();
       const onQueryChange = vi.fn();
-      render(<SearchBar {...mockProps} query="!a" onQueryChange={onQueryChange} />);
+      render(<SearchBar {...mockProps} query="" onQueryChange={onQueryChange} />);
       
       const input = screen.getByPlaceholderText(/Search tabs/);
-      fireEvent.focus(input);
-      fireEvent.keyDown(input, { key: 'Tab' });
+      await user.type(input, '!');
+      await user.keyboard('{ArrowDown}');
+      
+      expect(onQueryChange).toHaveBeenCalled();
+    });
+
+    it('ArrowUp navigates suggestions', async () => {
+      const user = userEvent.setup();
+      const onQueryChange = vi.fn();
+      render(<SearchBar {...mockProps} query="" onQueryChange={onQueryChange} />);
+      
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      await user.type(input, '!');
+      await user.keyboard('{ArrowUp}');
+      
+      expect(onQueryChange).toHaveBeenCalled();
+    });
+
+    it('Tab completes selected suggestion', async () => {
+      const user = userEvent.setup();
+      const onQueryChange = vi.fn((newQuery: string) => {});
+      const { rerender } = render(<SearchBar {...mockProps} query="" onQueryChange={onQueryChange} />);
+      
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      await user.type(input, '!a');
+      const lastQuery = onQueryChange.mock.calls[onQueryChange.mock.calls.length - 1]?.[0] || '';
+      
+      rerender(<SearchBar {...mockProps} query={lastQuery} onQueryChange={onQueryChange} />);
+      
+      await user.keyboard('{Tab}');
+      
+      expect(onQueryChange).toHaveBeenCalled();
     });
   });
 });

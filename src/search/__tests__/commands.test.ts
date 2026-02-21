@@ -26,6 +26,26 @@ const createMockContext = (overrides: Partial<SearchContext> = {}): SearchContex
   ...overrides,
 });
 
+const mockSaveToVault = vi.fn().mockResolvedValue(undefined);
+const mockFindItemInList = vi.fn();
+
+vi.mock('../../store/useStore', () => ({
+  useStore: {
+    getState: () => ({
+      saveToVault: mockSaveToVault,
+      islands: [],
+    }),
+  },
+}));
+
+vi.mock('../../store/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../store/utils')>();
+  return {
+    ...actual,
+    findItemInList: (...args: unknown[]) => mockFindItemInList(...args),
+  };
+});
+
 describe('executeCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -120,23 +140,13 @@ describe('saveCommand', () => {
   });
 
   it('returns affected count when store available', async () => {
-    const mockSaveToVault = vi.fn().mockResolvedValue(undefined);
+    const mockTab = createMockTab({ id: 'live-tab-1' });
+    mockFindItemInList.mockReturnValue({ item: mockTab });
     
-    vi.doMock('../../store/useStore', () => ({
-      useStore: {
-        getState: () => ({
-          saveToVault: mockSaveToVault,
-          islands: [createMockTab()],
-        }),
-      },
-    }));
-
-    vi.doMock('../../store/utils', () => ({
-      findItemInList: () => ({ item: createMockTab() }),
-    }));
-
-    const result = await executeCommand('save', [createMockTab()], createMockContext());
-    expect(result).toBeDefined();
+    const result = await executeCommand('save', [mockTab], createMockContext());
+    expect(mockSaveToVault).toHaveBeenCalledWith(mockTab);
+    expect(result.success).toBe(true);
+    expect(result.affectedCount).toBe(1);
   });
 });
 

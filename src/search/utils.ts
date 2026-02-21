@@ -29,7 +29,11 @@ export function isLocalUrl(url: string, additionalPatterns: string[] = []): bool
     }
 
     const urlObj = new URL(url);
-    const hostname = urlObj.hostname.toLowerCase();
+    let hostname = urlObj.hostname.toLowerCase();
+
+    if (hostname.startsWith('[') && hostname.endsWith(']')) {
+      hostname = hostname.slice(1, -1);
+    }
 
     for (const pattern of LOCAL_PATTERNS) {
       if (pattern.test(hostname)) {
