@@ -67,6 +67,7 @@ export interface VaultSlice {
   reorderVault: (newVault: VaultItem[]) => Promise<void>;
   toggleVaultGroupCollapse: (id: UniversalId) => Promise<void>;
   sortVaultGroupsToTop: () => Promise<void>;
+  deleteVaultDuplicates: () => Promise<void>;
   refreshVaultQuota: () => Promise<void>;
   clearQuotaExceeded: () => void;
   setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
@@ -395,10 +396,6 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     } else {
       await tabService.createTab({ url: item.url, active: false, index: insertionIndex });
     }
-
-    const newVault = vault.filter((v: VaultItem) => String(v.id) !== String(id));
-    set({ vault: newVault });
-    await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
   },
 
   createVaultGroup: async () => {
@@ -454,6 +451,65 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     if (sorted.every((item, idx) => item.id === vault[idx]?.id)) return;
 
     await reorderVault(sorted);
+  },
+
+  deleteVaultDuplicates: async () => {
+    const { vault, appearanceSettings, persistVault } = get();
+    
+    const urlMap = new Map<string, VaultItem[]>();
+    
+    const collectUrls = (item: VaultItem) => {
+      if (isIsland(item)) {
+        for (const tab of (item.tabs || [])) {
+          if (tab.url) {
+            try {
+              const url = new URL(tab.url);
+              const normalized = `${url.protocol}//${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, '').toLowerCase()}${url.search}`;
+              const existing = urlMap.get(normalized) || [];
+              existing.push(item);
+              urlMap.set(normalized, existing);
+            } catch {
+              const normalized = tab.url.split('#')[0].trim().replace(/\/+$/, '');
+              const existing = urlMap.get(normalized) || [];
+              existing.push(item);
+              urlMap.set(normalized, existing);
+            }
+          }
+        }
+      } else if (item.url) {
+        try {
+          const url = new URL(item.url);
+          const normalized = `${url.protocol}//${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, '').toLowerCase()}${url.search}`;
+          const existing = urlMap.get(normalized) || [];
+          existing.push(item);
+          urlMap.set(normalized, existing);
+        } catch {
+          const normalized = item.url.split('#')[0].trim().replace(/\/+$/, '');
+          const existing = urlMap.get(normalized) || [];
+          existing.push(item);
+          urlMap.set(normalized, existing);
+        }
+      }
+    };
+    
+    vault.forEach(collectUrls);
+    
+    const duplicateIds = new Set<string>();
+    urlMap.forEach((items) => {
+      if (items.length > 1) {
+        items.slice(1).forEach(item => {
+          duplicateIds.add(String(item.id));
+        });
+      }
+    });
+    
+    if (duplicateIds.size === 0) return;
+    
+    const newVault = vault.filter((v: VaultItem) => !duplicateIds.has(String(v.id)));
+    set({ vault: newVault });
+    await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
+    
+    logger.info(`[VaultSlice] Deleted ${duplicateIds.size} duplicate items from vault`);
   },
 
   removeFromVault: async (id) => {
