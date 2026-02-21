@@ -178,20 +178,22 @@ export function parseQuery(query: string): ParsedQuery {
           }
           if (nextToken.type === 'text') {
             if (nextToken.value.includes(',')) {
-              const parts = nextToken.value.split(',');
-              const firstPart = parts[0].trim();
-              if (firstPart) {
-                collectedText.push(firstPart);
-                currentEnd = nextToken.position.start + firstPart.length;
-              }
-              const remainder = parts.slice(1).join(',').trim();
-              if (remainder) {
-                tokens.splice(j + 1, 0, {
-                  type: 'text',
-                  raw: remainder,
-                  value: remainder,
-                  position: { start: nextToken.position.start + firstPart.length + 1, end: nextToken.position.end },
-                });
+              const commaIdx = nextToken.raw.indexOf(',');
+              if (commaIdx !== -1) {
+                const firstPartRaw = nextToken.raw.slice(0, commaIdx).trim();
+                if (firstPartRaw) {
+                  collectedText.push(firstPartRaw);
+                  currentEnd = nextToken.position.start + commaIdx;
+                }
+                const remainder = nextToken.raw.slice(commaIdx + 1).trim();
+                if (remainder) {
+                  tokens.splice(j + 1, 0, {
+                    type: 'text',
+                    raw: remainder,
+                    value: remainder,
+                    position: { start: nextToken.position.start + commaIdx + 1, end: nextToken.position.end },
+                  });
+                }
               }
               break;
             } else {
