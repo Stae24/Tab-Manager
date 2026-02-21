@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Plus, FolderOpen, Loader2, ChevronUp, ChevronDown, Search, Group } from 'lucide-react';
+import { Plus, FolderOpen, Loader2, ChevronUp, ChevronDown, Search, Group, LayoutGrid, CopyX } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Island } from './Island';
@@ -468,7 +468,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                 title="Sort Groups to Top"
                 className="p-1.5 bg-gx-gray/80 rounded-lg border border-white/5 hover:border-gx-accent/30 hover:bg-gx-accent/10 transition-all group shadow-inner"
               >
-                <Plus className="w-3.5 h-3.5 text-gray-400 group-hover:text-gx-accent transition-colors rotate-45" />
+                <LayoutGrid className="w-3.5 h-3.5 text-gray-400 group-hover:text-gx-accent transition-colors" />
               </button>
             )}
 
@@ -483,9 +483,9 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                   !isCleaning && "hover:bg-gx-red/20 hover:border-gx-red/30"
                 )}
               >
-                <Plus size={14} className={cn(
-                  "transition-colors rotate-45",
-                  isCleaning ? "text-gx-red" : "text-gray-400 hover:text-gx-red"
+                <CopyX size={14} className={cn(
+                  "transition-transform",
+                  isCleaning ? "text-gx-red" : "text-gray-400 group-hover:text-gx-red"
                 )} />
                 {isCleaning && (
                   <div className="absolute inset-0 bg-gradient-to-r from-gx-red/10 via-gx-red/20 to-gx-red/10 animate-pulse" />
