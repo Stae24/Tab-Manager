@@ -160,11 +160,11 @@ export function applyTextSearch(
 ): boolean {
   if (terms.length === 0) return true;
 
+  const scope: 'title' | 'url' | undefined = titleScope ? 'title' : urlScope ? 'url' : undefined;
   for (const term of terms) {
-    const scope: 'title' | 'url' | undefined = titleScope ? 'title' : urlScope ? 'url' : undefined;
-    if (!matchesText(tab, term, scope)) {
-      return false;
+    if (matchesText(tab, term, scope)) {
+      return true;
     }
   }
-  return true;
+  return false;
 }

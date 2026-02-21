@@ -59,7 +59,7 @@ describe('searchParser', () => {
       expect(result.commands).toHaveLength(0);
     });
 
-    it('should parse comma-separated terms as AND', () => {
+    it('should parse comma-separated terms as OR', () => {
       const result = parseQuery('youtube, music');
       expect(result.textTerms).toContain('youtube');
       expect(result.textTerms).toContain('music');
