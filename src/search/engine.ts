@@ -23,21 +23,25 @@ export interface SearchOptions {
 export async function getAllTabs(scope: 'current' | 'all' = 'current'): Promise<Tab[]> {
   const queryOpts: chrome.tabs.QueryInfo = scope === 'all' ? {} : { currentWindow: true };
   const chromeTabs = await chrome.tabs.query(queryOpts);
+  const extensionPrefix = `chrome-extension://${chrome.runtime.id}/`;
 
-  return chromeTabs.filter((t) => t.id !== undefined).map((t) => ({
-    id: `live-tab-${t.id}`,
-    title: t.title || 'Untitled',
-    url: t.url || '',
-    favicon: t.favIconUrl || '',
-    active: t.active,
-    discarded: t.discarded,
-    windowId: t.windowId,
-    index: t.index,
-    groupId: t.groupId,
-    muted: t.mutedInfo?.muted ?? false,
-    pinned: t.pinned,
-    audible: t.audible ?? false,
-  }));
+  return chromeTabs
+    .filter((t) => t.id !== undefined)
+    .filter((t) => !t.url?.startsWith(extensionPrefix))
+    .map((t) => ({
+      id: `live-tab-${t.id}`,
+      title: t.title || 'Untitled',
+      url: t.url || '',
+      favicon: t.favIconUrl || '',
+      active: t.active,
+      discarded: t.discarded,
+      windowId: t.windowId,
+      index: t.index,
+      groupId: t.groupId,
+      muted: t.mutedInfo?.muted ?? false,
+      pinned: t.pinned,
+      audible: t.audible ?? false,
+    }));
 }
 
 export async function getGroups(scope: 'current' | 'all' = 'current'): Promise<Map<number, Island>> {
