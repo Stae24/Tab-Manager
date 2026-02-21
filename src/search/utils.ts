@@ -104,6 +104,9 @@ export function normalizeUrl(url: string, mode: 'strict' | 'loose' = 'loose'): s
 
     return `${urlObj.protocol}//${urlObj.host.toLowerCase()}${urlObj.pathname.replace(/\/+$/, '').toLowerCase()}`;
   } catch {
+    if (mode === 'strict') {
+      return url.trim().replace(/\/+$/, '').toLowerCase();
+    }
     return url.split('#')[0].split('?')[0].trim().replace(/\/+$/, '').toLowerCase();
   }
 }
