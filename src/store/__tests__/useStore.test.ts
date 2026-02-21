@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock ALL services BEFORE importing useStore
 vi.mock('../../services/vaultService', () => ({
@@ -185,14 +185,28 @@ describe('useStore - restoreFromVault', () => {
 });
 
 describe('useStore - moveItemOptimistically', () => {
-  it('blocks cross-panel moves (live -> vault)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('blocks cross-panel moves (live -> vault)', async () => {
     const liveTab: Tab = { id: 'live-tab-1', title: 'A', url: '', favicon: '', active: false, discarded: false, windowId: 1, index: 0, groupId: -1, muted: false, pinned: false, audible: false };
     const vaultItem: VaultItem = { id: 'vault-tab-2-0', title: 'B', url: '', favicon: '', active: false, discarded: false, windowId: 1, index: 0, groupId: -1, muted: false, pinned: false, audible: false, savedAt: 0, originalId: 2 } as any;
     
     useStore.setState({ islands: [liveTab], vault: [vaultItem] });
     
+    vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
+    
     // attempt to move live tab onto vault dropzone
     useStore.getState().moveItemOptimistically('live-tab-1', 'vault-dropzone');
+    
+    // Run timers to complete the move (which should be blocked)
+    vi.setSystemTime(new Date('2024-01-01T00:00:00.200Z'));
+    await vi.runAllTimersAsync();
     
     const { islands, vault } = useStore.getState();
     // state should remain unchanged
@@ -200,14 +214,21 @@ describe('useStore - moveItemOptimistically', () => {
     expect(vault).toEqual([vaultItem]);
   });
 
-  it('reorders items within the same panel', () => {
+  it('reorders items within the same panel', async () => {
     const tabA: Tab = { id: 'live-tab-1', title: 'A', url: '', favicon: '', active: false, discarded: false, windowId: 1, index: 0, groupId: -1, muted: false, pinned: false, audible: false };
     const tabB: Tab = { id: 'live-tab-2', title: 'B', url: '', favicon: '', active: false, discarded: false, windowId: 1, index: 1, groupId: -1, muted: false, pinned: false, audible: false };
     
     useStore.setState({ islands: [tabA, tabB] });
     
+    // Set system time to a known value
+    vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
+    
     // Move tabB before tabA using a gap identifier (live-gap-0)
     useStore.getState().moveItemOptimistically('live-tab-2', 'live-gap-0');
+    
+    // Advance time past the debounce threshold and run all timers
+    vi.setSystemTime(new Date('2024-01-01T00:00:00.200Z'));
+    await vi.runAllTimersAsync();
     
     const { islands } = useStore.getState();
     expect(islands[0].id).toBe('live-tab-2');

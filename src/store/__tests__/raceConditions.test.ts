@@ -90,6 +90,8 @@ const mockRAF = vi.fn((cb: FrameRequestCallback) => {
 describe('Race Conditions & Concurrency', () => {
 
   beforeEach(async () => {
+    vi.useFakeTimers();
+    
     // Override requestAnimationFrame for each test
     Object.defineProperty(globalThis, 'requestAnimationFrame', {
       value: mockRAF,
@@ -113,34 +115,36 @@ describe('Race Conditions & Concurrency', () => {
 
     if (!capturedWatcher) {
       for(let i=0; i<10; i++) {
-        await new Promise(r => setTimeout(r, 10));
+        await vi.advanceTimersByTimeAsync(10);
         if (capturedWatcher) break;
       }
     }
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
   describe('moveItemOptimistically', () => {
-    it('only processes the latest move request within a single animation frame', () => {
+    it('only processes the latest move request within a single animation frame', async () => {
       const tabA: Tab = { id: 'live-tab-1', title: 'A' } as any;
       const tabB: Tab = { id: 'live-tab-2', title: 'B' } as any;
       const tabC: Tab = { id: 'live-tab-3', title: 'C' } as any;
       
       useStore.setState({ islands: [tabA, tabB, tabC] });
+      
+      vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
 
       const store = useStore.getState();
       
       store.moveItemOptimistically('live-tab-3', 'live-gap-0'); 
       store.moveItemOptimistically('live-tab-2', 'live-gap-0'); 
 
-      expect(mockRAF).toHaveBeenCalledTimes(1);
-
-      const rafCallback = mockRAF.mock.calls[0][0];
-      rafCallback(0);
+      // Advance time past debounce threshold and run all timers
+      vi.setSystemTime(new Date('2024-01-01T00:00:00.200Z'));
+      await vi.runAllTimersAsync();
 
       const { islands } = useStore.getState();
       expect(islands[0].id).toBe('live-tab-2');
@@ -252,7 +256,6 @@ describe('Race Conditions & Concurrency', () => {
 
     it('correctly updates lastVaultTimestamp after async save', async () => {
       vi.mocked(vaultService.saveVault).mockImplementation(async () => {
-        await new Promise(r => setTimeout(r, 50));
         return { success: true, bytesUsed: 10, bytesAvailable: 90, warningLevel: 'none' };
       });
       vi.mocked(quotaService.getVaultQuota).mockResolvedValue({ used: 10, total: 100000, percentage: 0.1, available: 90000, warningLevel: 'none', orphanedChunks: 0 });

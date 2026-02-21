@@ -99,6 +99,9 @@ describe('SearchHelp', () => {
       
       const dialog = screen.getByRole('dialog');
       expect(dialog).toBeInTheDocument();
+      
+      fireEvent.click(dialog);
+      expect(onClose).toHaveBeenCalled();
     });
 
     it('clicking inside modal does not call onClose', () => {
