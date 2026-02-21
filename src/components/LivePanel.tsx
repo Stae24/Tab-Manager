@@ -19,6 +19,7 @@ import {
 } from '../constants';
 import { search, searchAndExecute, parseQuery, isSearchActive, hasCommands } from '../search';
 import type { SearchResult, ParsedQuery } from '../search';
+import { useStore } from '../store/useStore';
 
 interface LivePanelProps {
   dividerPosition: number;
@@ -39,8 +40,6 @@ interface LivePanelProps {
   creatingTabId: UniversalId | null;
   vaultItems?: ReturnType<typeof useStore.getState>['vault'];
 }
-
-import { useStore } from '../store/useStore';
 
 export const LivePanel: React.FC<LivePanelProps> = ({
   dividerPosition,

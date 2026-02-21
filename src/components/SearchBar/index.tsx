@@ -20,7 +20,7 @@ interface SearchBarProps {
 const buildAutocompleteSuggestions = (input: string, cursorPos: number): AutocompleteSuggestion[] => {
   const suggestions: AutocompleteSuggestion[] = [];
   const beforeCursor = input.slice(0, cursorPos);
-  const bangMatch = beforeCursor.match(/!?([a-zA-Z]*)$/);
+  const bangMatch = beforeCursor.match(/!([a-zA-Z]*)$/);
   const cmdMatch = beforeCursor.match(/\/([a-zA-Z]*)$/);
 
   if (bangMatch && beforeCursor.endsWith(bangMatch[0])) {
@@ -28,7 +28,7 @@ const buildAutocompleteSuggestions = (input: string, cursorPos: number): Autocom
     const bangNames = getAllBangNames();
 
     for (const name of bangNames) {
-      if (name.startsWith(partial)) {
+      if (name.toLowerCase().startsWith(partial)) {
         const def = BANG_REGISTRY[name as keyof typeof BANG_REGISTRY];
         if (def) {
           suggestions.push({
@@ -48,7 +48,7 @@ const buildAutocompleteSuggestions = (input: string, cursorPos: number): Autocom
     const cmdNames = getAllCommandNames();
 
     for (const name of cmdNames) {
-      if (name.startsWith(partial)) {
+      if (name.toLowerCase().startsWith(partial)) {
         const def = COMMAND_REGISTRY[name as keyof typeof COMMAND_REGISTRY];
         if (def) {
           suggestions.push({
@@ -81,9 +81,19 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
   forwardedRef
 ) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [parsedQuery, setParsedQuery] = useState<ParsedQuery | null>(null);
+  const [cursorPos, setCursorPos] = useState<number>(0);
+
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (forwardedRef) {
@@ -96,9 +106,8 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
   }, [forwardedRef]);
 
   const suggestions = useMemo(() => {
-    if (!inputRef.current) return [];
-    return buildAutocompleteSuggestions(query, inputRef.current.selectionStart || query.length);
-  }, [query]);
+    return buildAutocompleteSuggestions(query, cursorPos);
+  }, [query, cursorPos]);
 
   const hasCommands = useMemo(() => checkHasCommands(parsedQuery), [parsedQuery]);
 
@@ -140,7 +149,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
         if (showAutocomplete && suggestions.length > 0) {
           const selected = suggestions[selectedIndex];
           if (selected) {
-            const lastBang = query.match(/!?([a-zA-Z]*)$/);
+            const lastBang = query.match(/!([a-zA-Z]*)$/);
             const lastCmd = query.match(/\/([a-zA-Z]*)$/);
             let newQuery = query;
 
@@ -173,9 +182,18 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onQueryChange(e.target.value);
+      setCursorPos(e.target.selectionStart ?? e.target.value.length);
     },
     [onQueryChange]
   );
+
+  const handleKeyUp = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    setCursorPos(e.currentTarget.selectionStart ?? e.currentTarget.value.length);
+  }, []);
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
+    setCursorPos(e.currentTarget.selectionStart ?? e.currentTarget.value.length);
+  }, []);
 
   const handleFocus = useCallback(() => {
     if (suggestions.length > 0) {
@@ -184,7 +202,10 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
   }, [suggestions]);
 
   const handleBlur = useCallback(() => {
-    setTimeout(() => setShowAutocomplete(false), 150);
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+    }
+    blurTimeoutRef.current = setTimeout(() => setShowAutocomplete(false), 150);
   }, []);
 
   const handleClear = useCallback(() => {
@@ -211,6 +232,8 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onKeyUp={handleKeyUp}
+          onClick={handleClick}
           onFocus={handleFocus}
           onBlur={handleBlur}
           placeholder="Search tabs... (try !audio, !frozen, /delete)"
@@ -283,7 +306,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
             <button
               key={`${s.type}-${s.value}`}
               onClick={() => {
-                const lastBang = query.match(/!?([a-zA-Z]*)$/);
+                const lastBang = query.match(/!([a-zA-Z]*)$/);
                 const lastCmd = query.match(/\/([a-zA-Z]*)$/);
                 let newQuery = query;
 

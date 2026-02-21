@@ -72,13 +72,18 @@ const freezeCommand: CommandFunction = async (
     return { success: false, affectedCount: 0, error: 'No valid tab IDs found' };
   }
 
-  try {
-    await Promise.all(tabIds.map((id) => chrome.tabs.discard(id)));
-    return { success: true, affectedCount: tabIds.length };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return { success: false, affectedCount: 0, error: msg };
-  }
+  const results = await Promise.allSettled(tabIds.map((id) => chrome.tabs.discard(id)));
+  const fulfilled = results.filter((r) => r.status === 'fulfilled');
+  const rejected = results.filter((r) => r.status === 'rejected');
+
+  const affectedCount = fulfilled.length;
+  const errors = rejected.map((r) => r.status === 'rejected' ? r.reason : '').filter(Boolean);
+
+  return {
+    success: affectedCount > 0,
+    affectedCount,
+    error: errors.length > 0 ? errors.join('; ') : undefined,
+  };
 };
 
 export const COMMAND_IMPLEMENTATIONS: Record<CommandType, CommandFunction> = {

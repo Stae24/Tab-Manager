@@ -99,12 +99,12 @@ export function normalizeUrl(url: string, mode: 'strict' | 'loose' = 'loose'): s
     const urlObj = new URL(url);
 
     if (mode === 'strict') {
-      return `${urlObj.protocol}//${urlObj.host.toLowerCase()}${urlObj.pathname.replace(/\/+$/, '').toLowerCase()}`;
+      return `${urlObj.protocol}//${urlObj.host.toLowerCase()}${urlObj.pathname.replace(/\/+$/, '').toLowerCase()}${urlObj.search}${urlObj.hash}`;
     }
 
     return `${urlObj.protocol}//${urlObj.host.toLowerCase()}${urlObj.pathname.replace(/\/+$/, '').toLowerCase()}`;
   } catch {
-    return url.split('#')[0].trim().replace(/\/+$/, '').toLowerCase();
+    return url.split('#')[0].split('?')[0].trim().replace(/\/+$/, '').toLowerCase();
   }
 }
 
@@ -123,10 +123,10 @@ export function buildDuplicateMap(tabs: Tab[], mode: 'strict' | 'loose' = 'loose
   return map;
 }
 
-export function findDuplicates(tab: Tab, duplicateMap: Map<string, Tab[]>): boolean {
+export function findDuplicates(tab: Tab, duplicateMap: Map<string, Tab[]>, mode: 'strict' | 'loose' = 'loose'): boolean {
   if (!tab.url) return false;
 
-  const normalized = normalizeUrl(tab.url);
+  const normalized = normalizeUrl(tab.url, mode);
   const tabs = duplicateMap.get(normalized);
   return tabs ? tabs.length > 1 : false;
 }
