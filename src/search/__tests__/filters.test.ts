@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyAllFilters, applyFilter } from '../filters';
+import { applyAllFilters, applyFilter, applyTextSearch } from '../filters';
 import type { Tab } from '../../types';
 import type { SearchContext, BangType } from '../types';
 
@@ -212,7 +212,29 @@ describe('filters', () => {
       const bangs = [
         { type: 'frozen' as BangType, negated: true },
       ];
-      expect(applyAllFilters(tab, bangs, context)).toBe(true);
-    });
+    expect(applyAllFilters(tab, bangs, context)).toBe(true);
   });
+});
+
+describe('applyTextSearch', () => {
+  it('should return true when any comma-separated term matches (OR logic)', () => {
+    const tab = createMockTab({ title: 'YouTube - Music Video' });
+    expect(applyTextSearch(tab, ['spotify', 'youtube'])).toBe(true);
+  });
+
+  it('should return false when no comma-separated terms match', () => {
+    const tab = createMockTab({ title: 'Google Search' });
+    expect(applyTextSearch(tab, ['spotify', 'youtube'])).toBe(false);
+  });
+
+  it('should match phrase with spaces as single term', () => {
+    const tab = createMockTab({ title: 'YouTube Music Playlist' });
+    expect(applyTextSearch(tab, ['youtube music'])).toBe(true);
+  });
+
+  it('should not match partial words when phrase is used', () => {
+    const tab = createMockTab({ title: 'YouTube - Best Songs' });
+    expect(applyTextSearch(tab, ['google docs'])).toBe(false);
+  });
+});
 });
