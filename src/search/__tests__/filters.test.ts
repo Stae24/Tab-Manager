@@ -232,9 +232,14 @@ describe('applyTextSearch', () => {
     expect(applyTextSearch(tab, ['youtube music'])).toBe(true);
   });
 
-  it('should not match partial words when phrase is used', () => {
+  it('should return false when phrase has no overlap with title', () => {
     const tab = createMockTab({ title: 'YouTube - Best Songs' });
     expect(applyTextSearch(tab, ['google docs'])).toBe(false);
+  });
+
+  it('should match partial words within title', () => {
+    const tab = createMockTab({ title: 'YouTube - Best Songs' });
+    expect(applyTextSearch(tab, ['Tube'])).toBe(true);
   });
 });
 });
