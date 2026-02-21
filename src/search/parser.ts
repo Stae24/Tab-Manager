@@ -178,20 +178,23 @@ export function parseQuery(query: string): ParsedQuery {
           }
           if (nextToken.type === 'text') {
             if (nextToken.value.includes(',')) {
-              const commaIdx = nextToken.raw.indexOf(',');
+              const commaIdx = nextToken.value.indexOf(',');
               if (commaIdx !== -1) {
-                const firstPartRaw = nextToken.raw.slice(0, commaIdx).trim();
-                if (firstPartRaw) {
-                  collectedText.push(firstPartRaw);
-                  currentEnd = nextToken.position.start + commaIdx;
+                const rawValueStart = nextToken.raw.indexOf(nextToken.value);
+                const firstPart = nextToken.value.slice(0, commaIdx).trim();
+                if (firstPart) {
+                  collectedText.push(firstPart);
+                  currentEnd = nextToken.position.start + rawValueStart + commaIdx;
                 }
-                const remainder = nextToken.raw.slice(commaIdx + 1).trim();
+                const remainder = nextToken.value.slice(commaIdx + 1).trimStart();
                 if (remainder) {
+                  const trimmedOffset = nextToken.value.slice(commaIdx + 1).length - remainder.length;
+                  const remainderStart = nextToken.position.start + rawValueStart + commaIdx + 1 + trimmedOffset;
                   tokens.splice(j + 1, 0, {
                     type: 'text',
                     raw: remainder,
                     value: remainder,
-                    position: { start: nextToken.position.start + commaIdx + 1, end: nextToken.position.end },
+                    position: { start: remainderStart, end: nextToken.position.end },
                   });
                 }
               }
