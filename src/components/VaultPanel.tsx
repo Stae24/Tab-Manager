@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Plus, Save, LayoutGrid, X } from 'lucide-react';
+import { Plus, Save, LayoutGrid, X, CopyX } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Island } from './Island';
@@ -11,7 +11,7 @@ import { ScrollContainerProvider } from '../contexts/ScrollContainerContext';
 import { cn } from '../utils/cn';
 import { logger } from '../utils/logger';
 import { Island as IslandType, Tab as TabType, UniversalId, VaultQuotaInfo, DashboardRow } from '../types';
-import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX } from '../constants';
+import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS } from '../constants';
 
 interface VaultPanelProps {
   dividerPosition: number;
@@ -22,6 +22,7 @@ interface VaultPanelProps {
   onRenameGroup: (id: UniversalId, title: string) => void;
   onToggleCollapse: (id: UniversalId) => void;
   sortVaultGroupsToTop: () => Promise<void>;
+  deleteVaultDuplicates: () => Promise<void>;
   restoreFromVault: (id: UniversalId) => void;
   vaultQuota: VaultQuotaInfo | null;
   effectiveSyncEnabled: boolean;
@@ -40,6 +41,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   onRenameGroup,
   onToggleCollapse,
   sortVaultGroupsToTop,
+  deleteVaultDuplicates,
   restoreFromVault,
   vaultQuota,
   effectiveSyncEnabled,
@@ -59,6 +61,13 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLocalStorageWarning, setShowLocalStorageWarning] = useState(true);
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(true);
+  const [isCleaning, setIsCleaning] = useState(false);
+
+  const handleDeleteDuplicates = async () => {
+    setIsCleaning(true);
+    await deleteVaultDuplicates();
+    setTimeout(() => setIsCleaning(false), CLEANUP_ANIMATION_DELAY_MS);
+  };
 
   useEffect(() => {
     logger.debug('[VaultPanel] Banner state:', {
@@ -185,6 +194,20 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
             className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all group"
           >
             <LayoutGrid size={14} className="group-hover:scale-110 transition-transform" />
+          </button>
+          <button
+            onClick={handleDeleteDuplicates}
+            title="Delete Duplicates"
+            className={cn(
+              "p-1 rounded transition-all group",
+              isCleaning && "animate-pulse text-gx-red",
+              !isCleaning && "hover:bg-gx-red/20 hover:text-gx-red"
+            )}
+          >
+            <CopyX size={14} className={cn(
+              "transition-transform",
+              !isCleaning && "group-hover:scale-110"
+            )} />
           </button>
           <button onClick={createVaultGroup} title="Add Group" className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all">
             <Plus className="w-4 h-4" />

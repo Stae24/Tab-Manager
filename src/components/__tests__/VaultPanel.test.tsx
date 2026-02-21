@@ -62,6 +62,7 @@ const defaultProps = {
   onRenameGroup: vi.fn(),
   onToggleCollapse: vi.fn(),
   sortVaultGroupsToTop: vi.fn(),
+  deleteVaultDuplicates: vi.fn(),
   restoreFromVault: vi.fn(),
   vaultQuota: null,
   effectiveSyncEnabled: true,

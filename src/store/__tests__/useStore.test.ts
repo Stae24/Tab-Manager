@@ -150,7 +150,7 @@ describe('useStore - moveToVault', () => {
 });
 
 describe('useStore - restoreFromVault', () => {
-  it('restores a vault tab back to live and removes it from vault', async () => {
+  it('opens a vault tab in the current window without removing it from vault', async () => {
     const vaultItem: VaultItem = {
       id: 'vault-live-tab-1-123456',
       title: 'Test Tab',
@@ -179,7 +179,7 @@ describe('useStore - restoreFromVault', () => {
     await useStore.getState().restoreFromVault(vaultItem.id);
     
     const { vault } = useStore.getState();
-    expect(vault).toHaveLength(0);
+    expect(vault).toHaveLength(1);
     expect(chrome.tabs.create).toHaveBeenCalledWith(expect.objectContaining({ url: (vaultItem as Tab).url }));
   });
 });

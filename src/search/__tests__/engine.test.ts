@@ -199,7 +199,7 @@ describe('buildSearchContext', () => {
       createMockTab({ url: 'https://example.com' }),
       createMockTab({ url: 'https://example.com' }),
     ];
-    const context = buildSearchContext(tabs);
+    const context = buildSearchContext(tabs, [], new Map());
     expect(context.duplicateMap.size).toBeGreaterThan(0);
   });
 
@@ -207,7 +207,7 @@ describe('buildSearchContext', () => {
     const vaultItems: VaultItem[] = [
       { ...createMockTab({ id: 'live-tab-1' }), savedAt: Date.now(), originalId: 'live-tab-1' },
     ];
-    const context = buildSearchContext([], vaultItems);
+    const context = buildSearchContext([], vaultItems, new Map());
     expect(context.vaultItems).toEqual(vaultItems);
   });
 

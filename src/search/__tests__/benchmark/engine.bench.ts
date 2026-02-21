@@ -143,19 +143,19 @@ describe('sortResults benchmarks', () => {
 
 describe('buildSearchContext benchmarks', () => {
   bench('50 tabs', () => {
-    buildSearchContext(tabs50);
+    buildSearchContext(tabs50, [], new Map());
   });
 
   bench('200 tabs', () => {
-    buildSearchContext(tabs200);
+    buildSearchContext(tabs200, [], new Map());
   });
 
   bench('500 tabs', () => {
-    buildSearchContext(tabs500);
+    buildSearchContext(tabs500, [], new Map());
   });
 
   bench('1000 tabs', () => {
-    buildSearchContext(tabs1000);
+    buildSearchContext(tabs1000, [], new Map());
   });
 
   bench('500 tabs with groups', () => {
@@ -227,7 +227,7 @@ describe('search simulation benchmarks (without Chrome API)', () => {
 
 describe('combined search operations', () => {
   bench('build context + filter + sort 500 tabs', () => {
-    const ctx = buildSearchContext(tabs500);
+    const ctx = buildSearchContext(tabs500, [], new Map());
     const filtered = tabs500.filter(tab => 
       tab.title?.toLowerCase().includes('youtube') || 
       tab.url?.toLowerCase().includes('youtube')
@@ -237,7 +237,7 @@ describe('combined search operations', () => {
   });
 
   bench('build context + filter + sort 1000 tabs', () => {
-    const ctx = buildSearchContext(tabs1000);
+    const ctx = buildSearchContext(tabs1000, [], new Map());
     const filtered = tabs1000.filter(tab => 
       tab.title?.toLowerCase().includes('youtube') || 
       tab.url?.toLowerCase().includes('youtube')
