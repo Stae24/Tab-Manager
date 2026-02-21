@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "vitest bench",
+    "bench:search": "vitest bench src/search/__tests__/benchmark",
+    "test:memory": "node --expose-gc ./node_modules/.bin/vitest run src/search/__tests__/benchmark/memory.test.ts",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"
@@ -33,6 +37,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/chrome": "^0.1.32",
     "@types/lz-string": "^1.3.34",
+    "@types/node": "^22.19.11",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
