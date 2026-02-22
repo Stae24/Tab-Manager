@@ -848,4 +848,60 @@ describe('useVaultSlice', () => {
       expect(vaultService.saveVault).toHaveBeenCalled();
     });
   });
+
+  describe('checkQuotaBeforeSave (via moveToVault)', () => {
+    it('allows move when sync disabled', async () => {
+      const tab = createMockTab({ id: 'live-tab-1' });
+      store = createTestStore({ 
+        islands: [tab],
+        effectiveSyncEnabled: false,
+      });
+      vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota());
+      vi.mocked(vaultService.saveVault).mockResolvedValue({ success: true });
+      vi.mocked(tabService.closeTab).mockResolvedValue(undefined);
+
+      await store.getState().moveToVault('live-tab-1');
+
+      expect(store.getState().vault).toHaveLength(1);
+    });
+
+    it('auto-switches to local on quota exceeded', async () => {
+      const tab = createMockTab({ id: 'live-tab-1' });
+      const existingVaultItem: VaultItem = { ...createMockTab({ id: 'vault-existing' }), savedAt: Date.now(), originalId: 99 };
+      store = createTestStore({ 
+        islands: [tab],
+        vault: [existingVaultItem],
+        effectiveSyncEnabled: true,
+        appearanceSettings: { ...defaultAppearanceSettings, vaultSyncEnabled: true },
+      });
+      vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota({ available: 0, percentage: 1.0 }));
+      vi.mocked(vaultService.saveVault).mockResolvedValue({ success: true });
+      vi.mocked(tabService.closeTab).mockResolvedValue(undefined);
+
+      await store.getState().moveToVault('live-tab-1');
+
+      expect(store.getState().effectiveSyncEnabled).toBe(false);
+    });
+  });
+
+  describe('error handling', () => {
+    it('handles settingsService errors in persistVault', async () => {
+      const vault: VaultItem[] = [createMockVaultItem()];
+      vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota({ percentage: 1.0 }));
+      vi.mocked(vaultService.disableVaultSync).mockResolvedValue({ success: true });
+
+      await store.getState().persistVault(vault, true);
+
+      expect(store.getState().effectiveSyncEnabled).toBe(false);
+    });
+
+    it('handles loadSettings fallback in setVaultSyncEnabled', async () => {
+      vi.mocked(vaultService.toggleSyncMode).mockResolvedValue({ success: false });
+      vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota());
+
+      const result = await store.getState().setVaultSyncEnabled(true);
+
+      expect(result.success).toBe(false);
+    });
+  });
 });
