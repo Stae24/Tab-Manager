@@ -39,7 +39,7 @@ export interface VaultStorageConfig {
   syncEnabled: boolean;
 }
 
-export type VaultStorageErrorType = 
+export type VaultStorageErrorType =
   | 'QUOTA_EXCEEDED'
   | 'SYNC_FAILED'
   | 'CORRUPTION'
