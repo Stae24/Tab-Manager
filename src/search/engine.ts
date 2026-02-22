@@ -109,7 +109,8 @@ export async function search(
 
   const parsedQuery = parseQuery(query);
 
-  if (parsedQuery.textTerms.length === 0 && parsedQuery.bangs.length === 0) {
+  // If there's no text terms, bangs, or commands, return empty results
+  if (parsedQuery.textTerms.length === 0 && parsedQuery.bangs.length === 0 && parsedQuery.commands.length === 0) {
     return { results: [], parsedQuery };
   }
 
@@ -152,6 +153,7 @@ export async function searchAndExecute(
 ): Promise<{ results: SearchResult[]; parsedQuery: ParsedQuery; commandResults?: Awaited<ReturnType<typeof executeCommandsSequentially>> }> {
   const { results, parsedQuery } = await search(query, options);
 
+  // Execute commands when there are commands and results to operate on
   if (parsedQuery.commands.length > 0 && results.length > 0) {
     const [tabs, groups] = await Promise.all([getAllTabs(options.scope || 'current'), getGroups(options.scope || 'current')]);
     const context = buildSearchContext(tabs, options.vaultItems || [], groups, options.scope || 'current', options.localPatterns || []);
@@ -162,12 +164,24 @@ export async function searchAndExecute(
     return { results, parsedQuery, commandResults };
   }
 
+  // If there are commands but no results (e.g., command-only query with filters that matched nothing),
+  // still try to execute on all tabs when there's only a command with no text/bangs
+  if (parsedQuery.commands.length > 0 && results.length === 0) {
+    const [tabs, groups] = await Promise.all([getAllTabs(options.scope || 'current'), getGroups(options.scope || 'current')]);
+    const context = buildSearchContext(tabs, options.vaultItems || [], groups, options.scope || 'current', options.localPatterns || []);
+
+    // Execute command on all tabs when there's a command but no text or bangs
+    const commandResults = await executeCommandsSequentially(parsedQuery.commands, tabs, context);
+
+    return { results: tabs.map((tab) => ({ tab, matchScore: 1 })), parsedQuery, commandResults };
+  }
+
   return { results, parsedQuery };
 }
 
 export function isSearchActive(parsedQuery: ParsedQuery | null): boolean {
   if (!parsedQuery) return false;
-  return parsedQuery.textTerms.length > 0 || parsedQuery.bangs.length > 0;
+  return parsedQuery.textTerms.length > 0 || parsedQuery.bangs.length > 0 || parsedQuery.commands.length > 0;
 }
 
 export function hasCommands(parsedQuery: ParsedQuery | null): boolean {
