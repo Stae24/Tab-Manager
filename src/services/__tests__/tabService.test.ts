@@ -291,7 +291,7 @@ describe('tabService', () => {
 
     it('creates companion tab for single tab group (Opera GX hack)', async () => {
       mockNeedsCompanionTab.mockReturnValue(true);
-      
+
       mockTabsGet.mockResolvedValue({ id: 1, windowId: 1, index: 0, pinned: false });
       mockTabsCreate.mockResolvedValue({ id: 2 });
       mockTabsGroup.mockResolvedValue(100);
@@ -310,7 +310,7 @@ describe('tabService', () => {
 
     it('creates single tab group without companion on Brave/Chrome', async () => {
       mockNeedsCompanionTab.mockReturnValue(false);
-      
+
       mockTabsGet.mockResolvedValue({ id: 1, windowId: 1, index: 0, pinned: false });
       mockTabsGroup.mockResolvedValue(100);
       mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
@@ -656,5 +656,101 @@ describe('tabService', () => {
 
       expect(mockTabGroupsUpdate).toHaveBeenCalled();
     }, 10000);
+
+    it('handles empty results from query', async () => {
+      mockWindowsGetLastFocused.mockResolvedValue({ id: 1, type: 'normal' });
+      mockTabsGet.mockRejectedValue(new Error('Not found'));
+
+      await tabService.consolidateAndGroupTabs([999], { color: 'cyan' as any });
+
+      expect(mockTabsGroup).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('handles tabs without URLs in getLiveTabsAndGroups', async () => {
+      mockTabsQuery.mockResolvedValue([
+        { id: 1, title: 'No URL', index: 0, groupId: -1, windowId: 1, active: true, discarded: false, pinned: false }
+      ]);
+      mockTabGroupsQuery.mockResolvedValue([]);
+
+      const result = await tabService.getLiveTabsAndGroups();
+
+      expect(result).toHaveLength(1);
+      expect((result[0] as any).url).toBe('');
+    });
+
+    it('handles current window tabs query error', async () => {
+      mockTabsQuery.mockRejectedValue(new Error('Query failed'));
+
+      await expect(tabService.getCurrentWindowTabs()).rejects.toThrow('Query failed');
+    });
+
+    it('returns false when updateTabGroupCollapse verification fails', async () => {
+      // Mock update to succeed
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        callback();
+        return Promise.resolve({ id: 100 });
+      });
+      // Mock get to return inconsistent state
+      vi.stubGlobal('chrome', {
+        ...chrome,
+        tabGroups: {
+          ...chrome.tabGroups,
+          get: vi.fn().mockResolvedValue({ id: 100, collapsed: false }) // Should be true
+        }
+      });
+
+      const result = await tabService.updateTabGroupCollapse(100, true);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('Consolidate and Group Tabs - Advanced Branches', () => {
+    it('adjusts target index when new group starts before target', async () => {
+      mockWindowsGetLastFocused.mockResolvedValue({ id: 1, type: 'normal' });
+      mockTabsGet.mockImplementation(id => Promise.resolve({ id, windowId: 1, url: 'https://a.com' }));
+
+      mockTabsQuery.mockResolvedValue([
+        { id: 1, index: 0, url: 'a', groupId: 101, windowId: 1 } as any,
+        { id: 2, index: 1, url: 'b', groupId: 101, windowId: 1 } as any,
+        { id: 3, index: 5, url: 'c', groupId: 100, windowId: 1 } as any
+      ]);
+      mockTabGroupsQuery.mockResolvedValue([{ id: 100, title: 'Other' } as any]);
+      mockTabsGroup.mockResolvedValue(101);
+
+      await tabService.consolidateAndGroupTabs([1, 2], {});
+
+      expect(mockTabsGroup).toHaveBeenCalled();
+      // targetIndex should have been (5+1) - 2 = 4
+      expect(mockTabGroupsMove).toHaveBeenCalledWith(101, { index: 4 });
+    });
+
+    it('handles errors during group move', async () => {
+      mockWindowsGetLastFocused.mockResolvedValue({ id: 1, type: 'normal' });
+      mockTabsGet.mockImplementation(id => Promise.resolve({ id, windowId: 1, url: 'https://a.com' }));
+      // Use 2 tabs to trigger grouping
+      mockTabsQuery.mockResolvedValue([
+        { id: 1, index: 0, url: 'a', groupId: 101, windowId: 1 } as any,
+        { id: 2, index: 1, url: 'b', groupId: 101, windowId: 1 } as any
+      ]);
+      mockTabsGroup.mockResolvedValue(101);
+      mockTabGroupsMove.mockRejectedValue(new Error('Move failed'));
+
+      await tabService.consolidateAndGroupTabs([1, 2], {});
+
+      expect(mockTabsGroup).toHaveBeenCalled();
+      expect(mockTabGroupsMove).toHaveBeenCalled();
+    });
+
+    it('handles group creation failure for coverage', async () => {
+      mockWindowsGetLastFocused.mockResolvedValue({ id: 1, type: 'normal' });
+      mockTabsGet.mockImplementation(id => Promise.resolve({ id, windowId: 1, url: 'https://a.com' }));
+      mockTabsGroup.mockRejectedValue(new Error('Grouping failed'));
+
+      await tabService.consolidateAndGroupTabs([1, 2], {});
+
+      expect(mockTabsGroup).toHaveBeenCalled();
+    });
   });
 });

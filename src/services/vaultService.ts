@@ -14,11 +14,11 @@ import type {
   UniversalId
 } from '../types/index';
 import { quotaService } from './quotaService';
-import { 
-  STORAGE_VERSION, 
-  VAULT_CHUNK_SIZE, 
-  CHROME_SYNC_ITEM_MAX_BYTES, 
-  VAULT_QUOTA_SAFETY_MARGIN_BYTES, 
+import {
+  STORAGE_VERSION,
+  VAULT_CHUNK_SIZE,
+  CHROME_SYNC_ITEM_MAX_BYTES,
+  VAULT_QUOTA_SAFETY_MARGIN_BYTES,
   SYNC_SETTINGS_RESERVE_BYTES,
   VAULT_DIFF_KEY,
   DIFF_COMPACT_THRESHOLD,
@@ -37,27 +37,27 @@ const TRACKING_PARAMS = new Set([
 function normalizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
-    
+
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       return url;
     }
-    
+
     let hostname = parsed.hostname.replace(/^www\./, '');
-    
+
     const params = new URLSearchParams(parsed.search);
     for (const key of Array.from(params.keys())) {
       if (TRACKING_PARAMS.has(key.toLowerCase())) {
         params.delete(key);
       }
     }
-    
+
     const protocolMarker = parsed.protocol === 'https:' ? 's:' : 'h:';
     let normalized = protocolMarker + hostname;
-    
+
     if (parsed.port) {
       normalized += ':' + parsed.port;
     }
-    
+
     if (parsed.pathname && parsed.pathname !== '/') {
       let path = parsed.pathname;
       if (path.endsWith('/')) {
@@ -65,16 +65,16 @@ function normalizeUrl(url: string): string {
       }
       normalized += path;
     }
-    
+
     const cleanSearch = params.toString();
     if (cleanSearch) {
       normalized += '?' + cleanSearch;
     }
-    
+
     if (parsed.hash && parsed.hash !== '#') {
       normalized += parsed.hash;
     }
-    
+
     return normalized;
   } catch {
     return url;
@@ -85,36 +85,36 @@ function denormalizeUrl(normalized: string): string {
   if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
     return normalized;
   }
-  
+
   if (normalized.startsWith('s:')) {
     return 'https://' + normalized.slice(2);
   }
   if (normalized.startsWith('h:')) {
     return 'http://' + normalized.slice(2);
   }
-  
+
   if (/^[a-z][a-z0-9+.-]*:/i.test(normalized)) {
     return normalized;
   }
-  
+
   return 'https://' + normalized;
 }
 
 const KEY_MAP = {
-  id: 'i', title: 't', url: 'u', favicon: 'f', 
-  savedAt: 's', originalId: 'o', color: 'c', 
-  collapsed: 'k', tabs: 'b', active: 'a', 
-  discarded: 'd', windowId: 'w', index: 'n', 
+  id: 'i', title: 't', url: 'u', favicon: 'f',
+  savedAt: 's', originalId: 'o', color: 'c',
+  collapsed: 'k', tabs: 'b', active: 'a',
+  discarded: 'd', windowId: 'w', index: 'n',
   groupId: 'g', muted: 'm', pinned: 'p', audible: 'z'
 } as const;
 
 export const KEY_ORDER = ['id', 'title', 'url', 'favicon', 'savedAt', 'originalId', 'color', 'collapsed', 'tabs', 'active', 'discarded', 'windowId', 'index', 'groupId', 'muted', 'pinned', 'audible'] as const;
 
 const REVERSE_KEY_MAP: Record<string, string> = {
-  i: 'id', t: 'title', u: 'url', f: 'favicon', 
-  s: 'savedAt', o: 'originalId', c: 'color', 
-  k: 'collapsed', b: 'tabs', a: 'active', 
-  d: 'discarded', w: 'windowId', n: 'index', 
+  i: 'id', t: 'title', u: 'url', f: 'favicon',
+  s: 'savedAt', o: 'originalId', c: 'color',
+  k: 'collapsed', b: 'tabs', a: 'active',
+  d: 'discarded', w: 'windowId', n: 'index',
   g: 'groupId', m: 'muted', p: 'pinned', z: 'audible'
 };
 
@@ -198,10 +198,10 @@ function minifyVault(vault: VaultItem[]): MinifyResult {
   if (vault.length < 3) {
     return vault.map(minifyVaultItemWithNormalizedUrls);
   }
-  
+
   const domainSet = new Set<string>();
   let totalUrlLength = 0;
-  
+
   for (const item of vault) {
     if (isTabWithUrl(item)) {
       const { domain } = extractDomain(normalizeUrl(item.url));
@@ -215,15 +215,15 @@ function minifyVault(vault: VaultItem[]): MinifyResult {
       }
     }
   }
-  
+
   const domains = Array.from(domainSet);
   const domainOverhead = JSON.stringify(domains).length;
   const estimatedSavings = totalUrlLength * 0.4;
-  
+
   if (estimatedSavings > domainOverhead * 1.2) {
     return minifyVaultWithDomains(vault);
   }
-  
+
   return vault.map(minifyVaultItemWithNormalizedUrls);
 }
 
@@ -287,15 +287,15 @@ function extractDomain(normalizedUrl: string): { domain: string; path: string } 
   const slashIndex = normalizedUrl.indexOf('/');
   const queryIndex = normalizedUrl.indexOf('?');
   const hashIndex = normalizedUrl.indexOf('#');
-  
+
   let splitIndex = normalizedUrl.length;
   if (slashIndex !== -1) splitIndex = Math.min(splitIndex, slashIndex);
   if (queryIndex !== -1) splitIndex = Math.min(splitIndex, queryIndex);
   if (hashIndex !== -1) splitIndex = Math.min(splitIndex, hashIndex);
-  
+
   const domain = normalizedUrl.slice(0, splitIndex);
   const path = normalizedUrl.slice(splitIndex);
-  
+
   return { domain, path };
 }
 
@@ -320,19 +320,19 @@ function collectUrlsFromVault(vault: VaultItem[]): string[] {
 function minifyVaultWithDomains(vault: VaultItem[]): MinifiedVaultWithDomains {
   const domainMap = new Map<string, number>();
   const domains: string[] = [];
-  
+
   const itemsWithDomainRefs = vault.map(item => {
     if (isTabWithUrl(item)) {
       const normalizedUrl = normalizeUrl(item.url);
       const { domain, path } = extractDomain(normalizedUrl);
-      
+
       let domainIndex = domainMap.get(domain);
       if (domainIndex === undefined) {
         domainIndex = domains.length;
         domains.push(domain);
         domainMap.set(domain, domainIndex);
       }
-      
+
       return {
         ...item,
         url: `${domainIndex}${path}`
@@ -342,29 +342,29 @@ function minifyVaultWithDomains(vault: VaultItem[]): MinifiedVaultWithDomains {
       const normalizedTabs = island.tabs.map(tab => {
         const normalizedUrl = normalizeUrl(tab.url);
         const { domain, path } = extractDomain(normalizedUrl);
-        
+
         let domainIndex = domainMap.get(domain);
         if (domainIndex === undefined) {
           domainIndex = domains.length;
           domains.push(domain);
           domainMap.set(domain, domainIndex);
         }
-        
+
         return {
           ...tab,
           url: `${domainIndex}${path}`
         };
       });
-      
+
       return {
         ...island,
         tabs: normalizedTabs
       };
     }
   });
-  
+
   const items = itemsWithDomainRefs.map(minifyVaultItem);
-  
+
   return { version: 1, domains, items };
 }
 
@@ -382,10 +382,10 @@ function reconstructUrl(urlString: string, domains: string[]): string {
 
 function expandVaultWithDomains(data: MinifiedVaultWithDomains): VaultItem[] {
   const { domains, items } = data;
-  
+
   return items.map(item => {
     const expanded = expandVaultItem(item);
-    
+
     if (isTabWithUrl(expanded)) {
       expanded.url = reconstructUrl(String(expanded.url), domains);
     } else if ('tabs' in expanded && Array.isArray(expanded.tabs)) {
@@ -393,16 +393,16 @@ function expandVaultWithDomains(data: MinifiedVaultWithDomains): VaultItem[] {
         tab.url = reconstructUrl(String(tab.url), domains);
       }
     }
-    
+
     return expanded;
   });
 }
 
 function applyCompressionTier(item: VaultItem, tier: CompressionTier): VaultItem {
   if (tier === 'full') return item;
-  
+
   const stripped = JSON.parse(JSON.stringify(item)) as VaultItem;
-  
+
   if (tier === 'no_favicons' || tier === 'minimal') {
     if ('favicon' in stripped) {
       const tabItem = stripped as Tab & VaultItem;
@@ -416,7 +416,7 @@ function applyCompressionTier(item: VaultItem, tier: CompressionTier): VaultItem
       });
     }
   }
-  
+
   if (tier === 'minimal') {
     if ('color' in stripped) {
       (stripped as Island).color = 'grey';
@@ -425,7 +425,7 @@ function applyCompressionTier(item: VaultItem, tier: CompressionTier): VaultItem
       (stripped as Island).collapsed = false;
     }
   }
-  
+
   return stripped;
 }
 
@@ -439,10 +439,10 @@ let lastFullSaveTime = 0;
 function computeDiff(previous: VaultItem[], current: VaultItem[]): VaultDiff {
   const currentIds = new Set(current.map(i => String(i.id)));
   const previousIds = new Set(previous.map(i => String(i.id)));
-  
+
   const added = current.filter(i => !previousIds.has(String(i.id)));
   const deleted = previous.filter(i => !currentIds.has(String(i.id))).map(i => String(i.id));
-  
+
   return { added, deleted, timestamp: Date.now() };
 }
 
@@ -450,12 +450,12 @@ function shouldUseDiffMode(diff: VaultDiff, fullVault: VaultItem[]): boolean {
   if (diff.added.length === 0 && diff.deleted.length === 0) {
     return false;
   }
-  
+
   const diffSize = JSON.stringify(diff).length;
   const fullSize = JSON.stringify(fullVault).length;
-  
+
   if (fullSize === 0) return false;
-  
+
   return diffSize < fullSize * DIFF_COMPACT_THRESHOLD;
 }
 
@@ -489,23 +489,23 @@ function createPreciseChunks(compressed: string): { chunks: string[]; keys: stri
   const chunks: string[] = [];
   const keys: string[] = [];
   const encoder = new TextEncoder();
-  
+
   let offset = 0;
   let chunkIndex = 0;
-  
+
   while (offset < compressed.length) {
     const key = `${VAULT_CHUNK_PREFIX}${chunkIndex}`;
     const maxBytes = CHROME_SYNC_ITEM_MAX_BYTES - key.length - 2;
-    
+
     let low = offset;
     let high = compressed.length;
     let bestEnd = offset;
-    
+
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
       const chunk = compressed.slice(offset, mid);
       const bytes = encoder.encode(chunk).length;
-      
+
       if (bytes <= maxBytes) {
         bestEnd = mid;
         low = mid + 1;
@@ -513,7 +513,7 @@ function createPreciseChunks(compressed: string): { chunks: string[]; keys: stri
         high = mid - 1;
       }
     }
-    
+
     if (bestEnd === offset) {
       const singleCharBytes = encoder.encode(compressed.slice(offset, offset + 1)).length;
       if (singleCharBytes > maxBytes) {
@@ -521,15 +521,15 @@ function createPreciseChunks(compressed: string): { chunks: string[]; keys: stri
       }
       bestEnd = offset + 1;
     }
-    
+
     const chunk = compressed.slice(offset, bestEnd);
     chunks.push(chunk);
     keys.push(key);
-    
+
     offset = bestEnd;
     chunkIndex++;
   }
-  
+
   return { chunks, keys };
 }
 
@@ -575,28 +575,29 @@ async function tryCompressionTiers(
 ): Promise<{ tier: CompressionTier; compressed: string; minified: boolean; domainDedup: boolean }> {
   for (const tier of COMPRESSION_TIERS) {
     const tieredVault = applyCompressionTierToVault(vault, tier);
-    
+
     const minified = minifyVault(tieredVault);
     const minifiedJson = JSON.stringify(minified);
     const minifiedCompressed = LZString.compressToUTF16(minifiedJson);
     const minifiedBytes = minifiedCompressed.length * 2;
-    
+
     if (minifiedBytes <= availableBytes) {
       const domainDedup = !Array.isArray(minified) && 'domains' in minified;
       logger.info(`[VaultStorage] Compression tier ${tier} with minification fits: ${minifiedBytes} <= ${availableBytes}, domainDedup: ${domainDedup}`);
       return { tier, compressed: minifiedCompressed, minified: true, domainDedup };
     }
-    
+
     const regularJson = JSON.stringify(tieredVault);
     const regularCompressed = LZString.compressToUTF16(regularJson);
     const regularBytes = regularCompressed.length * 2;
-    
+
     if (regularBytes <= availableBytes) {
       logger.info(`[VaultStorage] Compression tier ${tier} without minification fits: ${regularBytes} <= ${availableBytes}`);
       return { tier, compressed: regularCompressed, minified: false, domainDedup: false };
     }
   }
-  
+
+  logger.debug(`[VaultStorage] All compression tiers exhausted. Available: ${availableBytes}`);
   throw new Error('Vault too large for any compression tier');
 }
 
@@ -606,39 +607,39 @@ export const vaultService = {
       const local = await chrome.storage.local.get([LEGACY_VAULT_KEY]);
       return {
         vault: (local[LEGACY_VAULT_KEY] as VaultItem[]) || [],
-        timestamp: 0 
+        timestamp: 0
       };
     }
-    
+
     try {
       logger.info('[VaultStorage] Loading vault from sync storage...');
-      
+
       const metaResult = await chrome.storage.sync.get(VAULT_META_KEY);
       const meta = metaResult[VAULT_META_KEY] as VaultMeta | undefined;
-      
+
       if (!meta) {
         logger.warn('[VaultStorage] No meta found in sync storage. This is normal for first-time users. Loading from local without fallback flag.');
         return { vault: await loadFromBackup(), timestamp: 0, fallbackToLocal: false };
       }
-      
+
       logger.info(`[VaultStorage] Found meta: version=${meta.version}, chunkCount=${meta.chunkCount}, chunkKeys.length=${meta.chunkKeys?.length || 0}, minified=${meta.minified}, domainDedup=${meta.domainDedup}`);
-      
+
       if (meta.version < STORAGE_VERSION) {
         logger.warn(`[VaultStorage] Version mismatch: expected ${STORAGE_VERSION}, got ${meta.version}. Attempting to load data anyway.`);
       }
-      
+
       const chunks: string[] = [];
       const chunkKeys = meta.chunkKeys || Array.from({ length: meta.chunkCount }, (_, i) => `${VAULT_CHUNK_PREFIX}${i}`);
-      
+
       logger.info(`[VaultStorage] Attempting to load ${chunkKeys.length} chunks`);
       logger.debug(`[VaultStorage] Chunk keys to fetch: ${chunkKeys.join(', ')}`);
-      
+
       const keysToFetch = [VAULT_META_KEY, ...chunkKeys];
       const syncData = await chrome.storage.sync.get(keysToFetch);
-      
+
       const retrievedKeys = Object.keys(syncData);
       logger.debug(`[VaultStorage] Retrieved ${retrievedKeys.length} items: ${retrievedKeys.join(', ')}`);
-      
+
       const missingChunks = chunkKeys.filter(key => syncData[key] === undefined);
       if (missingChunks.length > 0) {
         logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Missing ${missingChunks.length} chunks`);
@@ -648,7 +649,7 @@ export const vaultService = {
         logger.error(`[VaultStorage]   - Available in storage: ${retrievedKeys.filter(k => k.startsWith(VAULT_CHUNK_PREFIX)).join(', ')}`);
         return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
       }
-      
+
       for (let i = 0; i < chunkKeys.length; i++) {
         const chunk = syncData[chunkKeys[i]] as string | undefined;
         if (chunk === undefined) {
@@ -659,7 +660,7 @@ export const vaultService = {
         logger.debug(`[VaultStorage] Chunk ${chunkKeys[i]}: FOUND, size=${chunkSize} bytes`);
         chunks.push(chunk);
       }
-      
+
       const totalCompressedSize = chunks.reduce((sum, chunk) => sum + chunk.length * 2, 0);
       logger.info(`[VaultStorage] All ${chunks.length} chunks loaded. Total compressed size: ${totalCompressedSize} bytes`);
 
@@ -681,11 +682,11 @@ export const vaultService = {
         logger.error(`[VaultStorage]   - Data may have been corrupted in transit`);
         return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
       }
-      
+
       let parsed: VaultItem[];
       try {
         const rawParsed = JSON.parse(jsonData);
-        
+
         if (rawParsed && typeof rawParsed === 'object' && 'domains' in rawParsed) {
           logger.info('[VaultStorage] Expanding domain-deduplicated vault data');
           parsed = expandVaultWithDomains(rawParsed as MinifiedVaultWithDomains);
@@ -699,7 +700,7 @@ export const vaultService = {
         } else {
           parsed = rawParsed as VaultItem[];
         }
-        
+
         if (!Array.isArray(parsed)) {
           logger.error('[VaultStorage] Parsed data is not an array, loading from backup');
           return { vault: await loadFromBackup(), timestamp: meta.timestamp };
@@ -716,7 +717,7 @@ export const vaultService = {
       }
 
       previousVaultState = parsed;
-      
+
       logger.info(`[VaultStorage] ✅ Load successful: ${parsed.length} items`);
       return {
         vault: parsed,
@@ -738,25 +739,25 @@ export const vaultService = {
       previousVaultState = vault;
       return { success: true };
     }
-    
+
     const quota = await quotaService.getVaultQuota();
     const currentKeys = await getVaultChunkKeys();
     const currentVaultBytes = await chrome.storage.sync.getBytesInUse(currentKeys);
-    
+
     const diff = previousVaultState ? computeDiff(previousVaultState, vault) : null;
-    
+
     if (diff && shouldUseDiffMode(diff, vault)) {
       logger.info(`[VaultStorage] Using incremental save: ${diff.added.length} added, ${diff.deleted.length} deleted`);
-      
+
       try {
         const diffCompressed = LZString.compressToUTF16(JSON.stringify(diff));
         const diffBytes = diffCompressed.length * 2;
-        
+
         if (diffBytes < quota.available - VAULT_QUOTA_SAFETY_MARGIN_BYTES) {
           await saveDiff(diff);
           await chrome.storage.local.set({ vault_backup: vault });
           previousVaultState = vault;
-          
+
           return {
             success: true,
             bytesUsed: quota.used + diffBytes,
@@ -768,30 +769,32 @@ export const vaultService = {
         logger.warn('[VaultStorage] Diff save failed, falling back to full save:', error);
       }
     }
-    
+
     try {
       const availableBytes = quota.available - VAULT_QUOTA_SAFETY_MARGIN_BYTES;
-      
+      logger.debug(`[VaultStorage] saveVault: availableBytes=${availableBytes}, syncEnabled=${config.syncEnabled}`);
+
       logger.info(`[VaultStorage] 📊 Quota state BEFORE save:`);
       logger.info(`[VaultStorage]   - Available: ${availableBytes} bytes (with safety margin)`);
-      
+
       const { tier, compressed, minified, domainDedup } = await tryCompressionTiers(vault, availableBytes);
+      logger.debug(`[VaultStorage] saveVault: using tier=${tier}, size=${compressed.length * 2} bytes`);
       const compressedBytes = compressed.length * 2;
-      
+
       logger.info(`[VaultStorage] Using compression tier: ${tier}, minified: ${minified}, domainDedup: ${domainDedup}, size: ${compressedBytes} bytes`);
-      
-      const minifiedData = minified 
+
+      const minifiedData = minified
         ? minifyVault(applyCompressionTierToVault(vault, tier))
         : null;
-      const checksumData = minified 
+      const checksumData = minified
         ? JSON.stringify(minifiedData)
         : JSON.stringify(applyCompressionTierToVault(vault, tier));
       const checksum = await computeChecksum(checksumData);
-      
+
       const { chunks, keys: chunkKeys } = createPreciseChunks(compressed);
-      
+
       logger.info(`[VaultStorage] Created ${chunks.length} chunks using precise byte boundaries`);
-      
+
       const meta: VaultMeta = {
         version: STORAGE_VERSION,
         chunkCount: chunks.length,
@@ -803,27 +806,27 @@ export const vaultService = {
         minified,
         domainDedup
       };
-      
+
       const storageData: Record<string, unknown> = {
         [VAULT_META_KEY]: meta
       };
-      
+
       chunks.forEach((chunk, index) => {
         storageData[chunkKeys[index]] = chunk;
       });
-      
+
       logger.info(`[VaultStorage] Saving ${Object.keys(storageData).length} items to sync storage...`);
       await chrome.storage.sync.set(storageData);
       logger.info('[VaultStorage] Save completed, verifying...');
-      
+
       const verifyKeys = [VAULT_META_KEY, ...chunkKeys];
       const verifyData = await chrome.storage.sync.get(verifyKeys);
-      
+
       const verifyMeta = verifyData[VAULT_META_KEY] as VaultMeta | undefined;
       if (!verifyMeta) {
         throw new Error('Meta missing after save');
       }
-      
+
       const verifyChunks: string[] = [];
       for (const key of chunkKeys) {
         const chunk = verifyData[key] as string | undefined;
@@ -832,68 +835,68 @@ export const vaultService = {
         }
         verifyChunks.push(chunk);
       }
-      
+
       const verifyCompressed = verifyChunks.join('');
       const verifyJson = LZString.decompressFromUTF16(verifyCompressed);
-      
+
       if (!verifyJson) {
         throw new Error('Decompression failed during verification');
       }
-      
+
       const verifyChecksum = await computeChecksum(verifyJson);
       if (verifyChecksum !== checksum) {
         throw new Error('Checksum mismatch after save');
       }
-      
+
       logger.info('[VaultStorage] Verification PASSED: All chunks saved correctly');
-      
+
       const oldKeys = currentKeys.filter(k => k !== VAULT_META_KEY && !chunkKeys.includes(k) && k !== VAULT_DIFF_KEY);
       if (oldKeys.length > 0) {
         logger.info(`[VaultStorage] Removing ${oldKeys.length} old chunks`);
         await chrome.storage.sync.remove(oldKeys);
       }
-      
-      await chrome.storage.sync.remove(VAULT_DIFF_KEY).catch(() => {});
-      
+
+      await chrome.storage.sync.remove(VAULT_DIFF_KEY).catch(() => { });
+
       await quotaService.cleanupOrphanedChunks();
       await chrome.storage.local.set({ vault_backup: vault });
-      
+
       previousVaultState = vault;
       lastFullSaveTime = Date.now();
-      
+
       const newQuota = await quotaService.getVaultQuota();
-      
+
       const result: VaultStorageResult = {
         success: true,
         bytesUsed: newQuota.used,
         bytesAvailable: newQuota.available,
         warningLevel: newQuota.warningLevel
       };
-      
+
       if (tier !== 'full') {
         result.compressionTier = tier;
       }
-      
+
       return result;
     } catch (error) {
       logger.error('[VaultStorage] ❌ SYNC WRITE FAILED:', error);
-      
+
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isQuotaError = errorMessage.includes('quota') || errorMessage.includes('too large');
-      
+
       if (isQuotaError) {
         logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Quota error`);
       }
-      
+
       await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault }).catch((e) => {
         logger.error('[VaultStorage] Failed to save to local storage:', e);
       });
       await chrome.storage.local.set({ vault_backup: vault }).catch((e) => {
         logger.error('[VaultStorage] Failed to save backup:', e);
       });
-      
+
       const newQuota = await quotaService.getVaultQuota();
-      
+
       return {
         success: true,
         fallbackToLocal: true,
@@ -904,19 +907,19 @@ export const vaultService = {
     }
   },
 
-   migrateFromLegacy: async (config: VaultStorageConfig): Promise<MigrationResult> => {
+  migrateFromLegacy: async (config: VaultStorageConfig): Promise<MigrationResult> => {
     try {
       const [syncData, localData] = await Promise.all([
         chrome.storage.sync.get([LEGACY_VAULT_KEY, VAULT_META_KEY]),
         chrome.storage.local.get([LEGACY_VAULT_KEY])
       ]);
-      
+
       const meta = syncData[VAULT_META_KEY] as VaultMeta | undefined;
-      
+
       if (meta?.version === STORAGE_VERSION) {
         return { migrated: false, itemCount: 0, from: 'none' };
       }
-      
+
       if (meta?.version === 2 && config.syncEnabled) {
         logger.info('[VaultStorage] Upgrading from v2 to v3 format');
         const newMeta: VaultMeta = {
@@ -928,61 +931,61 @@ export const vaultService = {
         await chrome.storage.sync.set({ [VAULT_META_KEY]: newMeta });
         return { migrated: true, itemCount: 0, from: 'none' };
       }
-      
-       const syncLegacyVault = syncData[LEGACY_VAULT_KEY] as VaultItem[] | undefined;
-       if (syncLegacyVault && Array.isArray(syncLegacyVault) && syncLegacyVault.length > 0) {
-         if (config.syncEnabled) {
-           const result = await vaultService.saveVault(syncLegacyVault, config);
-           if (!result.fallbackToLocal) {
-             await chrome.storage.sync.remove(LEGACY_VAULT_KEY);
-             return { migrated: true, itemCount: syncLegacyVault.length, from: 'sync_legacy' };
-           } else {
-             await vaultService.disableVaultSync(syncLegacyVault);
-             await chrome.storage.sync.remove(LEGACY_VAULT_KEY);
-             return {
-               migrated: true,
-               itemCount: syncLegacyVault.length,
-               from: 'sync_legacy',
-               fallbackToLocal: true
-             };
-           }
-         } else {
-           await vaultService.disableVaultSync(syncLegacyVault);
-           return {
-             migrated: true,
-             itemCount: syncLegacyVault.length,
-             from: 'sync_legacy',
-             fallbackToLocal: true
-           };
-         }
-       }
 
-       const localLegacyVault = localData[LEGACY_VAULT_KEY] as VaultItem[] | undefined;
-       if (localLegacyVault && Array.isArray(localLegacyVault) && localLegacyVault.length > 0) {
-         if (config.syncEnabled) {
-           const result = await vaultService.saveVault(localLegacyVault, config);
-           if (!result.fallbackToLocal) {
-             await chrome.storage.local.remove(LEGACY_VAULT_KEY);
-             return { migrated: true, itemCount: localLegacyVault.length, from: 'local_legacy' };
-           }
-           await vaultService.disableVaultSync(localLegacyVault);
-           return { migrated: false, itemCount: localLegacyVault.length, from: 'local_legacy', fallbackToLocal: true };
-         }
-         return { migrated: false, itemCount: localLegacyVault.length, from: 'local_legacy' };
-       }
+      const syncLegacyVault = syncData[LEGACY_VAULT_KEY] as VaultItem[] | undefined;
+      if (syncLegacyVault && Array.isArray(syncLegacyVault) && syncLegacyVault.length > 0) {
+        if (config.syncEnabled) {
+          const result = await vaultService.saveVault(syncLegacyVault, config);
+          if (!result.fallbackToLocal) {
+            await chrome.storage.sync.remove(LEGACY_VAULT_KEY);
+            return { migrated: true, itemCount: syncLegacyVault.length, from: 'sync_legacy' };
+          } else {
+            await vaultService.disableVaultSync(syncLegacyVault);
+            await chrome.storage.sync.remove(LEGACY_VAULT_KEY);
+            return {
+              migrated: true,
+              itemCount: syncLegacyVault.length,
+              from: 'sync_legacy',
+              fallbackToLocal: true
+            };
+          }
+        } else {
+          await vaultService.disableVaultSync(syncLegacyVault);
+          return {
+            migrated: true,
+            itemCount: syncLegacyVault.length,
+            from: 'sync_legacy',
+            fallbackToLocal: true
+          };
+        }
+      }
 
-       return { migrated: false, itemCount: 0, from: 'none' };
-     } catch (error) {
-       logger.error('[VaultStorage] Migration failed:', error);
-       return { migrated: false, itemCount: 0, error: String(error) };
-     }
-   },
+      const localLegacyVault = localData[LEGACY_VAULT_KEY] as VaultItem[] | undefined;
+      if (localLegacyVault && Array.isArray(localLegacyVault) && localLegacyVault.length > 0) {
+        if (config.syncEnabled) {
+          const result = await vaultService.saveVault(localLegacyVault, config);
+          if (!result.fallbackToLocal) {
+            await chrome.storage.local.remove(LEGACY_VAULT_KEY);
+            return { migrated: true, itemCount: localLegacyVault.length, from: 'local_legacy' };
+          }
+          await vaultService.disableVaultSync(localLegacyVault);
+          return { migrated: false, itemCount: localLegacyVault.length, from: 'local_legacy', fallbackToLocal: true };
+        }
+        return { migrated: false, itemCount: localLegacyVault.length, from: 'local_legacy' };
+      }
 
-   toggleSyncMode: async (
+      return { migrated: false, itemCount: 0, from: 'none' };
+    } catch (error) {
+      logger.error('[VaultStorage] Migration failed:', error);
+      return { migrated: false, itemCount: 0, error: String(error) };
+    }
+  },
+
+  toggleSyncMode: async (
     currentVault: VaultItem[],
     enableSync: boolean
   ): Promise<VaultStorageResult> => {
-     if (enableSync) {
+    if (enableSync) {
       const result = await vaultService.saveVault(currentVault, { syncEnabled: true });
 
       if (result.fallbackToLocal) {
@@ -1045,17 +1048,17 @@ export const vaultService = {
 
   recoverVaultSync: async (vault: VaultItem[]): Promise<VaultStorageResult> => {
     logger.info('[VaultStorage] Starting vault sync recovery...');
-    
+
     await clearAllVaultChunks();
-    
+
     const result = await vaultService.saveVault(vault, { syncEnabled: true });
-    
+
     if (result.success && !result.fallbackToLocal) {
       logger.info('[VaultStorage] ✅ Recovery successful');
     } else {
       logger.warn('[VaultStorage] 🔴 Recovery failed, falling back to local');
     }
-    
+
     return result;
   }
 };
