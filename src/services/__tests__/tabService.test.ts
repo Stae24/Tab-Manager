@@ -753,4 +753,253 @@ describe('tabService', () => {
       expect(mockTabsGroup).toHaveBeenCalled();
     });
   });
+
+  describe('updateTabGroupCollapse - Brave Browser Workaround', () => {
+    it('should apply Brave visual refresh workaround', async () => {
+      // Mock Brave browser
+      const { getCachedCapabilities } = await import('../../utils/browser');
+      vi.mocked(getCachedCapabilities).mockReturnValue({
+        vendor: 'brave',
+        supportsGroupCollapse: true,
+        supportsSingleTabGroups: true,
+      } as any);
+
+      // Mock update to succeed
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        callback();
+        return Promise.resolve({ id: 100, collapsed: true });
+      });
+
+      // Mock get to return correct state
+      const mockTabGroupsGet = vi.fn().mockResolvedValue({ id: 100, collapsed: true });
+      vi.stubGlobal('chrome', {
+        ...chrome,
+        tabGroups: {
+          ...chrome.tabGroups,
+          get: mockTabGroupsGet
+        }
+      });
+
+      mockTabsQuery.mockResolvedValue([{ id: 10, windowId: 1 }]);
+      mockTabsCreate.mockResolvedValue({ id: 99 } as any);
+      mockTabsGroup.mockResolvedValue(100);
+      mockTabsUngroup.mockResolvedValue({});
+      mockTabsRemove.mockResolvedValue(undefined);
+
+      const result = await tabService.updateTabGroupCollapse(100, true);
+
+      expect(result).toBe(true);
+      expect(mockTabsCreate).toHaveBeenCalledWith({
+        url: 'about:blank',
+        windowId: 1,
+        active: false,
+      });
+      expect(mockTabsRemove).toHaveBeenCalledWith(99);
+    });
+
+    it('should handle Brave workaround errors gracefully', async () => {
+      const { getCachedCapabilities } = await import('../../utils/browser');
+      vi.mocked(getCachedCapabilities).mockReturnValue({
+        vendor: 'brave',
+        supportsGroupCollapse: true,
+        supportsSingleTabGroups: true,
+      } as any);
+
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        callback();
+        return Promise.resolve({ id: 100, collapsed: true });
+      });
+
+      const mockTabGroupsGet = vi.fn().mockResolvedValue({ id: 100, collapsed: true });
+      vi.stubGlobal('chrome', {
+        ...chrome,
+        tabGroups: {
+          ...chrome.tabGroups,
+          get: mockTabGroupsGet
+        }
+      });
+
+      mockTabsQuery.mockResolvedValue([{ id: 10, windowId: 1 }]);
+      mockTabsCreate.mockResolvedValue({ id: 99 } as any);
+      mockTabsGroup.mockRejectedValue(new Error('Group failed'));
+      mockTabsRemove.mockResolvedValue(undefined);
+
+      // Should not throw - handles error gracefully
+      await expect(tabService.updateTabGroupCollapse(100, true)).resolves.toBe(true);
+    });
+
+    it('should handle get group error gracefully', async () => {
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        callback();
+        return Promise.resolve({ id: 100 });
+      });
+
+      const mockTabGroupsGet = vi.fn().mockRejectedValue(new Error('Not found'));
+      vi.stubGlobal('chrome', {
+        ...chrome,
+        tabGroups: {
+          ...chrome.tabGroups,
+          get: mockTabGroupsGet
+        }
+      });
+
+      const result = await tabService.updateTabGroupCollapse(100, true);
+
+      // Should still return success since update succeeded
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('closeTabs', () => {
+    it('should close single tab with number', async () => {
+      mockTabsRemove.mockResolvedValue(undefined);
+
+      // Reset to clear previous test mock behavior
+      vi.clearAllMocks();
+      mockTabsRemove.mockClear();
+
+      await tabService.closeTabs(123);
+
+      expect(mockTabsRemove).toHaveBeenCalledWith(123);
+    });
+
+    it('should close multiple tabs with array', async () => {
+      mockTabsRemove.mockResolvedValue(undefined);
+
+      await tabService.closeTabs([1, 2, 3]);
+
+      expect(mockTabsRemove).toHaveBeenCalledWith([1, 2, 3]);
+    });
+  });
+
+  describe('duplicateIsland', () => {
+    it('should duplicate all tabs in island', async () => {
+      const mockTabs = [
+        { id: 1, windowId: 1, url: 'https://example.com', active: false, index: 0 },
+        { id: 2, windowId: 1, url: 'https://test.com', active: true, index: 1 },
+      ];
+
+      mockTabsGet
+        .mockResolvedValueOnce(mockTabs[0] as any)
+        .mockResolvedValueOnce(mockTabs[1] as any);
+
+      mockTabsCreate
+        .mockResolvedValueOnce({ id: 101 } as any)
+        .mockResolvedValueOnce({ id: 102 } as any);
+
+      mockTabsGroup.mockResolvedValue(500);
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        if (callback) callback();
+        return Promise.resolve({ id });
+      });
+
+      const result = await tabService.duplicateIsland([1, 2]);
+
+      expect(result).toEqual([101, 102]);
+      expect(mockTabsGroup).toHaveBeenCalledWith({ tabIds: [101, 102] });
+    });
+
+    it('should handle missing tabs gracefully', async () => {
+      mockTabsGet
+        .mockResolvedValueOnce({ id: 1, windowId: 1, url: 'https://example.com' } as any)
+        .mockRejectedValueOnce(new Error('Tab not found'));
+
+      mockTabsCreate.mockResolvedValue({ id: 101 } as any);
+      mockTabsGroup.mockResolvedValue(500);
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        if (callback) callback();
+        return Promise.resolve({ id });
+      });
+
+      const result = await tabService.duplicateIsland([1, 2]);
+
+      expect(result).toEqual([101]);
+    });
+
+    it('should skip tabs without URLs', async () => {
+      mockTabsGet
+        .mockResolvedValueOnce({ id: 1, windowId: 1, url: undefined } as any)
+        .mockResolvedValueOnce({ id: 2, windowId: 1, url: 'https://example.com' } as any);
+
+      mockTabsCreate.mockResolvedValue({ id: 101 } as any);
+      mockTabsGroup.mockResolvedValue(500);
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        if (callback) callback();
+        return Promise.resolve({ id });
+      });
+
+      const result = await tabService.duplicateIsland([1, 2]);
+
+      expect(result).toEqual([101]);
+    });
+
+    it('should create group even for single tab', async () => {
+      mockTabsGet.mockResolvedValue({ id: 1, windowId: 1, url: 'https://example.com' } as any);
+      mockTabsCreate.mockResolvedValue({ id: 101 } as any);
+      mockTabsGroup.mockResolvedValue(500);
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        if (callback) callback();
+        return Promise.resolve({ id });
+      });
+
+      const result = await tabService.duplicateIsland([1]);
+
+      expect(result).toEqual([101]);
+      // Implementation creates a group even for single tab
+      expect(mockTabsGroup).toHaveBeenCalled();
+    });
+
+    it('should handle all tabs failing to load', async () => {
+      mockTabsGet
+        .mockRejectedValueOnce(new Error('Tab not found'))
+        .mockRejectedValueOnce(new Error('Tab not found'));
+
+      const result = await tabService.duplicateIsland([1, 2]);
+
+      expect(result).toEqual([]);
+      expect(mockTabsCreate).not.toHaveBeenCalled();
+      expect(mockTabsGroup).not.toHaveBeenCalled();
+    });
+
+    it('should set correct properties on duplicated tabs', async () => {
+      mockTabsGet.mockResolvedValue({
+        id: 1,
+        windowId: 1,
+        url: 'https://example.com',
+        active: true,
+        index: 5
+      } as any);
+
+      mockTabsCreate.mockResolvedValue({ id: 101 } as any);
+
+      await tabService.duplicateIsland([1]);
+
+      expect(mockTabsCreate).toHaveBeenCalledWith({
+        windowId: 1,
+        url: 'https://example.com',
+        active: true,
+        index: 6 // index + 1
+      });
+    });
+  });
+
+  describe('consolidateAndGroupTabs error handling', () => {
+    it('should handle no target window gracefully', async () => {
+      mockWindowsGetLastFocused.mockResolvedValue({} as any);
+
+      // Should not throw
+      await tabService.consolidateAndGroupTabs([10], { color: 'blue' });
+
+      expect(mockTabsMove).not.toHaveBeenCalled();
+    });
+
+    it('should handle consolidation error in outer catch', async () => {
+      mockWindowsGetLastFocused.mockRejectedValue(new Error('No window'));
+
+      // Should handle error gracefully without throwing
+      await tabService.consolidateAndGroupTabs([10], { color: 'blue' });
+
+      // Test passes if no exception is thrown
+    });
+  });
 });
