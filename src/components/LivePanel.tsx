@@ -425,12 +425,12 @@ export const LivePanel: React.FC<LivePanelProps> = ({
       style={{ width: showVault ? `${dividerPosition}%` : '100%' }}
     >
       <div className="flex flex-col border-b border-gx-gray flex-shrink-0 bg-gx-dark/80 backdrop-blur-md z-20">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center px-4 py-3">
           <div className="flex items-center gap-2">
             <FolderOpen className="w-4 h-4 text-gx-accent shadow-[0_0_8px_rgba(127,34,254,0.5)]" />
             <h2 className="text-sm font-bold tracking-widest uppercase italic">Live Workspace</h2>
           </div>
-          <div className="flex items-center gap-3 flex-1 justify-end">
+          <div className="flex items-center gap-3 flex-1 ml-4 justify-end">
             <SearchBar
               ref={searchInputRef}
               query={searchQuery}
