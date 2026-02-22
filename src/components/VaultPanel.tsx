@@ -7,10 +7,11 @@ import { Island } from './Island';
 import { TabCard } from './TabCard';
 import { DroppableGap } from './DroppableGap';
 import { QuotaWarningBanner } from './QuotaWarningBanner';
+import { CompressionWarning } from './CompressionWarning';
 import { ScrollContainerProvider } from '../contexts/ScrollContainerContext';
 import { cn } from '../utils/cn';
 import { logger } from '../utils/logger';
-import { Island as IslandType, Tab as TabType, UniversalId, VaultQuotaInfo, DashboardRow } from '../types';
+import { Island as IslandType, Tab as TabType, UniversalId, VaultQuotaInfo, DashboardRow, CompressionTier } from '../types';
 import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS } from '../constants';
 
 interface VaultPanelProps {
@@ -30,6 +31,9 @@ interface VaultPanelProps {
   onClearSyncRecovered?: () => void;
   vaultTabCount?: number;
   onManageStorage?: () => void;
+  compressionTier?: CompressionTier;
+  showCompressionWarning?: boolean;
+  onDismissCompressionWarning?: () => void;
 }
 
 export const VaultPanel: React.FC<VaultPanelProps> = ({
@@ -48,7 +52,10 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   syncRecovered,
   onClearSyncRecovered,
   vaultTabCount,
-  onManageStorage
+  onManageStorage,
+  compressionTier = 'full',
+  showCompressionWarning = false,
+  onDismissCompressionWarning
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'vault-dropzone',
@@ -260,6 +267,13 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
               percentage={vaultQuota.percentage}
               syncEnabled={!!effectiveSyncEnabled}
               onManageStorage={onManageStorage}
+            />
+          )}
+
+          {showCompressionWarning && compressionTier !== 'full' && onDismissCompressionWarning && (
+            <CompressionWarning
+              tier={compressionTier}
+              onDismiss={onDismissCompressionWarning}
             />
           )}
 

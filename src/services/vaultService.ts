@@ -5,14 +5,184 @@ import type {
   VaultStorageResult,
   VaultMeta,
   MigrationResult,
-  VaultLoadResult
+  VaultLoadResult,
+  CompressionTier,
+  VaultDiff,
+  Tab,
+  Island
 } from '../types/index';
 import { quotaService } from './quotaService';
-import { STORAGE_VERSION, VAULT_CHUNK_SIZE, CHROME_SYNC_ITEM_MAX_BYTES, VAULT_QUOTA_SAFETY_MARGIN_BYTES, SYNC_SETTINGS_RESERVE_BYTES } from '../constants';
+import { 
+  STORAGE_VERSION, 
+  VAULT_CHUNK_SIZE, 
+  CHROME_SYNC_ITEM_MAX_BYTES, 
+  VAULT_QUOTA_SAFETY_MARGIN_BYTES, 
+  SYNC_SETTINGS_RESERVE_BYTES,
+  VAULT_DIFF_KEY,
+  DIFF_COMPACT_THRESHOLD,
+  COMPRESSION_TIERS
+} from '../constants';
 import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY, getVaultChunkKeys } from './storageKeys';
 import { logger } from '../utils/logger';
 
 const getByteLength = (str: string): number => new TextEncoder().encode(str).length;
+
+const KEY_MAP = {
+  id: 'i', title: 't', url: 'u', favicon: 'f', 
+  savedAt: 's', originalId: 'o', color: 'c', 
+  collapsed: 'k', tabs: 'b', active: 'a', 
+  discarded: 'd', windowId: 'w', index: 'n', 
+  groupId: 'g', muted: 'm', pinned: 'p', audible: 'z'
+} as const;
+
+const KEY_ORDER = ['id', 'title', 'url', 'favicon', 'savedAt', 'originalId', 'color', 'collapsed', 'tabs', 'active', 'discarded', 'windowId', 'index', 'groupId', 'muted', 'pinned', 'audible'] as const;
+
+const REVERSE_KEY_MAP: Record<string, string> = {
+  i: 'id', t: 'title', u: 'url', f: 'favicon', 
+  s: 'savedAt', o: 'originalId', c: 'color', 
+  k: 'collapsed', b: 'tabs', a: 'active', 
+  d: 'discarded', w: 'windowId', n: 'index', 
+  g: 'groupId', m: 'muted', p: 'pinned', z: 'audible'
+};
+
+function minifyTab(tab: Tab): unknown[] {
+  const result: unknown[] = [];
+  for (const key of KEY_ORDER) {
+    if (key === 'tabs') continue;
+    const value = tab[key as keyof Tab];
+    if (value !== undefined) {
+      result.push(value);
+    } else {
+      result.push(null);
+    }
+  }
+  return result;
+}
+
+function minifyIsland(island: Island & { savedAt: number; originalId: unknown }): unknown[] {
+  const result: unknown[] = [];
+  for (const key of KEY_ORDER) {
+    const value = island[key as keyof typeof island];
+    if (key === 'tabs' && Array.isArray(value)) {
+      result.push((value as Tab[]).map(minifyTab));
+    } else if (value !== undefined) {
+      result.push(value);
+    } else {
+      result.push(null);
+    }
+  }
+  return result;
+}
+
+function minifyVaultItem(item: VaultItem): unknown[] {
+  if ('tabs' in item && Array.isArray(item.tabs)) {
+    return minifyIsland(item as Island & { savedAt: number; originalId: unknown });
+  }
+  return minifyTab(item as Tab);
+}
+
+function minifyVault(vault: VaultItem[]): unknown[] {
+  return vault.map(minifyVaultItem);
+}
+
+function expandTab(data: unknown[]): VaultItem {
+  const tab: Record<string, unknown> = {};
+  for (let i = 0; i < KEY_ORDER.length; i++) {
+    const key = KEY_ORDER[i];
+    if (key === 'tabs') continue;
+    const value = data[i];
+    if (value !== null && value !== undefined) {
+      tab[key] = value;
+    }
+  }
+  return tab as unknown as VaultItem;
+}
+
+function expandIsland(data: unknown[]): VaultItem {
+  const island: Record<string, unknown> = {};
+  for (let i = 0; i < KEY_ORDER.length; i++) {
+    const key = KEY_ORDER[i];
+    const value = data[i];
+    if (key === 'tabs' && Array.isArray(value)) {
+      island[key] = value.map((t: unknown) => expandTab(t as unknown[]));
+    } else if (value !== null && value !== undefined) {
+      island[key] = value;
+    }
+  }
+  return island as unknown as VaultItem;
+}
+
+function expandVaultItem(data: unknown[]): VaultItem {
+  if (Array.isArray(data[8])) {
+    return expandIsland(data);
+  }
+  return expandTab(data);
+}
+
+function expandVault(data: unknown[]): VaultItem[] {
+  return data.map((item: unknown) => expandVaultItem(item as unknown[]));
+}
+
+function applyCompressionTier(item: VaultItem, tier: CompressionTier): VaultItem {
+  if (tier === 'full') return item;
+  
+  const stripped = JSON.parse(JSON.stringify(item)) as VaultItem;
+  
+  if (tier === 'no_favicons' || tier === 'minimal') {
+    if ('favicon' in stripped) {
+      const tabItem = stripped as Tab & VaultItem;
+      tabItem.favicon = '';
+    }
+    if ('tabs' in stripped && Array.isArray(stripped.tabs)) {
+      stripped.tabs = stripped.tabs.map(t => {
+        const tab = { ...t };
+        tab.favicon = '';
+        return tab;
+      });
+    }
+  }
+  
+  if (tier === 'minimal') {
+    if ('color' in stripped) {
+      (stripped as Island).color = 'grey';
+    }
+    if ('collapsed' in stripped) {
+      (stripped as Island).collapsed = false;
+    }
+  }
+  
+  return stripped;
+}
+
+function applyCompressionTierToVault(vault: VaultItem[], tier: CompressionTier): VaultItem[] {
+  return vault.map(item => applyCompressionTier(item, tier));
+}
+
+let previousVaultState: VaultItem[] | null = null;
+let lastFullSaveTime = 0;
+
+function computeDiff(previous: VaultItem[], current: VaultItem[]): VaultDiff {
+  const currentIds = new Set(current.map(i => String(i.id)));
+  const previousIds = new Set(previous.map(i => String(i.id)));
+  
+  const added = current.filter(i => !previousIds.has(String(i.id)));
+  const deleted = previous.filter(i => !currentIds.has(String(i.id))).map(i => String(i.id));
+  
+  return { added, deleted, timestamp: Date.now() };
+}
+
+function shouldUseDiffMode(diff: VaultDiff, fullVault: VaultItem[]): boolean {
+  if (diff.added.length === 0 && diff.deleted.length === 0) {
+    return false;
+  }
+  
+  const diffSize = JSON.stringify(diff).length;
+  const fullSize = JSON.stringify(fullVault).length;
+  
+  if (fullSize === 0) return false;
+  
+  return diffSize < fullSize * DIFF_COMPACT_THRESHOLD;
+}
 
 async function computeChecksum(data: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -32,12 +202,106 @@ async function clearAllVaultChunks(): Promise<void> {
   logger.info('[VaultStorage] Clearing all vault sync chunks...');
   const allSyncData = await chrome.storage.sync.get(null);
   const vaultKeys = Object.keys(allSyncData).filter(
-    key => key === VAULT_META_KEY || key.startsWith(VAULT_CHUNK_PREFIX)
+    key => key === VAULT_META_KEY || key.startsWith(VAULT_CHUNK_PREFIX) || key === VAULT_DIFF_KEY
   );
   if (vaultKeys.length > 0) {
     await chrome.storage.sync.remove(vaultKeys);
     logger.info(`[VaultStorage] Removed ${vaultKeys.length} vault-related keys from sync`);
   }
+}
+
+function createPreciseChunks(compressed: string): { chunks: string[]; keys: string[] } {
+  const chunks: string[] = [];
+  const keys: string[] = [];
+  const encoder = new TextEncoder();
+  
+  let offset = 0;
+  let chunkIndex = 0;
+  
+  while (offset < compressed.length) {
+    const key = `${VAULT_CHUNK_PREFIX}${chunkIndex}`;
+    const maxBytes = CHROME_SYNC_ITEM_MAX_BYTES - key.length - 2;
+    
+    let low = offset;
+    let high = compressed.length;
+    let bestEnd = offset;
+    
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const chunk = compressed.slice(offset, mid);
+      const bytes = encoder.encode(chunk).length;
+      
+      if (bytes <= maxBytes) {
+        bestEnd = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    
+    const chunk = compressed.slice(offset, bestEnd);
+    chunks.push(chunk);
+    keys.push(key);
+    
+    offset = bestEnd;
+    chunkIndex++;
+  }
+  
+  return { chunks, keys };
+}
+
+async function loadDiff(): Promise<VaultDiff | null> {
+  try {
+    const diffData = await chrome.storage.sync.get(VAULT_DIFF_KEY);
+    if (diffData[VAULT_DIFF_KEY]) {
+      return diffData[VAULT_DIFF_KEY] as VaultDiff;
+    }
+  } catch {
+    logger.warn('[VaultStorage] Failed to load diff');
+  }
+  return null;
+}
+
+async function saveDiff(diff: VaultDiff): Promise<void> {
+  const compressed = LZString.compressToUTF16(JSON.stringify(diff));
+  await chrome.storage.sync.set({ [VAULT_DIFF_KEY]: compressed });
+}
+
+async function applyDiff(baseVault: VaultItem[], diff: VaultDiff): Promise<VaultItem[]> {
+  const deletedIds = new Set(diff.deleted);
+  const vault = baseVault.filter(i => !deletedIds.has(String(i.id)));
+  vault.push(...diff.added);
+  return vault;
+}
+
+async function tryCompressionTiers(
+  vault: VaultItem[],
+  availableBytes: number
+): Promise<{ tier: CompressionTier; compressed: string; minified: boolean }> {
+  for (const tier of COMPRESSION_TIERS) {
+    const tieredVault = applyCompressionTierToVault(vault, tier);
+    
+    const minified = minifyVault(tieredVault);
+    const minifiedJson = JSON.stringify(minified);
+    const minifiedCompressed = LZString.compressToUTF16(minifiedJson);
+    const minifiedBytes = minifiedCompressed.length * 2;
+    
+    if (minifiedBytes <= availableBytes) {
+      logger.info(`[VaultStorage] Compression tier ${tier} with minification fits: ${minifiedBytes} <= ${availableBytes}`);
+      return { tier, compressed: minifiedCompressed, minified: true };
+    }
+    
+    const regularJson = JSON.stringify(tieredVault);
+    const regularCompressed = LZString.compressToUTF16(regularJson);
+    const regularBytes = regularCompressed.length * 2;
+    
+    if (regularBytes <= availableBytes) {
+      logger.info(`[VaultStorage] Compression tier ${tier} without minification fits: ${regularBytes} <= ${availableBytes}`);
+      return { tier, compressed: regularCompressed, minified: false };
+    }
+  }
+  
+  throw new Error('Vault too large for any compression tier');
 }
 
 export const vaultService = {
@@ -53,7 +317,6 @@ export const vaultService = {
     try {
       logger.info('[VaultStorage] Loading vault from sync storage...');
       
-      // First, get just the meta to determine which chunks we need
       const metaResult = await chrome.storage.sync.get(VAULT_META_KEY);
       const meta = metaResult[VAULT_META_KEY] as VaultMeta | undefined;
       
@@ -62,9 +325,9 @@ export const vaultService = {
         return { vault: await loadFromBackup(), timestamp: 0, fallbackToLocal: false };
       }
       
-      logger.info(`[VaultStorage] Found meta: version=${meta.version}, chunkCount=${meta.chunkCount}, chunkKeys.length=${meta.chunkKeys?.length || 0}`);
+      logger.info(`[VaultStorage] Found meta: version=${meta.version}, chunkCount=${meta.chunkCount}, chunkKeys.length=${meta.chunkKeys?.length || 0}, minified=${meta.minified}`);
       
-      if (meta.version !== STORAGE_VERSION) {
+      if (meta.version < STORAGE_VERSION) {
         logger.warn(`[VaultStorage] Version mismatch: expected ${STORAGE_VERSION}, got ${meta.version}. Attempting to load data anyway.`);
       }
       
@@ -74,14 +337,12 @@ export const vaultService = {
       logger.info(`[VaultStorage] Attempting to load ${chunkKeys.length} chunks`);
       logger.debug(`[VaultStorage] Chunk keys to fetch: ${chunkKeys.join(', ')}`);
       
-      // Explicitly request specific keys instead of get(null) to avoid pagination/limit issues
       const keysToFetch = [VAULT_META_KEY, ...chunkKeys];
       const syncData = await chrome.storage.sync.get(keysToFetch);
       
       const retrievedKeys = Object.keys(syncData);
       logger.debug(`[VaultStorage] Retrieved ${retrievedKeys.length} items: ${retrievedKeys.join(', ')}`);
       
-      // Check which expected chunks are missing
       const missingChunks = chunkKeys.filter(key => syncData[key] === undefined);
       if (missingChunks.length > 0) {
         logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Missing ${missingChunks.length} chunks`);
@@ -98,7 +359,7 @@ export const vaultService = {
           logger.error(`[VaultStorage] 🔴 Unexpected: Chunk ${chunkKeys[i]} was not found despite passing earlier check`);
           return { vault: await loadFromBackup(), timestamp: meta.timestamp, fallbackToLocal: true };
         }
-        const chunkSize = chunk.length * 2; // UTF-16 = 2 bytes per char
+        const chunkSize = chunk.length * 2;
         logger.debug(`[VaultStorage] Chunk ${chunkKeys[i]}: FOUND, size=${chunkSize} bytes`);
         chunks.push(chunk);
       }
@@ -127,7 +388,19 @@ export const vaultService = {
       
       let parsed: VaultItem[];
       try {
-        parsed = JSON.parse(jsonData) as VaultItem[];
+        const rawParsed = JSON.parse(jsonData);
+        
+        if (meta.minified && Array.isArray(rawParsed) && rawParsed.length > 0) {
+          if (Array.isArray(rawParsed[0])) {
+            logger.info('[VaultStorage] Expanding minified vault data');
+            parsed = expandVault(rawParsed);
+          } else {
+            parsed = rawParsed as VaultItem[];
+          }
+        } else {
+          parsed = rawParsed as VaultItem[];
+        }
+        
         if (!Array.isArray(parsed)) {
           logger.error('[VaultStorage] Parsed data is not an array, loading from backup');
           return { vault: await loadFromBackup(), timestamp: meta.timestamp };
@@ -137,6 +410,14 @@ export const vaultService = {
         return { vault: await loadFromBackup(), timestamp: meta.timestamp };
       }
 
+      const diff = await loadDiff();
+      if (diff) {
+        logger.info(`[VaultStorage] Applying diff: ${diff.added.length} added, ${diff.deleted.length} deleted`);
+        parsed = await applyDiff(parsed, diff);
+      }
+
+      previousVaultState = parsed;
+      
       logger.info(`[VaultStorage] ✅ Load successful: ${parsed.length} items`);
       return {
         vault: parsed,
@@ -155,108 +436,74 @@ export const vaultService = {
     console.error(`[DEBUG] saveVault CALLED: syncEnabled=${config.syncEnabled}, vaultSize=${vault.length}`);
     console.trace('[DEBUG] saveVault call stack');
     
-    const jsonData = JSON.stringify(vault);
-    const checksum = await computeChecksum(jsonData);
-    
     if (!config.syncEnabled) {
       await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault });
       await chrome.storage.local.set({ vault_backup: vault });
+      previousVaultState = vault;
       return { success: true };
     }
-    
-    const compressed = LZString.compressToUTF16(jsonData);
-    const compressedBytes = compressed.length * 2;
-    
-    const originalBytes = getByteLength(jsonData);
-    const ratio = compressedBytes / originalBytes;
-    if (ratio > 0.95) {
-      logger.warn(`[VaultStorage] Compression inefficient: ${compressedBytes} / ${originalBytes} bytes (${ratio.toFixed(2)})`);
-    }
-
-    logger.info(`[VaultStorage] Preparing to save vault: ${vault.length} items, ${jsonData.length} bytes JSON, ${compressedBytes} bytes compressed`);
     
     const quota = await quotaService.getVaultQuota();
     const currentKeys = await getVaultChunkKeys();
     const currentVaultBytes = await chrome.storage.sync.getBytesInUse(currentKeys);
-    const netNewBytes = compressedBytes - currentVaultBytes;
     
-    const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES;
-    const estimatedRequiredBytes = netNewBytes + safetyMargin;
+    const diff = previousVaultState ? computeDiff(previousVaultState, vault) : null;
     
-    logger.info(`[VaultStorage] 📊 Quota state BEFORE save:`);
-    logger.info(`[VaultStorage]   - quota.used (current vault bytes): ${quota.used}`);
-    logger.info(`[VaultStorage]   - quota.available (free space): ${quota.available}`);
-    logger.info(`[VaultStorage]   - quota.total (capacity for vault): ${quota.total}`);
-    logger.info(`[VaultStorage]   - Current vault bytes in storage: ${currentVaultBytes}`);
-    logger.info(`[VaultStorage]   - New compressed size: ${compressedBytes}`);
-    logger.info(`[VaultStorage]   - Net new bytes: ${netNewBytes}`);
-    logger.info(`[VaultStorage]   - Safety margin: ${safetyMargin}`);
-    logger.info(`[VaultStorage]   - Estimated required (net + margin): ${estimatedRequiredBytes}`);
-    logger.info(`[VaultStorage]   - Check: ${estimatedRequiredBytes} > ${quota.available} ? ${estimatedRequiredBytes > quota.available}`);
-    
-    if (estimatedRequiredBytes > quota.available) {
-      logger.warn(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Quota exceeded`);
-      logger.warn(`[VaultStorage]   - Need ${netNewBytes} bytes (${estimatedRequiredBytes} with safety margin)`);
-      logger.warn(`[VaultStorage]   - Have ${quota.available} bytes free`);
-      logger.warn(`[VaultStorage]   - New vault would be ${compressedBytes} bytes (total used: ${quota.used + netNewBytes})`);
-      logger.warn(`[VaultStorage]   - Capacity: ${quota.total}, Settings reserve: ${SYNC_SETTINGS_RESERVE_BYTES} bytes`);
-      logger.warn(`[VaultStorage]   - To retry sync: Clear vault storage and re-enable vault sync in settings`);
+    if (diff && shouldUseDiffMode(diff, vault)) {
+      logger.info(`[VaultStorage] Using incremental save: ${diff.added.length} added, ${diff.deleted.length} deleted`);
       
-      // Save to local storage instead
-      await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault });
-      await chrome.storage.local.set({ vault_backup: vault });
-      
-      return {
-        success: true,
-        fallbackToLocal: true,
-        bytesUsed: quota.used,
-        bytesAvailable: quota.available,
-        warningLevel: 'critical'
-      };
-    }
-    
-    const chunks: string[] = [];
-    const chunkKeys: string[] = [];
-    let currentIndex = 0;
-    let chunkIndex = 0;
-
-    const JSON_OVERHEAD_BUFFER_BYTES = 128;
-    const OPTIMISTIC_CHUNK_CHAR_COUNT = 3500;
-
-    while (currentIndex < compressed.length) {
-      const key = `${VAULT_CHUNK_PREFIX}${chunkIndex}`;
-      const maxItemBytes = CHROME_SYNC_ITEM_MAX_BYTES - key.length - JSON_OVERHEAD_BUFFER_BYTES;
-
-      let attemptChars = Math.min(compressed.length - currentIndex, OPTIMISTIC_CHUNK_CHAR_COUNT);
-      let chunk = compressed.slice(currentIndex, currentIndex + attemptChars);
-
-      while (getByteLength(chunk) > maxItemBytes && attemptChars > 0) {
-        const overflow = getByteLength(chunk) - maxItemBytes;
-        const reduceChars = Math.max(1, Math.ceil(overflow / 2));
-        attemptChars -= reduceChars;
-        chunk = compressed.slice(currentIndex, currentIndex + attemptChars);
+      try {
+        const diffCompressed = LZString.compressToUTF16(JSON.stringify(diff));
+        const diffBytes = diffCompressed.length * 2;
+        
+        if (diffBytes < quota.available - VAULT_QUOTA_SAFETY_MARGIN_BYTES) {
+          await saveDiff(diff);
+          await chrome.storage.local.set({ vault_backup: vault });
+          previousVaultState = vault;
+          
+          return {
+            success: true,
+            bytesUsed: quota.used + diffBytes,
+            bytesAvailable: quota.available - diffBytes,
+            warningLevel: quota.warningLevel
+          };
+        }
+      } catch (error) {
+        logger.warn('[VaultStorage] Diff save failed, falling back to full save:', error);
       }
-
-      chunks.push(chunk);
-      chunkKeys.push(key);
-      logger.info(`[VaultStorage] Chunk ${chunkIndex}: ${getByteLength(chunk)} bytes (chars: ${chunk.length})`);
-
-      currentIndex += attemptChars;
-      chunkIndex++;
     }
-    
-    logger.info(`[VaultStorage] Created ${chunks.length} chunks total`);
-    
-    const meta: VaultMeta = {
-      version: STORAGE_VERSION,
-      chunkCount: chunks.length,
-      chunkKeys,
-      checksum,
-      timestamp: Date.now(),
-      compressed: true
-    };
     
     try {
+      const availableBytes = quota.available - VAULT_QUOTA_SAFETY_MARGIN_BYTES;
+      
+      logger.info(`[VaultStorage] 📊 Quota state BEFORE save:`);
+      logger.info(`[VaultStorage]   - Available: ${availableBytes} bytes (with safety margin)`);
+      
+      const { tier, compressed, minified } = await tryCompressionTiers(vault, availableBytes);
+      const compressedBytes = compressed.length * 2;
+      
+      logger.info(`[VaultStorage] Using compression tier: ${tier}, minified: ${minified}, size: ${compressedBytes} bytes`);
+      
+      const checksumData = minified 
+        ? JSON.stringify(minifyVault(applyCompressionTierToVault(vault, tier)))
+        : JSON.stringify(applyCompressionTierToVault(vault, tier));
+      const checksum = await computeChecksum(checksumData);
+      
+      const { chunks, keys: chunkKeys } = createPreciseChunks(compressed);
+      
+      logger.info(`[VaultStorage] Created ${chunks.length} chunks using precise byte boundaries`);
+      
+      const meta: VaultMeta = {
+        version: STORAGE_VERSION,
+        chunkCount: chunks.length,
+        chunkKeys,
+        checksum,
+        timestamp: Date.now(),
+        compressed: true,
+        compressionTier: tier,
+        minified
+      };
+      
       const storageData: Record<string, unknown> = {
         [VAULT_META_KEY]: meta
       };
@@ -269,14 +516,11 @@ export const vaultService = {
       await chrome.storage.sync.set(storageData);
       logger.info('[VaultStorage] Save completed, verifying...');
       
-      // Verification: Read back all saved data and verify checksum
       const verifyKeys = [VAULT_META_KEY, ...chunkKeys];
       const verifyData = await chrome.storage.sync.get(verifyKeys);
-      logger.info(`[VaultStorage] Verification: retrieved ${Object.keys(verifyData).length}/${verifyKeys.length} items`);
       
       const verifyMeta = verifyData[VAULT_META_KEY] as VaultMeta | undefined;
       if (!verifyMeta) {
-        logger.error('[VaultStorage] Verification FAILED: Meta missing after save');
         throw new Error('Meta missing after save');
       }
       
@@ -284,7 +528,6 @@ export const vaultService = {
       for (const key of chunkKeys) {
         const chunk = verifyData[key] as string | undefined;
         if (chunk === undefined) {
-          logger.error(`[VaultStorage] Verification FAILED: Chunk ${key} missing after save`);
           throw new Error(`Chunk ${key} missing after save`);
         }
         verifyChunks.push(chunk);
@@ -294,80 +537,63 @@ export const vaultService = {
       const verifyJson = LZString.decompressFromUTF16(verifyCompressed);
       
       if (!verifyJson) {
-        logger.error('[VaultStorage] Verification FAILED: Could not decompress verified data');
         throw new Error('Decompression failed during verification');
       }
       
       const verifyChecksum = await computeChecksum(verifyJson);
       if (verifyChecksum !== checksum) {
-        logger.error(`[VaultStorage] Verification FAILED: Checksum mismatch (expected ${checksum}, got ${verifyChecksum})`);
         throw new Error('Checksum mismatch after save');
       }
       
       logger.info('[VaultStorage] Verification PASSED: All chunks saved correctly');
       
-      // Only remove old chunks after successful verification
-      const oldKeys = currentKeys.filter(k => k !== VAULT_META_KEY && !chunkKeys.includes(k));
+      const oldKeys = currentKeys.filter(k => k !== VAULT_META_KEY && !chunkKeys.includes(k) && k !== VAULT_DIFF_KEY);
       if (oldKeys.length > 0) {
-        logger.info(`[VaultStorage] Removing ${oldKeys.length} old chunks: ${oldKeys.join(', ')}`);
+        logger.info(`[VaultStorage] Removing ${oldKeys.length} old chunks`);
         await chrome.storage.sync.remove(oldKeys);
       }
-
-      await quotaService.cleanupOrphanedChunks();
       
+      await chrome.storage.sync.remove(VAULT_DIFF_KEY).catch(() => {});
+      
+      await quotaService.cleanupOrphanedChunks();
       await chrome.storage.local.set({ vault_backup: vault });
-      logger.info('[VaultStorage] Backup updated in local storage');
+      
+      previousVaultState = vault;
+      lastFullSaveTime = Date.now();
       
       const newQuota = await quotaService.getVaultQuota();
       
-      return {
+      const result: VaultStorageResult = {
         success: true,
         bytesUsed: newQuota.used,
         bytesAvailable: newQuota.available,
         warningLevel: newQuota.warningLevel
       };
+      
+      if (tier !== 'full') {
+        result.compressionTier = tier;
+      }
+      
+      return result;
     } catch (error) {
       logger.error('[VaultStorage] ❌ SYNC WRITE FAILED:', error);
       
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const isQuotaError = errorMessage.includes('quota');
-
+      const isQuotaError = errorMessage.includes('quota') || errorMessage.includes('too large');
+      
       if (isQuotaError) {
-        logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Quota error during sync write`);
-        logger.error(`[VaultStorage]   - Error message: ${errorMessage}`);
-        logger.error(`[VaultStorage]   - This indicates the storage became full during the write operation`);
-      } else {
-        logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Non-quota error during sync write`);
-        logger.error(`[VaultStorage]   - Error message: ${errorMessage}`);
-        logger.error(`[VaultStorage]   - This could be a transient sync error or storage corruption`);
+        logger.error(`[VaultStorage] 🔴 FALLBACK TRIGGERED: Quota error`);
       }
-
-      logger.error(`[VaultStorage]   - Attempting to save to local storage instead...`);
-
-      let legacySaveFailed = false;
-      let backupSaveFailed = false;
+      
       await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault }).catch((e) => {
         logger.error('[VaultStorage] Failed to save to local storage:', e);
-        legacySaveFailed = true;
       });
       await chrome.storage.local.set({ vault_backup: vault }).catch((e) => {
-        logger.error('[VaultStorage] Failed to save backup to local storage:', e);
-        backupSaveFailed = true;
+        logger.error('[VaultStorage] Failed to save backup:', e);
       });
-
+      
       const newQuota = await quotaService.getVaultQuota();
-
-      if (legacySaveFailed && backupSaveFailed) {
-        return {
-          success: false,
-          fallbackToLocal: false,
-          bytesUsed: newQuota.used,
-          bytesAvailable: newQuota.available,
-          warningLevel: 'critical',
-          error: 'SYNC_FAILED'
-        };
-      }
-
+      
       return {
         success: true,
         fallbackToLocal: true,
@@ -389,8 +615,21 @@ export const vaultService = {
       ]);
       
       const meta = syncData[VAULT_META_KEY] as VaultMeta | undefined;
+      
       if (meta?.version === STORAGE_VERSION) {
         return { migrated: false, itemCount: 0, from: 'none' };
+      }
+      
+      if (meta?.version === 2 && config.syncEnabled) {
+        logger.info('[VaultStorage] Upgrading from v2 to v3 format');
+        const newMeta: VaultMeta = {
+          ...meta,
+          version: STORAGE_VERSION,
+          minified: false,
+          compressionTier: 'full'
+        };
+        await chrome.storage.sync.set({ [VAULT_META_KEY]: newMeta });
+        return { migrated: true, itemCount: 0, from: 'none' };
       }
       
        const syncLegacyVault = syncData[LEGACY_VAULT_KEY] as VaultItem[] | undefined;

@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import LZString from 'lz-string';
-import { VaultItem, UniversalId, LiveItem, VaultQuotaInfo, VaultStorageResult, Island, Tab } from '../../types/index';
+import { VaultItem, UniversalId, LiveItem, VaultQuotaInfo, VaultStorageResult, Island, Tab, CompressionTier } from '../../types/index';
 import { vaultService } from '../../services/vaultService';
 import { quotaService } from '../../services/quotaService';
 import { tabService } from '../../services/tabService';
@@ -58,6 +58,8 @@ export interface VaultSlice {
   lastVaultTimestamp: number;
   effectiveSyncEnabled: boolean;
   syncRecovered: boolean;
+  compressionTier: CompressionTier;
+  showCompressionWarning: boolean;
   
   moveToVault: (id: UniversalId) => Promise<void>;
   saveToVault: (item: LiveItem) => Promise<void>;
@@ -72,6 +74,7 @@ export interface VaultSlice {
   clearQuotaExceeded: () => void;
   setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
   clearSyncRecovered: () => void;
+  dismissCompressionWarning: () => void;
   
   persistVault: (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]) => Promise<VaultStorageResult>;
 }
@@ -83,8 +86,12 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   lastVaultTimestamp: 0,
   effectiveSyncEnabled: true,
   syncRecovered: false,
+  compressionTier: 'full',
+  showCompressionWarning: false,
 
   clearSyncRecovered: () => set({ syncRecovered: false }),
+  
+  dismissCompressionWarning: () => set({ showCompressionWarning: false }),
 
   persistVault: async (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]): Promise<VaultStorageResult> => {
     const capturedPreviousVault = previousVault ?? get().vault;
@@ -127,6 +134,16 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     if (!result.success) {
       set({ vault: capturedPreviousVault });
       logger.error('[VaultSlice] Persistence failed:', result.error);
+    }
+
+    if (result.compressionTier && result.compressionTier !== 'full') {
+      logger.info(`[VaultSlice] Compression tier used: ${result.compressionTier}`);
+      set({ 
+        compressionTier: result.compressionTier, 
+        showCompressionWarning: true 
+      });
+    } else {
+      set({ compressionTier: 'full' });
     }
 
     if (result.fallbackToLocal) {
