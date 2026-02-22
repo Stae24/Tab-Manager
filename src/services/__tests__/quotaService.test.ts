@@ -249,4 +249,24 @@ describe('quotaService', () => {
       expect(health).toBe('degraded');
     });
   });
+
+  describe('logQuotaDetails', () => {
+    it('logs quota information', async () => {
+      const mockQuota = {
+        used: 1000,
+        available: 90000,
+        total: 91000,
+        percentage: 0.01,
+        warningLevel: 'none' as const,
+        orphanedChunks: 0
+      };
+
+      // Mock getVaultQuota to return specific values
+      vi.spyOn(quotaService, 'getVaultQuota').mockResolvedValue(mockQuota);
+
+      const result = await quotaService.logQuotaDetails();
+
+      expect(result).toEqual(mockQuota);
+    });
+  });
 });
