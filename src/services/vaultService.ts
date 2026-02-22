@@ -38,6 +38,10 @@ function normalizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
     
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return url;
+    }
+    
     let hostname = parsed.hostname.replace(/^www\./, '');
     
     const params = new URLSearchParams(parsed.search);
@@ -47,7 +51,8 @@ function normalizeUrl(url: string): string {
       }
     }
     
-    let normalized = hostname;
+    const protocolMarker = parsed.protocol === 'https:' ? 's:' : 'h:';
+    let normalized = protocolMarker + hostname;
     
     if (parsed.port) {
       normalized += ':' + parsed.port;
@@ -78,6 +83,17 @@ function normalizeUrl(url: string): string {
 
 function denormalizeUrl(normalized: string): string {
   if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    return normalized;
+  }
+  
+  if (normalized.startsWith('s:')) {
+    return 'https://' + normalized.slice(2);
+  }
+  if (normalized.startsWith('h:')) {
+    return 'http://' + normalized.slice(2);
+  }
+  
+  if (/^[a-z][a-z0-9+.-]*:/i.test(normalized)) {
     return normalized;
   }
   
@@ -364,7 +380,11 @@ function expandVaultWithDomains(data: MinifiedVaultWithDomains): VaultItem[] {
       if (urlMatch) {
         const domainIndex = parseInt(urlMatch[1], 10);
         const path = urlMatch[2];
-        expanded.url = denormalizeUrl(domains[domainIndex] + path);
+        if (Number.isSafeInteger(domainIndex) && domainIndex >= 0 && domainIndex < domains.length) {
+          expanded.url = denormalizeUrl(domains[domainIndex] + path);
+        } else {
+          expanded.url = denormalizeUrl(urlString);
+        }
       } else {
         expanded.url = denormalizeUrl(urlString);
       }
@@ -375,7 +395,11 @@ function expandVaultWithDomains(data: MinifiedVaultWithDomains): VaultItem[] {
         if (urlMatch) {
           const domainIndex = parseInt(urlMatch[1], 10);
           const path = urlMatch[2];
-          tab.url = denormalizeUrl(domains[domainIndex] + path);
+          if (Number.isSafeInteger(domainIndex) && domainIndex >= 0 && domainIndex < domains.length) {
+            tab.url = denormalizeUrl(domains[domainIndex] + path);
+          } else {
+            tab.url = denormalizeUrl(urlString);
+          }
         } else {
           tab.url = denormalizeUrl(urlString);
         }

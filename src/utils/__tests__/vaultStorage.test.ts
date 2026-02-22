@@ -519,7 +519,7 @@ describe('vaultStorage - URL normalization', () => {
     expect(getUrl(loaded[0])).toBe('https://example.com/page');
   });
 
-  it('strips www. prefix on save and restores on load', async () => {
+  it('strips www. prefix on save and keeps normalized url on load', async () => {
     const vault = [createVaultItemWithUrl(1, 'https://www.youtube.com/watch?v=abc')];
     
     await saveVault(vault, { syncEnabled: true });
@@ -591,6 +591,39 @@ describe('vaultStorage - URL normalization', () => {
     const { vault: loaded } = await loadVault({ syncEnabled: true });
     
     expect(getUrl(loaded[0])).toBe('https://localhost:3000/app');
+  });
+
+  it('preserves http protocol across save/load', async () => {
+    const vault = [createVaultItemWithUrl(1, 'http://example.com/page')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('http://example.com/page');
+  });
+
+  it('preserves https protocol across save/load', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://example.com/page')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://example.com/page');
+  });
+
+  it('preserves non-HTTP schemes unchanged', async () => {
+    const vault = [
+      createVaultItemWithUrl(1, 'chrome://extensions'),
+      createVaultItemWithUrl(2, 'file:///home/user/document.pdf'),
+      createVaultItemWithUrl(3, 'about:blank'),
+    ];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('chrome://extensions');
+    expect(getUrl(loaded[1])).toBe('file:///home/user/document.pdf');
+    expect(getUrl(loaded[2])).toBe('about:blank');
   });
 });
 
@@ -710,13 +743,50 @@ describe('vaultStorage - backward compatibility', () => {
     throw new Error('Item has no url');
   };
 
-  it('loads old minified format without URL normalization', async () => {
-    const vault = [createVaultItemWithUrl(1, 'https://example.com/page')];
+  it('loads old minified format without protocol markers', async () => {
+    const originalUrl = 'example.com/page';
+    const item = createVaultItemWithUrl(1, originalUrl) as unknown as Record<string, unknown>;
     
-    await saveVault(vault, { syncEnabled: true });
+    const legacyMinified = [[
+      item.id,
+      item.title,
+      originalUrl,
+      item.favicon,
+      item.savedAt,
+      item.originalId,
+      null,
+      null,
+      null,
+      item.active,
+      item.discarded,
+      item.windowId,
+      item.index,
+      item.groupId,
+      item.muted,
+      item.pinned,
+      item.audible,
+    ]];
     
-    const meta = mockSyncStorage[VAULT_META_KEY] as any;
-    meta.domainDedup = false;
+    const legacyJson = JSON.stringify(legacyMinified);
+    const compressed = LZString.compressToUTF16(legacyJson);
+    
+    const encoder = new TextEncoder();
+    const buffer = encoder.encode(legacyJson);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const checksum = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    mockSyncStorage[VAULT_META_KEY] = {
+      version: 3,
+      chunkCount: 1,
+      chunkKeys: ['vault_chunk_0'],
+      checksum,
+      timestamp: Date.now(),
+      compressed: true,
+      minified: true,
+      domainDedup: false,
+    };
+    mockSyncStorage['vault_chunk_0'] = compressed;
     
     const { vault: loaded } = await loadVault({ syncEnabled: true });
     
