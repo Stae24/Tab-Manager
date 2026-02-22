@@ -15,7 +15,7 @@ export const DroppableGap: React.FC<DroppableGapProps> = ({ index, panelType, is
   const { ref, isOver, expanded } = useProximityGap(
     gapId,
     active,
-    panelType === 'live' ? isDraggingGroup : false
+    isDraggingGroup
   );
 
   return (
@@ -25,7 +25,7 @@ export const DroppableGap: React.FC<DroppableGapProps> = ({ index, panelType, is
         "w-full rounded transition-all duration-200 ease-out pointer-events-none",
         !expanded && "h-0",
         expanded && "h-[2.375rem]",
-        isOver && expanded && "bg-gx-accent/20"
+        isOver && expanded && !isDraggingGroup && "bg-gx-accent/20"
       )}
     />
   );

@@ -489,6 +489,7 @@ export const Dashboard: React.FC = () => {
                   vault={vault}
                   removeFromVault={removeFromVault}
                   isDraggingLiveItem={!isDraggingVaultItem && activeItem !== null}
+                  isDraggingGroup={isDraggingGroup}
                   createVaultGroup={createVaultGroup}
                   onRenameGroup={renameGroup}
                   onToggleCollapse={toggleVaultGroupCollapse}

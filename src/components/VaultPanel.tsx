@@ -19,6 +19,7 @@ interface VaultPanelProps {
   vault: (IslandType | TabType)[];
   removeFromVault: (id: UniversalId) => void;
   isDraggingLiveItem: boolean;
+  isDraggingGroup?: boolean;
   createVaultGroup: () => void;
   onRenameGroup: (id: UniversalId, title: string) => void;
   onToggleCollapse: (id: UniversalId) => void;
@@ -41,6 +42,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   vault,
   removeFromVault,
   isDraggingLiveItem,
+  isDraggingGroup,
   createVaultGroup,
   onRenameGroup,
   onToggleCollapse,
@@ -133,11 +135,11 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
                   left: 0,
                   width: '100%',
                   transform: `translateY(${virtualRow.start}px)`,
-                  paddingBottom: `${VIRTUAL_ROW_GAP_PX}px`,
+                  ...(row.type !== 'gap' && { paddingBottom: `${VIRTUAL_ROW_GAP_PX}px` }),
                 }}
               >
                 {row.type === 'gap' ? (
-                  <DroppableGap index={row.index} panelType="vault" />
+                  <DroppableGap index={row.index} panelType="vault" isDraggingGroup={isDraggingGroup} />
                 ) : (
                   'tabs' in row.item ? (
                     <Island
