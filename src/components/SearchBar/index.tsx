@@ -214,7 +214,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
   }, [onQueryChange]);
 
   return (
-    <div className={cn('relative flex items-center gap-2', className)}>
+    <div className={cn('relative flex items-center gap-2 w-full flex-1', className)}>
       <div
         className={cn(
           'flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all',
@@ -239,8 +239,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
           placeholder="Search tabs... (try !audio, !frozen, /delete)"
           className={cn(
             'flex-1 bg-transparent outline-none text-sm text-white placeholder-gray-500',
-            'transition-all',
-            query ? 'w-32' : 'w-24'
+            'transition-all min-w-48'
           )}
         />
         {query && (
