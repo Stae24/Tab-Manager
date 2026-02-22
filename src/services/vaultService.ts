@@ -48,7 +48,10 @@ const REVERSE_KEY_MAP: Record<string, string> = {
 function minifyTab(tab: Tab): unknown[] {
   const result: unknown[] = [];
   for (const key of KEY_ORDER) {
-    if (key === 'tabs') continue;
+    if (key === 'tabs') {
+      result.push(null);
+      continue;
+    }
     const value = tab[key as keyof Tab];
     if (value !== undefined) {
       result.push(value);
@@ -239,6 +242,14 @@ function createPreciseChunks(compressed: string): { chunks: string[]; keys: stri
       }
     }
     
+    if (bestEnd === offset) {
+      const singleCharBytes = encoder.encode(compressed.slice(offset, offset + 1)).length;
+      if (singleCharBytes > maxBytes) {
+        throw new Error(`Single character at position ${offset} exceeds chunk size limit (${singleCharBytes} > ${maxBytes} bytes)`);
+      }
+      bestEnd = offset + 1;
+    }
+    
     const chunk = compressed.slice(offset, bestEnd);
     chunks.push(chunk);
     keys.push(key);
@@ -253,8 +264,20 @@ function createPreciseChunks(compressed: string): { chunks: string[]; keys: stri
 async function loadDiff(): Promise<VaultDiff | null> {
   try {
     const diffData = await chrome.storage.sync.get(VAULT_DIFF_KEY);
-    if (diffData[VAULT_DIFF_KEY]) {
-      return diffData[VAULT_DIFF_KEY] as VaultDiff;
+    const stored = diffData[VAULT_DIFF_KEY];
+    if (!stored) {
+      return null;
+    }
+    if (typeof stored === 'object' && !Array.isArray(stored)) {
+      return stored as VaultDiff;
+    }
+    if (typeof stored === 'string') {
+      const decompressed = LZString.decompressFromUTF16(stored);
+      if (!decompressed) {
+        logger.warn('[VaultStorage] Failed to decompress diff');
+        return null;
+      }
+      return JSON.parse(decompressed) as VaultDiff;
     }
   } catch {
     logger.warn('[VaultStorage] Failed to load diff');
@@ -433,9 +456,6 @@ export const vaultService = {
     vault: VaultItem[],
     config: VaultStorageConfig
   ): Promise<VaultStorageResult> => {
-    console.error(`[DEBUG] saveVault CALLED: syncEnabled=${config.syncEnabled}, vaultSize=${vault.length}`);
-    console.trace('[DEBUG] saveVault call stack');
-    
     if (!config.syncEnabled) {
       await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault });
       await chrome.storage.local.set({ vault_backup: vault });
@@ -606,9 +626,6 @@ export const vaultService = {
 
    migrateFromLegacy: async (config: VaultStorageConfig): Promise<MigrationResult> => {
     try {
-      console.error(`[DEBUG] migrateFromLegacy CALLED: syncEnabled=${config.syncEnabled}`);
-      console.trace('[DEBUG] migrateFromLegacy call stack');
-      
       const [syncData, localData] = await Promise.all([
         chrome.storage.sync.get([LEGACY_VAULT_KEY, VAULT_META_KEY]),
         chrome.storage.local.get([LEGACY_VAULT_KEY])
@@ -685,9 +702,7 @@ export const vaultService = {
     currentVault: VaultItem[],
     enableSync: boolean
   ): Promise<VaultStorageResult> => {
-    console.error(`[DEBUG] toggleSyncMode CALLED: enableSync=${enableSync}, vaultItems=${currentVault.length}`);
-    console.trace('[DEBUG] toggleSyncMode call stack');
-    if (enableSync) {
+     if (enableSync) {
       const result = await vaultService.saveVault(currentVault, { syncEnabled: true });
 
       if (result.fallbackToLocal) {
