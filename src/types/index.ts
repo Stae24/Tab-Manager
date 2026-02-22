@@ -70,7 +70,7 @@ export type CompressionTier = 'full' | 'no_favicons' | 'minimal';
 
 export interface VaultDiff {
   added: VaultItem[];
-  deleted: string[];
+  deleted: UniversalId[];
   timestamp: number;
 }
 

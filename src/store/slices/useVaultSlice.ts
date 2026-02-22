@@ -136,14 +136,16 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       logger.error('[VaultSlice] Persistence failed:', result.error);
     }
 
-    if (result.compressionTier && result.compressionTier !== 'full') {
-      logger.info(`[VaultSlice] Compression tier used: ${result.compressionTier}`);
-      set({ 
-        compressionTier: result.compressionTier, 
-        showCompressionWarning: true 
-      });
-    } else {
-      set({ compressionTier: 'full' });
+    if (result.success) {
+      if (result.compressionTier && result.compressionTier !== 'full') {
+        logger.info(`[VaultSlice] Compression tier used: ${result.compressionTier}`);
+        set({ 
+          compressionTier: result.compressionTier, 
+          showCompressionWarning: true 
+        });
+      } else {
+        set({ compressionTier: 'full', showCompressionWarning: false });
+      }
     }
 
     if (result.fallbackToLocal) {
