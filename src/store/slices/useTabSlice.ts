@@ -168,9 +168,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     let pendingId: UniqueIdentifier | null = null;
     let pendingOverId: UniqueIdentifier | null = null;
     let updateScheduled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let lastMoveTime = 0;
-    const MOVE_DEBOUNCE_MS = 100;
+    let rafId: number | null = null;
 
     return (activeId: UniqueIdentifier, overId: UniqueIdentifier) => {
       pendingId = activeId;
@@ -179,14 +177,14 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       if (updateScheduled) return;
       updateScheduled = true;
 
-      // Clear any existing timeout
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
       }
 
-      timeoutId = setTimeout(() => {
+      rafId = requestAnimationFrame(() => {
         if (pendingId === null || pendingOverId === null) {
           updateScheduled = false;
+          rafId = null;
           return;
         }
 
@@ -197,13 +195,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         updateScheduled = false;
         pendingId = null;
         pendingOverId = null;
-        timeoutId = null;
-
-        // Enforce minimum time between moves to prevent oscillation
-        const now = Date.now();
-        if (now - lastMoveTime < MOVE_DEBOUNCE_MS) {
-          return;
-        }
+        rafId = null;
 
         if (activeIdVal === overIdVal) return;
 
@@ -317,9 +309,6 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         } else {
           set({ vault: newVault });
         }
-
-        // Track when we last performed a move
-        lastMoveTime = Date.now();
       });
     };
   })(),

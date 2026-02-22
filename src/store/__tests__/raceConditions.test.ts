@@ -83,18 +83,34 @@ vi.mock('../../services/settingsService', () => ({
 
 import { useStore } from '../useStore';
 
-// Mock requestAnimationFrame
-const mockRAF = vi.fn((cb: FrameRequestCallback) => {
-});
-
 describe('Race Conditions & Concurrency', () => {
+  let rafCallbacks: FrameRequestCallback[] = [];
+  let rafId = 0;
+
+  const triggerRAF = () => {
+    const callbacks = [...rafCallbacks];
+    rafCallbacks = [];
+    callbacks.forEach(cb => cb(performance.now()));
+  };
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    rafCallbacks = [];
+    rafId = 0;
     
-    // Override requestAnimationFrame for each test
     Object.defineProperty(globalThis, 'requestAnimationFrame', {
-      value: mockRAF,
+      value: (cb: FrameRequestCallback) => {
+        rafCallbacks.push(cb);
+        return ++rafId;
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    Object.defineProperty(globalThis, 'cancelAnimationFrame', {
+      value: (id: number) => {
+        rafCallbacks = rafCallbacks.filter((_, i) => i + 1 !== id);
+      },
       writable: true,
       configurable: true,
     });
@@ -134,17 +150,13 @@ describe('Race Conditions & Concurrency', () => {
       const tabC: Tab = { id: 'live-tab-3', title: 'C' } as any;
       
       useStore.setState({ islands: [tabA, tabB, tabC] });
-      
-      vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
 
       const store = useStore.getState();
       
       store.moveItemOptimistically('live-tab-3', 'live-gap-0'); 
       store.moveItemOptimistically('live-tab-2', 'live-gap-0'); 
 
-      // Advance time past debounce threshold and run all timers
-      vi.setSystemTime(new Date('2024-01-01T00:00:00.200Z'));
-      await vi.runAllTimersAsync();
+      triggerRAF();
 
       const { islands } = useStore.getState();
       expect(islands[0].id).toBe('live-tab-2');

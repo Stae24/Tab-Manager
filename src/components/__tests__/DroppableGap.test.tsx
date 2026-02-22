@@ -51,7 +51,7 @@ describe('DroppableGap', () => {
 
     it('has minimal height when not expanded', () => {
       const { container } = render(<DroppableGap index={0} panelType="live" />);
-      expect(container.firstChild).toHaveClass('h-px');
+      expect(container.firstChild).toHaveClass('h-0');
     });
 
     it('has expanded height when expanded=true', async () => {
