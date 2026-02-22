@@ -114,7 +114,7 @@ describe('vaultStorage - saveVault', () => {
     expect(mockSyncStorage[VAULT_META_KEY]).toBeDefined();
     
     const meta = mockSyncStorage[VAULT_META_KEY] as any;
-    expect(meta.version).toBe(2);
+    expect(meta.version).toBe(3);
     expect(meta.chunkCount).toBeGreaterThan(0);
     expect(meta.checksum).toBeDefined();
     expect(meta.compressed).toBe(true);
@@ -220,8 +220,8 @@ describe('vaultStorage - toggleSyncMode', () => {
 });
 
 describe('vaultStorage - migrateFromLegacy', () => {
-  it('returns no migration needed when already on v2', async () => {
-    mockSyncStorage[VAULT_META_KEY] = { version: 2 };
+  it('returns no migration needed when already on v3', async () => {
+    mockSyncStorage[VAULT_META_KEY] = { version: 3 };
     
     const result = await migrateFromLegacy({ syncEnabled: true });
     
@@ -437,5 +437,52 @@ describe('vaultStorage - quota fallback', () => {
     expect(result.success).toBe(true);
     expect(result.fallbackToLocal).toBe(true);
     expect(mockLocalStorageLocal[LEGACY_VAULT_KEY]).toEqual(vault);
+  });
+});
+
+describe('vaultStorage - minification', () => {
+  it('saves vault with minified format when enabled', async () => {
+    const vault = [createMockVaultItem(1, 'Test Tab')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    
+    const meta = mockSyncStorage[VAULT_META_KEY] as any;
+    expect(meta.minified).toBe(true);
+  });
+  
+  it('round-trips minified data correctly', async () => {
+    const vault = [
+      createMockVaultItem(1, 'Tab One'),
+      createMockVaultItem(2, 'Tab Two'),
+    ];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(loaded).toHaveLength(2);
+    expect(loaded[0].title).toBe('Tab One');
+    expect(loaded[1].title).toBe('Tab Two');
+    expect(loaded[0].savedAt).toBeDefined();
+    expect(loaded[0].originalId).toBeDefined();
+  });
+});
+
+describe('vaultStorage - compression tiers', () => {
+  it('uses full tier by default when space available', async () => {
+    const vault = [createMockVaultItem(1, 'Test Tab')];
+    
+    const result = await saveVault(vault, { syncEnabled: true });
+    
+    expect(result.success).toBe(true);
+    expect(result.compressionTier).toBeUndefined();
+  });
+  
+  it('stores compression tier in metadata', async () => {
+    const vault = [createMockVaultItem(1, 'Test Tab')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    
+    const meta = mockSyncStorage[VAULT_META_KEY] as any;
+    expect(meta.compressionTier).toBeDefined();
   });
 });

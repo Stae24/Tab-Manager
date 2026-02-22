@@ -54,6 +54,7 @@ export interface VaultStorageResult {
   bytesAvailable?: number;
   warningLevel?: QuotaWarningLevel;
   fallbackToLocal?: boolean;
+  compressionTier?: CompressionTier;
 }
 
 export interface VaultQuotaInfo {
@@ -65,6 +66,14 @@ export interface VaultQuotaInfo {
   orphanedChunks?: number;
 }
 
+export type CompressionTier = 'full' | 'no_favicons' | 'minimal';
+
+export interface VaultDiff {
+  added: VaultItem[];
+  deleted: string[];
+  timestamp: number;
+}
+
 export interface VaultMeta {
   version: number;
   chunkCount: number;
@@ -72,6 +81,9 @@ export interface VaultMeta {
   checksum: string;
   timestamp: number;
   compressed: boolean;
+  compressionTier?: CompressionTier;
+  minified?: boolean;
+  diffKey?: string;
 }
 
 export interface MigrationResult {

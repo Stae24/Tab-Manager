@@ -83,6 +83,9 @@ export const Dashboard: React.FC = () => {
   const clearQuotaExceeded = useStore(state => state.clearQuotaExceeded);
   const setVaultSyncEnabled = useStore(state => state.setVaultSyncEnabled);
   const groupSearchResults = useStore(state => state.groupSearchResults);
+  const compressionTier = useStore(state => state.compressionTier);
+  const showCompressionWarning = useStore(state => state.showCompressionWarning);
+  const dismissCompressionWarning = useStore(state => state.dismissCompressionWarning);
 
   useEffect(() => {
     logger.debug('[Dashboard] Sync state:', {
@@ -497,6 +500,9 @@ export const Dashboard: React.FC = () => {
                   syncRecovered={syncRecovered}
                   onClearSyncRecovered={clearSyncRecovered}
                   vaultTabCount={vaultTabCount}
+                  compressionTier={compressionTier}
+                  showCompressionWarning={showCompressionWarning}
+                  onDismissCompressionWarning={dismissCompressionWarning}
                 />
               </>
             )}

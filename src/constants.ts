@@ -1,5 +1,5 @@
 export const CHROME_32BIT_INT_MAX = 2147483647;
-export const STORAGE_VERSION = 2;
+export const STORAGE_VERSION = 3;
 export const VAULT_CHUNK_SIZE = 4096;
 export const CHROME_SYNC_ITEM_MAX_BYTES = 8192;
 export const MAX_SYNC_RETRIES = 3;
@@ -12,6 +12,12 @@ export const VAULT_QUOTA_SAFETY_MARGIN_BYTES = 2048;
 
 export const VAULT_LOAD_MAX_RETRIES = 3;
 export const VAULT_LOAD_RETRY_BASE_DELAY_MS = 100;
+
+export const VAULT_DIFF_KEY = 'vault_diff';
+export const DIFF_COMPACT_THRESHOLD = 0.3;
+export const COMPACT_IDLE_INTERVAL_MS = 900000;
+
+export const COMPRESSION_TIERS: readonly ('full' | 'no_favicons' | 'minimal')[] = ['full', 'no_favicons', 'minimal'];
 
 export const SETTINGS_PANEL_MIN_WIDTH = 320;
 export const SETTINGS_PANEL_MAX_WIDTH = 800;
