@@ -16,8 +16,6 @@ interface Command {
   undo(): Promise<void>;
   label: string;
 }
-
-type CommandFactory = (...args: unknown[]) => Command;
 ```
 
 ### MoveTabCommand.ts
@@ -35,7 +33,7 @@ interface MoveTabParams {
 }
 
 class MoveTabCommand implements Command {
-  constructor(private params: MoveTabParams, public label: string = 'Move Tab') {}
+  constructor(private params: MoveTabParams, public label = 'Move Tab') {}
   async execute() { /* move to new position and group */ }
   async undo() { /* restore to original position and group */ }
 }
@@ -61,8 +59,6 @@ class MoveIslandCommand implements Command {
 ---
 
 ## USAGE
-
-Commands are executed via `useCommandSlice`:
 
 ```typescript
 import { MoveTabCommand } from './MoveTabCommand';
@@ -92,22 +88,20 @@ import { logger } from '../../utils/logger';
 export class YourCommand implements Command {
   constructor(
     private params: YourParams,
-    public label: string = 'Your Action'
+    public label = 'Your Action'
   ) {}
 
   async execute() {
-    // Perform the action
     logger.info('[YourCommand] Executing');
+    // Perform the action
   }
 
   async undo() {
-    // Reverse the action
     logger.info('[YourCommand] Undoing');
+    // Reverse the action
   }
 }
 ```
-
-3. Export from `useStore.ts` or use directly
 
 ---
 

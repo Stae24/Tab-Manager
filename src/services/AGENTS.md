@@ -19,8 +19,8 @@ Core tab/group operations with `withRetry` wrapper for transient errors.
 | `duplicateIsland()` | Clone group preserving order |
 
 **Retry Logic (`withRetry`):**
-- 3 attempts max, exponential backoff
-- Retryable: "dragging", "not editable", "locked"
+- 3 attempts max, exponential backoff (100ms base)
+- Retryable: "dragging", "not editable", "Tab cannot be modified"
 - Non-retryable: "invalid ID", "no tab"
 
 ### vaultService.ts
@@ -32,22 +32,25 @@ Persistent archive storage with compression and chunking.
 - Backup: Always write to `vault_backup` in local
 
 **Key Operations:**
-- `loadVault()`: Load + decompress + checksum verify
-- `saveVault()`: Compress + chunk + verify + cleanup
-- `migrateFromLegacy()`: One-time upgrade from old format
+| Method | Description |
+|--------|-------------|
+| `loadVault()` | Load + decompress + checksum verify |
+| `saveVault()` | Compress + chunk + verify + cleanup |
+| `recoverVaultSync()` | Self-healing from backup |
+| `migrateFromLegacy()` | One-time upgrade from old format |
 
 ### settingsService.ts
-User preferences with debounced persistence.
+User preferences with debounced persistence (5s debounce).
 
 **Keys:** `appearanceSettings`, `dividerPosition`, `showVault`, `settingsPanelWidth`
 
 ### quotaService.ts
 Monitors `chrome.storage.sync` quota for vault warnings.
 
-**Warning Levels:** `none` → `warning` (80%) → `critical` (95%)
+**Warning Levels:** `none` → `warning` (80%) → `critical` (90%)
 
 ### storageKeys.ts
-Vault chunk key management constants.
+Vault chunk key management constants (`vault_meta`, `vault_chunk_*`).
 
 ---
 
