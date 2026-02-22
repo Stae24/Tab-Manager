@@ -23,7 +23,7 @@ export const DroppableGap: React.FC<DroppableGapProps> = ({ index, panelType, is
       ref={ref}
       className={cn(
         "w-full rounded transition-all duration-200 ease-out pointer-events-none",
-        !expanded && "h-px min-h-[1px]",
+        !expanded && "h-0",
         expanded && "h-[2.375rem]",
         isOver && expanded && "bg-gx-accent/20"
       )}

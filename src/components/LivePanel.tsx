@@ -338,7 +338,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                     left: 0,
                     width: '100%',
                     transform: `translateY(${virtualRow.start}px)`,
-                    paddingBottom: `${VIRTUAL_ROW_GAP_PX}px`,
+                    ...(row.type !== 'gap' && { paddingBottom: `${VIRTUAL_ROW_GAP_PX}px` }),
                   }}
                 >
                   {row.type === 'gap' ? (
