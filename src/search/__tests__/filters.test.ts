@@ -242,4 +242,114 @@ describe('applyTextSearch', () => {
     expect(applyTextSearch(tab, ['Tube'])).toBe(true);
   });
 });
+
+describe('groupname filter', () => {
+  it('should return true for matching group name', () => {
+    const tab = createMockTab({ groupId: 1 });
+    const groups = new Map([[1, { title: 'Work Tabs' } as any]]);
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupname', context, 'work')).toBe(true);
+  });
+
+  it('should return false for non-matching group name', () => {
+    const tab = createMockTab({ groupId: 1 });
+    const groups = new Map([[1, { title: 'Work Tabs' } as any]]);
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupname', context, 'personal')).toBe(false);
+  });
+
+  it('should return false for ungrouped tab', () => {
+    const tab = createMockTab({ groupId: -1 });
+    const groups = new Map();
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupname', context, 'work')).toBe(false);
+  });
+
+  it('should return false for unknown group', () => {
+    const tab = createMockTab({ groupId: 999 });
+    const groups = new Map([[1, { title: 'Work' } as any]]);
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupname', context, 'work')).toBe(false);
+  });
+
+  it('should handle group without title', () => {
+    const tab = createMockTab({ groupId: 1 });
+    const groups = new Map([[1, { title: undefined } as any]]);
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupname', context, 'work')).toBe(false);
+  });
+
+  it('should be case-insensitive', () => {
+    const tab = createMockTab({ groupId: 1 });
+    const groups = new Map([[1, { title: 'WORK TABS' } as any]]);
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupname', context, 'work')).toBe(true);
+  });
+});
+
+describe('groupcolor filter', () => {
+  it('should return true for matching group color', () => {
+    const tab = createMockTab({ groupId: 1 });
+    const groups = new Map([[1, { color: 'blue' } as any]]);
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupcolor', context, 'blue')).toBe(true);
+  });
+
+  it('should return false for non-matching group color', () => {
+    const tab = createMockTab({ groupId: 1 });
+    const groups = new Map([[1, { color: 'blue' } as any]]);
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupcolor', context, 'red')).toBe(false);
+  });
+
+  it('should return false for ungrouped tab', () => {
+    const tab = createMockTab({ groupId: -1 });
+    const groups = new Map();
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupcolor', context, 'blue')).toBe(false);
+  });
+
+  it('should return false for unknown group', () => {
+    const tab = createMockTab({ groupId: 999 });
+    const groups = new Map([[1, { color: 'blue' } as any]]);
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupcolor', context, 'blue')).toBe(false);
+  });
+
+  it('should be case-insensitive', () => {
+    const tab = createMockTab({ groupId: 1 });
+    const groups = new Map([[1, { color: 'BLUE' } as any]]);
+    const context = createMockContext({ groups });
+    
+    expect(applyFilter(tab, 'groupcolor', context, 'blue')).toBe(true);
+  });
+});
+
+describe('duplicate filter', () => {
+  it('should return true for duplicate tab', () => {
+    const tab = createMockTab({ id: 'live-tab-1', url: 'https://example.com' });
+    const duplicateMap = new Map([['https://example.com', ['live-tab-1', 'live-tab-2'] as any]]);
+    const context = createMockContext({ duplicateMap });
+    
+    expect(applyFilter(tab, 'duplicate', context)).toBe(true);
+  });
+
+  it('should return false for unique tab', () => {
+    const tab = createMockTab({ id: 'live-tab-1', url: 'https://unique.com' });
+    const duplicateMap = new Map();
+    const context = createMockContext({ duplicateMap });
+    
+    expect(applyFilter(tab, 'duplicate', context)).toBe(false);
+  });
+});
 });
