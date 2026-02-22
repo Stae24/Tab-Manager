@@ -108,7 +108,7 @@ const KEY_MAP = {
   groupId: 'g', muted: 'm', pinned: 'p', audible: 'z'
 } as const;
 
-const KEY_ORDER = ['id', 'title', 'url', 'favicon', 'savedAt', 'originalId', 'color', 'collapsed', 'tabs', 'active', 'discarded', 'windowId', 'index', 'groupId', 'muted', 'pinned', 'audible'] as const;
+export const KEY_ORDER = ['id', 'title', 'url', 'favicon', 'savedAt', 'originalId', 'color', 'collapsed', 'tabs', 'active', 'discarded', 'windowId', 'index', 'groupId', 'muted', 'pinned', 'audible'] as const;
 
 const REVERSE_KEY_MAP: Record<string, string> = {
   i: 'id', t: 'title', u: 'url', f: 'favicon', 
@@ -368,6 +368,18 @@ function minifyVaultWithDomains(vault: VaultItem[]): MinifiedVaultWithDomains {
   return { version: 1, domains, items };
 }
 
+function reconstructUrl(urlString: string, domains: string[]): string {
+  const urlMatch = urlString.match(/^(\d+)(.*)$/);
+  if (urlMatch) {
+    const domainIndex = parseInt(urlMatch[1], 10);
+    const path = urlMatch[2];
+    if (Number.isSafeInteger(domainIndex) && domainIndex >= 0 && domainIndex < domains.length) {
+      return denormalizeUrl(domains[domainIndex] + path);
+    }
+  }
+  return denormalizeUrl(urlString);
+}
+
 function expandVaultWithDomains(data: MinifiedVaultWithDomains): VaultItem[] {
   const { domains, items } = data;
   
@@ -375,34 +387,10 @@ function expandVaultWithDomains(data: MinifiedVaultWithDomains): VaultItem[] {
     const expanded = expandVaultItem(item);
     
     if (isTabWithUrl(expanded)) {
-      const urlString = String(expanded.url);
-      const urlMatch = urlString.match(/^(\d+)(.*)$/);
-      if (urlMatch) {
-        const domainIndex = parseInt(urlMatch[1], 10);
-        const path = urlMatch[2];
-        if (Number.isSafeInteger(domainIndex) && domainIndex >= 0 && domainIndex < domains.length) {
-          expanded.url = denormalizeUrl(domains[domainIndex] + path);
-        } else {
-          expanded.url = denormalizeUrl(urlString);
-        }
-      } else {
-        expanded.url = denormalizeUrl(urlString);
-      }
+      expanded.url = reconstructUrl(String(expanded.url), domains);
     } else if ('tabs' in expanded && Array.isArray(expanded.tabs)) {
       for (const tab of expanded.tabs) {
-        const urlString = String(tab.url);
-        const urlMatch = urlString.match(/^(\d+)(.*)$/);
-        if (urlMatch) {
-          const domainIndex = parseInt(urlMatch[1], 10);
-          const path = urlMatch[2];
-          if (Number.isSafeInteger(domainIndex) && domainIndex >= 0 && domainIndex < domains.length) {
-            tab.url = denormalizeUrl(domains[domainIndex] + path);
-          } else {
-            tab.url = denormalizeUrl(urlString);
-          }
-        } else {
-          tab.url = denormalizeUrl(urlString);
-        }
+        tab.url = reconstructUrl(String(tab.url), domains);
       }
     }
     
