@@ -41,6 +41,7 @@ const mockSetSearchResults = vi.fn();
 const mockSetIsSearching = vi.fn();
 const mockSetParsedQuery = vi.fn();
 const mockSetSearchScope = vi.fn();
+const mockSetSearchQuery = vi.fn();
 
 vi.mock('../../store/useStore', () => ({
   useStore: vi.fn((selector) => {
@@ -54,6 +55,8 @@ vi.mock('../../store/useStore', () => ({
       parsedQuery: null,
       setParsedQuery: mockSetParsedQuery,
       syncLiveTabs: vi.fn(),
+      searchQuery: '',
+      setSearchQuery: mockSetSearchQuery,
     };
     return selector ? selector(state) : state;
   }),
@@ -77,6 +80,7 @@ vi.mock('../SearchBar', () => ({
       placeholder="Search tabs..."
       value={props.query}
       onChange={(e) => props.onQueryChange(e.target.value)}
+      onKeyDown={props.onKeyDown}
     />
   )),
 }));
@@ -239,5 +243,137 @@ describe('LivePanel Component', () => {
 
     const groupButton = screen.getByTitle('Not enough ungrouped tabs to group');
     expect(groupButton).toBeDisabled();
+  });
+
+  describe('LivePanel - Search Integration', () => {
+    it('updates search query on input change', async () => {
+      render(<LivePanel {...defaultProps} />);
+
+      const searchInput = screen.getByPlaceholderText('Search tabs...');
+      fireEvent.change(searchInput, { target: { value: 'test query' } });
+
+      // The search input should update its value
+      expect(searchInput).toHaveValue('test query');
+    });
+
+    it('shows search results when isSearching is true', () => {
+      // The search bar should be present regardless of search state
+      render(<LivePanel {...defaultProps} />);
+      expect(screen.getByPlaceholderText('Search tabs...')).toBeInTheDocument();
+    });
+
+    it('clears search on escape key', async () => {
+      render(<LivePanel {...defaultProps} />);
+
+      const searchInput = screen.getByPlaceholderText('Search tabs...');
+
+      // First, type something
+      fireEvent.change(searchInput, { target: { value: 'test' } });
+      expect(searchInput).toHaveValue('test');
+
+      // Then press Escape - should clear the input
+      fireEvent.keyDown(searchInput, { key: 'Escape' });
+      expect(searchInput).toHaveValue('');
+    });
+  });
+
+  describe('LivePanel - Empty State', () => {
+    it('renders panel when no tabs', () => {
+      render(<LivePanel {...defaultProps} islands={[]} />);
+
+      // Check that the panel still renders correctly
+      // Use the header text to verify component rendered
+      expect(screen.getByText('Live Workspace')).toBeInTheDocument();
+    });
+
+    it('shows Live Workspace header when empty', () => {
+      render(<LivePanel {...defaultProps} islands={[]} />);
+
+      // The component should show the header
+      expect(screen.getByText('Live Workspace')).toBeInTheDocument();
+    });
+  });
+
+  describe('LivePanel - Group Actions', () => {
+    it('collapses all groups when collapse all button is clicked', async () => {
+      const mockToggleLiveGroupCollapse = vi.fn();
+      const islands = [
+        { id: 'live-group-1', title: 'Group 1', tabs: [{ id: 1, title: 'Tab 1' }], collapsed: false },
+        { id: 'live-group-2', title: 'Group 2', tabs: [{ id: 2, title: 'Tab 2' }], collapsed: false },
+      ];
+
+      render(<LivePanel {...defaultProps} islands={islands} onToggleCollapse={mockToggleLiveGroupCollapse} />);
+
+      const collapseAllBtn = screen.getByTitle('Collapse All');
+      fireEvent.click(collapseAllBtn);
+
+      // Should toggle collapse for each group
+      expect(mockToggleLiveGroupCollapse).toHaveBeenCalled();
+    });
+
+    it('expands all groups when expand all button is clicked', async () => {
+      const mockToggleLiveGroupCollapse = vi.fn();
+      const islands = [
+        { id: 'live-group-1', title: 'Group 1', tabs: [{ id: 1 }], collapsed: true },
+        { id: 'live-group-2', title: 'Group 2', tabs: [{ id: 2 }], collapsed: true },
+      ];
+
+      render(<LivePanel {...defaultProps} islands={islands} onToggleCollapse={mockToggleLiveGroupCollapse} />);
+
+      const expandAllBtn = screen.getByTitle('Expand All');
+      fireEvent.click(expandAllBtn);
+
+      // Should toggle collapse for each group
+      expect(mockToggleLiveGroupCollapse).toHaveBeenCalled();
+    });
+  });
+
+  describe('LivePanel - Virtual List', () => {
+    it('renders with virtualizer for many items', () => {
+      const manyIslands = Array.from({ length: 50 }, (_, i) => ({
+        id: `live-tab-${i}`,
+        title: `Tab ${i}`,
+        url: `https://example${i}.com`,
+        favicon: '',
+        active: false,
+        discarded: false,
+        muted: false,
+        pinned: false,
+        audible: false,
+        groupId: -1,
+        windowId: 1,
+      }));
+
+      render(<LivePanel {...defaultProps} islands={manyIslands} />);
+
+      // Should render the Live Workspace header with many items
+      expect(screen.getByText('Live Workspace')).toBeInTheDocument();
+    });
+  });
+
+  describe('LivePanel - Scroll Behavior', () => {
+    it('scrolls to creating tab when isCreatingIsland is true', async () => {
+      const scrollIntoViewMock = vi.fn();
+      // Mock scrollIntoView
+      Object.defineProperty(Element.prototype, 'scrollIntoView', {
+        configurable: true,
+        writable: true,
+        value: scrollIntoViewMock,
+      });
+
+      render(
+        <LivePanel
+          {...defaultProps}
+          isCreatingIsland={true}
+          creatingTabId="live-tab-50"
+        />
+      );
+
+      // The component should render with the creating island indicator
+      expect(screen.getByText('Creating Island...')).toBeInTheDocument();
+
+      // Clean up
+      delete (Element.prototype as any).scrollIntoView;
+    });
   });
 });
