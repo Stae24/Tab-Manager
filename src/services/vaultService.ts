@@ -9,7 +9,9 @@ import type {
   CompressionTier,
   VaultDiff,
   Tab,
-  Island
+  Island,
+  MinifiedVaultWithDomains,
+  UniversalId
 } from '../types/index';
 import { quotaService } from './quotaService';
 import { 
@@ -26,6 +28,61 @@ import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY, getVaultChunkKeys
 import { logger } from '../utils/logger';
 
 const getByteLength = (str: string): number => new TextEncoder().encode(str).length;
+
+const TRACKING_PARAMS = new Set([
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+  'fbclid', 'gclid', 'msclkid', 'ref', 'source', '_ga', 'mc_cid', 'mc_eid'
+]);
+
+function normalizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    
+    let hostname = parsed.hostname.replace(/^www\./, '');
+    
+    const params = new URLSearchParams(parsed.search);
+    for (const key of Array.from(params.keys())) {
+      if (TRACKING_PARAMS.has(key.toLowerCase())) {
+        params.delete(key);
+      }
+    }
+    
+    let normalized = hostname;
+    
+    if (parsed.port) {
+      normalized += ':' + parsed.port;
+    }
+    
+    if (parsed.pathname && parsed.pathname !== '/') {
+      let path = parsed.pathname;
+      if (path.endsWith('/')) {
+        path = path.slice(0, -1);
+      }
+      normalized += path;
+    }
+    
+    const cleanSearch = params.toString();
+    if (cleanSearch) {
+      normalized += '?' + cleanSearch;
+    }
+    
+    if (parsed.hash && parsed.hash !== '#') {
+      normalized += parsed.hash;
+    }
+    
+    return normalized;
+  } catch {
+    return url;
+  }
+}
+
+function denormalizeUrl(normalized: string): string {
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    return normalized;
+  }
+  
+  return 'https://' + normalized;
+}
 
 const KEY_MAP = {
   id: 'i', title: 't', url: 'u', favicon: 'f', 
@@ -84,8 +141,74 @@ function minifyVaultItem(item: VaultItem): unknown[] {
   return minifyTab(item as Tab);
 }
 
-function minifyVault(vault: VaultItem[]): unknown[] {
-  return vault.map(minifyVaultItem);
+function minifyVaultItemWithNormalizedUrls(item: VaultItem): unknown[] {
+  if ('tabs' in item && Array.isArray(item.tabs)) {
+    const island = item as Island & { savedAt: number; originalId: unknown };
+    const result: unknown[] = [];
+    for (const key of KEY_ORDER) {
+      const value = island[key as keyof typeof island];
+      if (key === 'tabs' && Array.isArray(value)) {
+        result.push((value as Tab[]).map(tab => minifyTab({ ...tab, url: normalizeUrl(tab.url) })));
+      } else if (value !== undefined) {
+        result.push(value);
+      } else {
+        result.push(null);
+      }
+    }
+    return result;
+  }
+  const tab = item as Tab;
+  const result: unknown[] = [];
+  for (const key of KEY_ORDER) {
+    if (key === 'tabs') {
+      result.push(null);
+      continue;
+    }
+    const value = tab[key as keyof Tab];
+    if (key === 'url' && typeof value === 'string') {
+      result.push(normalizeUrl(value));
+    } else if (value !== undefined) {
+      result.push(value);
+    } else {
+      result.push(null);
+    }
+  }
+  return result;
+}
+
+type MinifyResult = unknown[] | MinifiedVaultWithDomains;
+
+function minifyVault(vault: VaultItem[]): MinifyResult {
+  if (vault.length < 3) {
+    return vault.map(minifyVaultItemWithNormalizedUrls);
+  }
+  
+  const domainSet = new Set<string>();
+  let totalUrlLength = 0;
+  
+  for (const item of vault) {
+    if (isTabWithUrl(item)) {
+      const { domain } = extractDomain(normalizeUrl(item.url));
+      domainSet.add(domain);
+      totalUrlLength += item.url.length;
+    } else if ('tabs' in item && Array.isArray(item.tabs)) {
+      for (const tab of item.tabs) {
+        const { domain } = extractDomain(normalizeUrl(tab.url));
+        domainSet.add(domain);
+        totalUrlLength += tab.url.length;
+      }
+    }
+  }
+  
+  const domains = Array.from(domainSet);
+  const domainOverhead = JSON.stringify(domains).length;
+  const estimatedSavings = totalUrlLength * 0.4;
+  
+  if (estimatedSavings > domainOverhead * 1.2) {
+    return minifyVaultWithDomains(vault);
+  }
+  
+  return vault.map(minifyVaultItemWithNormalizedUrls);
 }
 
 function expandTab(data: unknown[]): VaultItem {
@@ -122,8 +245,145 @@ function expandVaultItem(data: unknown[]): VaultItem {
   return expandTab(data);
 }
 
+function denormalizeUrlInItem(item: VaultItem): VaultItem {
+  if (isTabWithUrl(item)) {
+    item.url = denormalizeUrl(item.url);
+  } else if ('tabs' in item && Array.isArray(item.tabs)) {
+    for (const tab of item.tabs) {
+      tab.url = denormalizeUrl(tab.url);
+    }
+  }
+  return item;
+}
+
 function expandVault(data: unknown[]): VaultItem[] {
   return data.map((item: unknown) => expandVaultItem(item as unknown[]));
+}
+
+function expandVaultWithDenormalization(data: unknown[]): VaultItem[] {
+  return data.map((item: unknown) => {
+    const expanded = expandVaultItem(item as unknown[]);
+    return denormalizeUrlInItem(expanded);
+  });
+}
+
+function extractDomain(normalizedUrl: string): { domain: string; path: string } {
+  const slashIndex = normalizedUrl.indexOf('/');
+  const queryIndex = normalizedUrl.indexOf('?');
+  const hashIndex = normalizedUrl.indexOf('#');
+  
+  let splitIndex = normalizedUrl.length;
+  if (slashIndex !== -1) splitIndex = Math.min(splitIndex, slashIndex);
+  if (queryIndex !== -1) splitIndex = Math.min(splitIndex, queryIndex);
+  if (hashIndex !== -1) splitIndex = Math.min(splitIndex, hashIndex);
+  
+  const domain = normalizedUrl.slice(0, splitIndex);
+  const path = normalizedUrl.slice(splitIndex);
+  
+  return { domain, path };
+}
+
+function isTabWithUrl(item: VaultItem): item is Tab & { savedAt: number; originalId: UniversalId } {
+  return 'url' in item && typeof item.url === 'string';
+}
+
+function collectUrlsFromVault(vault: VaultItem[]): string[] {
+  const urls: string[] = [];
+  for (const item of vault) {
+    if (isTabWithUrl(item)) {
+      urls.push(item.url);
+    } else if ('tabs' in item && Array.isArray(item.tabs)) {
+      for (const tab of item.tabs) {
+        urls.push(tab.url);
+      }
+    }
+  }
+  return urls;
+}
+
+function minifyVaultWithDomains(vault: VaultItem[]): MinifiedVaultWithDomains {
+  const domainMap = new Map<string, number>();
+  const domains: string[] = [];
+  
+  const itemsWithDomainRefs = vault.map(item => {
+    if (isTabWithUrl(item)) {
+      const normalizedUrl = normalizeUrl(item.url);
+      const { domain, path } = extractDomain(normalizedUrl);
+      
+      let domainIndex = domainMap.get(domain);
+      if (domainIndex === undefined) {
+        domainIndex = domains.length;
+        domains.push(domain);
+        domainMap.set(domain, domainIndex);
+      }
+      
+      return {
+        ...item,
+        url: `${domainIndex}${path}`
+      };
+    } else {
+      const island = item as Island & { savedAt: number; originalId: UniversalId };
+      const normalizedTabs = island.tabs.map(tab => {
+        const normalizedUrl = normalizeUrl(tab.url);
+        const { domain, path } = extractDomain(normalizedUrl);
+        
+        let domainIndex = domainMap.get(domain);
+        if (domainIndex === undefined) {
+          domainIndex = domains.length;
+          domains.push(domain);
+          domainMap.set(domain, domainIndex);
+        }
+        
+        return {
+          ...tab,
+          url: `${domainIndex}${path}`
+        };
+      });
+      
+      return {
+        ...island,
+        tabs: normalizedTabs
+      };
+    }
+  });
+  
+  const items = itemsWithDomainRefs.map(minifyVaultItem);
+  
+  return { version: 1, domains, items };
+}
+
+function expandVaultWithDomains(data: MinifiedVaultWithDomains): VaultItem[] {
+  const { domains, items } = data;
+  
+  return items.map(item => {
+    const expanded = expandVaultItem(item);
+    
+    if (isTabWithUrl(expanded)) {
+      const urlString = String(expanded.url);
+      const urlMatch = urlString.match(/^(\d+)(.*)$/);
+      if (urlMatch) {
+        const domainIndex = parseInt(urlMatch[1], 10);
+        const path = urlMatch[2];
+        expanded.url = denormalizeUrl(domains[domainIndex] + path);
+      } else {
+        expanded.url = denormalizeUrl(urlString);
+      }
+    } else if ('tabs' in expanded && Array.isArray(expanded.tabs)) {
+      for (const tab of expanded.tabs) {
+        const urlString = String(tab.url);
+        const urlMatch = urlString.match(/^(\d+)(.*)$/);
+        if (urlMatch) {
+          const domainIndex = parseInt(urlMatch[1], 10);
+          const path = urlMatch[2];
+          tab.url = denormalizeUrl(domains[domainIndex] + path);
+        } else {
+          tab.url = denormalizeUrl(urlString);
+        }
+      }
+    }
+    
+    return expanded;
+  });
 }
 
 function applyCompressionTier(item: VaultItem, tier: CompressionTier): VaultItem {
@@ -300,7 +560,7 @@ async function applyDiff(baseVault: VaultItem[], diff: VaultDiff): Promise<Vault
 async function tryCompressionTiers(
   vault: VaultItem[],
   availableBytes: number
-): Promise<{ tier: CompressionTier; compressed: string; minified: boolean }> {
+): Promise<{ tier: CompressionTier; compressed: string; minified: boolean; domainDedup: boolean }> {
   for (const tier of COMPRESSION_TIERS) {
     const tieredVault = applyCompressionTierToVault(vault, tier);
     
@@ -310,8 +570,9 @@ async function tryCompressionTiers(
     const minifiedBytes = minifiedCompressed.length * 2;
     
     if (minifiedBytes <= availableBytes) {
-      logger.info(`[VaultStorage] Compression tier ${tier} with minification fits: ${minifiedBytes} <= ${availableBytes}`);
-      return { tier, compressed: minifiedCompressed, minified: true };
+      const domainDedup = !Array.isArray(minified) && 'domains' in minified;
+      logger.info(`[VaultStorage] Compression tier ${tier} with minification fits: ${minifiedBytes} <= ${availableBytes}, domainDedup: ${domainDedup}`);
+      return { tier, compressed: minifiedCompressed, minified: true, domainDedup };
     }
     
     const regularJson = JSON.stringify(tieredVault);
@@ -320,7 +581,7 @@ async function tryCompressionTiers(
     
     if (regularBytes <= availableBytes) {
       logger.info(`[VaultStorage] Compression tier ${tier} without minification fits: ${regularBytes} <= ${availableBytes}`);
-      return { tier, compressed: regularCompressed, minified: false };
+      return { tier, compressed: regularCompressed, minified: false, domainDedup: false };
     }
   }
   
@@ -348,7 +609,7 @@ export const vaultService = {
         return { vault: await loadFromBackup(), timestamp: 0, fallbackToLocal: false };
       }
       
-      logger.info(`[VaultStorage] Found meta: version=${meta.version}, chunkCount=${meta.chunkCount}, chunkKeys.length=${meta.chunkKeys?.length || 0}, minified=${meta.minified}`);
+      logger.info(`[VaultStorage] Found meta: version=${meta.version}, chunkCount=${meta.chunkCount}, chunkKeys.length=${meta.chunkKeys?.length || 0}, minified=${meta.minified}, domainDedup=${meta.domainDedup}`);
       
       if (meta.version < STORAGE_VERSION) {
         logger.warn(`[VaultStorage] Version mismatch: expected ${STORAGE_VERSION}, got ${meta.version}. Attempting to load data anyway.`);
@@ -413,10 +674,13 @@ export const vaultService = {
       try {
         const rawParsed = JSON.parse(jsonData);
         
-        if (meta.minified && Array.isArray(rawParsed) && rawParsed.length > 0) {
+        if (rawParsed && typeof rawParsed === 'object' && 'domains' in rawParsed) {
+          logger.info('[VaultStorage] Expanding domain-deduplicated vault data');
+          parsed = expandVaultWithDomains(rawParsed as MinifiedVaultWithDomains);
+        } else if (meta.minified && Array.isArray(rawParsed) && rawParsed.length > 0) {
           if (Array.isArray(rawParsed[0])) {
             logger.info('[VaultStorage] Expanding minified vault data');
-            parsed = expandVault(rawParsed);
+            parsed = expandVaultWithDenormalization(rawParsed);
           } else {
             parsed = rawParsed as VaultItem[];
           }
@@ -499,13 +763,16 @@ export const vaultService = {
       logger.info(`[VaultStorage] 📊 Quota state BEFORE save:`);
       logger.info(`[VaultStorage]   - Available: ${availableBytes} bytes (with safety margin)`);
       
-      const { tier, compressed, minified } = await tryCompressionTiers(vault, availableBytes);
+      const { tier, compressed, minified, domainDedup } = await tryCompressionTiers(vault, availableBytes);
       const compressedBytes = compressed.length * 2;
       
-      logger.info(`[VaultStorage] Using compression tier: ${tier}, minified: ${minified}, size: ${compressedBytes} bytes`);
+      logger.info(`[VaultStorage] Using compression tier: ${tier}, minified: ${minified}, domainDedup: ${domainDedup}, size: ${compressedBytes} bytes`);
       
+      const minifiedData = minified 
+        ? minifyVault(applyCompressionTierToVault(vault, tier))
+        : null;
       const checksumData = minified 
-        ? JSON.stringify(minifyVault(applyCompressionTierToVault(vault, tier)))
+        ? JSON.stringify(minifiedData)
         : JSON.stringify(applyCompressionTierToVault(vault, tier));
       const checksum = await computeChecksum(checksumData);
       
@@ -521,7 +788,8 @@ export const vaultService = {
         timestamp: Date.now(),
         compressed: true,
         compressionTier: tier,
-        minified
+        minified,
+        domainDedup
       };
       
       const storageData: Record<string, unknown> = {
