@@ -84,6 +84,13 @@ export interface VaultMeta {
   compressionTier?: CompressionTier;
   minified?: boolean;
   diffKey?: string;
+  domainDedup?: boolean;
+}
+
+export interface MinifiedVaultWithDomains {
+  version: number;
+  domains: string[];
+  items: unknown[][];
 }
 
 export interface MigrationResult {

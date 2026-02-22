@@ -486,3 +486,271 @@ describe('vaultStorage - compression tiers', () => {
     expect(meta.compressionTier).toBeDefined();
   });
 });
+
+describe('vaultStorage - URL normalization', () => {
+  const createVaultItemWithUrl = (id: number, url: string): VaultItem => ({
+    id: `vault-tab-${id}-${Date.now()}`,
+    title: `Tab ${id}`,
+    url,
+    favicon: '',
+    active: false,
+    discarded: false,
+    windowId: 1,
+    index: id,
+    groupId: -1,
+    muted: false,
+    pinned: false,
+    audible: false,
+    savedAt: Date.now(),
+    originalId: id,
+  } as VaultItem);
+
+  const getUrl = (item: VaultItem): string => {
+    if ('url' in item) return item.url;
+    throw new Error('Item has no url');
+  };
+
+  it('strips https:// protocol on save and restores on load', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://example.com/page')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://example.com/page');
+  });
+
+  it('strips www. prefix on save and restores on load', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://www.youtube.com/watch?v=abc')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://youtube.com/watch?v=abc');
+  });
+
+  it('removes UTM tracking parameters', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://example.com/page?utm_source=twitter&utm_medium=social&id=123')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://example.com/page?id=123');
+  });
+
+  it('removes fbclid and gclid tracking parameters', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://example.com/page?fbclid=xyz&gclid=abc&keep=me')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://example.com/page?keep=me');
+  });
+
+  it('preserves non-tracking query parameters', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://example.com/page?v=abc&sort=date&filter=new')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toContain('v=abc');
+    expect(getUrl(loaded[0])).toContain('sort=date');
+    expect(getUrl(loaded[0])).toContain('filter=new');
+  });
+
+  it('preserves hash fragments', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://example.com/page#section')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://example.com/page#section');
+  });
+
+  it('strips trailing slash from path', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://example.com/page/')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://example.com/page');
+  });
+
+  it('handles malformed URLs gracefully', async () => {
+    const vault = [createVaultItemWithUrl(1, 'not-a-valid-url')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://not-a-valid-url');
+  });
+
+  it('handles URLs with ports', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://localhost:3000/app')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://localhost:3000/app');
+  });
+});
+
+describe('vaultStorage - domain deduplication', () => {
+  const createVaultItemWithUrl = (id: number, url: string): VaultItem => ({
+    id: `vault-tab-${id}-${Date.now()}`,
+    title: `Tab ${id}`,
+    url,
+    favicon: '',
+    active: false,
+    discarded: false,
+    windowId: 1,
+    index: id,
+    groupId: -1,
+    muted: false,
+    pinned: false,
+    audible: false,
+    savedAt: Date.now(),
+    originalId: id,
+  } as VaultItem);
+
+  const getUrl = (item: VaultItem): string => {
+    if ('url' in item) return item.url;
+    throw new Error('Item has no url');
+  };
+
+  it('uses domain deduplication for vaults with 3+ items and repeated domains', async () => {
+    const vault = [
+      createVaultItemWithUrl(1, 'https://youtube.com/watch?v=abc'),
+      createVaultItemWithUrl(2, 'https://youtube.com/watch?v=def'),
+      createVaultItemWithUrl(3, 'https://youtube.com/channel/xyz'),
+    ];
+    
+    await saveVault(vault, { syncEnabled: true });
+    
+    const meta = mockSyncStorage[VAULT_META_KEY] as any;
+    expect(meta.domainDedup).toBe(true);
+  });
+
+  it('round-trips domain-deduplicated data correctly', async () => {
+    const vault = [
+      createVaultItemWithUrl(1, 'https://youtube.com/watch?v=abc'),
+      createVaultItemWithUrl(2, 'https://youtube.com/watch?v=def'),
+      createVaultItemWithUrl(3, 'https://github.com/user/repo'),
+    ];
+    
+    await saveVault(vault, { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(loaded).toHaveLength(3);
+    expect(getUrl(loaded[0])).toBe('https://youtube.com/watch?v=abc');
+    expect(getUrl(loaded[1])).toBe('https://youtube.com/watch?v=def');
+    expect(getUrl(loaded[2])).toBe('https://github.com/user/repo');
+  });
+
+  it('falls back to simple minification for small vaults', async () => {
+    const vault = [
+      createVaultItemWithUrl(1, 'https://youtube.com/watch?v=abc'),
+      createVaultItemWithUrl(2, 'https://github.com/user/repo'),
+    ];
+    
+    await saveVault(vault, { syncEnabled: true });
+    
+    const meta = mockSyncStorage[VAULT_META_KEY] as any;
+    expect(meta.domainDedup).toBeFalsy();
+  });
+
+  it('handles islands with multiple tabs in domain-deduplicated format', async () => {
+    const island: VaultItem = {
+      id: `vault-group-1-${Date.now()}`,
+      title: 'YouTube Group',
+      color: 'blue',
+      collapsed: false,
+      tabs: [
+        { id: 1, title: 'Video 1', url: 'https://youtube.com/watch?v=abc', favicon: '', active: false, discarded: false, windowId: 1, index: 0, groupId: 1 },
+        { id: 2, title: 'Video 2', url: 'https://youtube.com/watch?v=def', favicon: '', active: false, discarded: false, windowId: 1, index: 1, groupId: 1 },
+        { id: 3, title: 'Video 3', url: 'https://youtube.com/watch?v=ghi', favicon: '', active: false, discarded: false, windowId: 1, index: 2, groupId: 1 },
+      ],
+      savedAt: Date.now(),
+      originalId: 1,
+    } as VaultItem;
+    
+    await saveVault([island], { syncEnabled: true });
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(loaded).toHaveLength(1);
+    expect('tabs' in loaded[0]).toBe(true);
+    if ('tabs' in loaded[0]) {
+      expect(loaded[0].tabs).toHaveLength(3);
+      expect(loaded[0].tabs[0].url).toBe('https://youtube.com/watch?v=abc');
+      expect(loaded[0].tabs[1].url).toBe('https://youtube.com/watch?v=def');
+      expect(loaded[0].tabs[2].url).toBe('https://youtube.com/watch?v=ghi');
+    }
+  });
+});
+
+describe('vaultStorage - backward compatibility', () => {
+  const createVaultItemWithUrl = (id: number, url: string): VaultItem => ({
+    id: `vault-tab-${id}-${Date.now()}`,
+    title: `Tab ${id}`,
+    url,
+    favicon: '',
+    active: false,
+    discarded: false,
+    windowId: 1,
+    index: id,
+    groupId: -1,
+    muted: false,
+    pinned: false,
+    audible: false,
+    savedAt: Date.now(),
+    originalId: id,
+  } as VaultItem);
+
+  const getUrl = (item: VaultItem): string => {
+    if ('url' in item) return item.url;
+    throw new Error('Item has no url');
+  };
+
+  it('loads old minified format without URL normalization', async () => {
+    const vault = [createVaultItemWithUrl(1, 'https://example.com/page')];
+    
+    await saveVault(vault, { syncEnabled: true });
+    
+    const meta = mockSyncStorage[VAULT_META_KEY] as any;
+    meta.domainDedup = false;
+    
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(getUrl(loaded[0])).toBe('https://example.com/page');
+  });
+
+  it('loads legacy unminified format', async () => {
+    const legacyVault = [createVaultItemWithUrl(1, 'https://example.com/page')];
+    
+    const legacyData = JSON.stringify(legacyVault);
+    const encoder = new TextEncoder();
+    const buffer = encoder.encode(legacyData);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const checksum = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    const meta = {
+      version: 3,
+      chunkCount: 1,
+      chunkKeys: ['vault_chunk_0'],
+      checksum,
+      timestamp: Date.now(),
+      compressed: true,
+      minified: false,
+    };
+    
+    const compressed = LZString.compressToUTF16(legacyData);
+    
+    mockSyncStorage[VAULT_META_KEY] = meta;
+    mockSyncStorage['vault_chunk_0'] = compressed;
+    
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+    
+    expect(loaded).toHaveLength(1);
+    expect(getUrl(loaded[0])).toBe('https://example.com/page');
+  });
+});
