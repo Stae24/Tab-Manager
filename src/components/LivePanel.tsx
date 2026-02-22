@@ -10,6 +10,7 @@ import { SearchBar } from './SearchBar';
 import { SearchHelp } from './SearchBar/SearchHelp';
 import { cn } from '../utils/cn';
 import { logger } from '../utils/logger';
+import { needsCompanionTabForSingleTabGroup } from '../utils/browser';
 import { Island as IslandType, Tab as TabType, UniversalId, DashboardRow } from '../types';
 import {
   VIRTUAL_ROW_ESTIMATE_SIZE,
@@ -532,7 +533,9 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               </span>
               <button
                 onClick={handleGroupResults}
-                disabled={displayTabs.filter(t => !t.pinned).length < 2}
+                disabled={needsCompanionTabForSingleTabGroup()
+                  ? displayTabs.filter(t => !t.pinned).length < 2
+                  : displayTabs.filter(t => !t.pinned).length === 0}
                 className={cn(
                   "flex items-center gap-1.5 px-2 py-1 rounded border transition-all duration-300",
                   "text-[10px] font-bold uppercase tracking-wider",
