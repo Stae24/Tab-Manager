@@ -10,7 +10,7 @@ Chrome API wrappers, styling utilities, and logging. Re-exports from services la
 ### chromeApi.ts
 **STATUS**: Re-export facade only. Actual implementations in `src/services/tabService.ts`.
 
-**Exports:** `moveIsland`, `moveTab`, `createIsland`, `ungroupTab`, `updateTabGroup`, `updateTabGroupCollapse`, `discardTab`, `discardTabs`, `closeTab`, `closeTabs`, `copyTabUrl`, `muteTab`, `unmuteTab`, `pinTab`, `unpinTab`, `duplicateTab`, `duplicateIsland`, `consolidateAndGroupTabs`
+**Exports:** `moveIsland`, `moveTab`, `createIsland`, `ungroupTab`, `updateTabGroup`, `discardTab`, `closeTab`, `copyTabUrl`, `muteTab`, `pinTab`, `duplicateTab`, `duplicateIsland`
 
 > **IMPORTANT**: Retry logic and Chrome API interactions live in `tabService.ts`, NOT here.
 
@@ -18,14 +18,15 @@ Chrome API wrappers, styling utilities, and logging. Re-exports from services la
 Class name utility wrapping `clsx` + `tailwind-merge`.
 
 ```typescript
-import { cn, getIslandBorderColor } from '../utils/cn';
+import { cn, getIslandBorderColor, getBorderRadiusClass } from '../utils/cn';
 
 cn('base-class', condition && 'conditional-class', overrides)
 getIslandBorderColor('blue') // → '#3399ff'
+getBorderRadiusClass('large') // → 'rounded-lg'
 ```
 
 ### logger.ts
-Structured logging with bracketed labels for filtering.
+Structured logging with bracketed labels for filtering. Debug/info logs gated by `debugMode` setting.
 
 ```typescript
 import { logger } from '../utils/logger';
@@ -35,8 +36,6 @@ logger.info('[ServiceName] Operation succeeded');
 logger.warn('[Context] Non-critical issue:', warning);
 logger.error('[Context] Failed:', error);
 ```
-
-> Debug/info logs are gated by `debugMode` in appearance settings.
 
 ### browser.ts
 Browser detection and capability checks for Opera GX compatibility.

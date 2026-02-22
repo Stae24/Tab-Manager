@@ -10,16 +10,13 @@ Advanced search system with bang syntax, filters, commands, and actions. Support
 ```
 search/
 ├── index.ts         # Public API exports
-├── types.ts         # SearchToken, ParsedQuery, SearchResult, etc.
+├── types.ts         # SearchToken, ParsedQuery, SearchResult
 ├── parser.ts        # Query tokenization and parsing
 ├── engine.ts        # Main search execution
 ├── bangRegistry.ts  # Bang/command definitions
 ├── utils.ts         # URL normalization, duplicate detection
-├── filters/
-│   └── index.ts     # Filter functions (applyAllFilters, applyTextSearch)
-├── commands/
-│   └── index.ts     # Command execution (delete, save, freeze)
-└── __tests__/       # Unit tests and benchmarks
+├── filters/index.ts # Filter functions
+└── commands/index.ts # Command execution (delete, save, freeze)
 ```
 
 ---
@@ -45,7 +42,6 @@ search/
 | `!vault` | Items in vault |
 | `!grouped` / `!solo` | Grouped / ungrouped tabs |
 | `!duplicate` | Duplicate URLs |
-| `!local` / `!ip` / `!browser` | Local/IP/browser URLs |
 | `title:`, `url:` | Scoped text search |
 
 ### Commands
@@ -90,24 +86,7 @@ interface SearchResult {
   tab: Tab;
   matchScore: number;
 }
-
-interface SearchContext {
-  allTabs: Tab[];
-  vaultItems: VaultItem[];
-  groups: Map<number, Island>;
-  duplicateMap: Map<string, Tab[]>;
-}
 ```
-
----
-
-## CONVENTIONS
-
-| Pattern | Example |
-|---------|---------|
-| Use public exports | `import { search } from '../search'` |
-| Handle parse errors | Check `parsedQuery.errors` |
-| Async search | Always `await search()` |
 
 ---
 

@@ -49,12 +49,6 @@ const { ref, isOver, expanded } = useProximityGap(index, isDragging);
 
 ## CONVENTIONS
 
-| Pattern | Example |
-|---------|---------|
-| Ref pattern | `useRef` + `useCallback` for dnd-kit refs |
-| Cleanup | Always remove listeners in `useEffect` return |
-| Store access | `useStore.getState()` inside effects |
-
 ```typescript
 useEffect(() => {
   const listener = (msg) => { /* ... */ };
@@ -62,6 +56,12 @@ useEffect(() => {
   return () => chrome.runtime.onMessage.removeListener(listener);
 }, []);
 ```
+
+| Pattern | Example |
+|---------|---------|
+| Ref pattern | `useRef` + `useCallback` for dnd-kit refs |
+| Cleanup | Always remove listeners in `useEffect` return |
+| Store access | `useStore.getState()` inside effects |
 
 ---
 

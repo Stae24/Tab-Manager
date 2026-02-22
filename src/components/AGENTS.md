@@ -21,7 +21,9 @@ Dashboard.tsx (DndContext orchestrator)
 ├── QuotaExceededModal.tsx (quota exceeded action)
 ├── ContextMenu.tsx (right-click actions)
 ├── Favicon.tsx (cached favicon rendering)
-├── SearchBar.tsx (search input with autocomplete)
+├── SearchBar/ (search input with autocomplete)
+│   ├── index.tsx
+│   └── SearchHelp.tsx
 └── ErrorBoundary.tsx (error containment)
 ```
 
@@ -82,7 +84,6 @@ const moveItem = useStore(state => state.moveItemOptimistically);
 
 // Memoize callbacks
 const handleDragEnd = useCallback((event: DragEndEvent) => {
-  // Cross-panel detection via ID prefix
   if (activeId.startsWith('vault-')) {
     restoreFromVault(activeId);
   }

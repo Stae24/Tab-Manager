@@ -8,8 +8,6 @@ Core TypeScript type definitions for the entire application. Single source of tr
 ## CORE TYPES
 
 ### Tab
-Represents a browser tab with normalized fields.
-
 ```typescript
 interface Tab {
   id: UniversalId;      // Namespaced: `live-tab-123`
@@ -28,8 +26,6 @@ interface Tab {
 ```
 
 ### Island
-Represents a Chrome tab group.
-
 ```typescript
 interface Island {
   id: UniversalId;      // Namespaced: `live-group-456`
@@ -41,8 +37,6 @@ interface Island {
 ```
 
 ### VaultItem
-Archived tab/group with metadata.
-
 ```typescript
 type VaultItem = (Island | Tab) & {
   savedAt: number;
@@ -73,8 +67,6 @@ type AnimationIntensity = 'full' | 'subtle' | 'off';
 type AudioIndicatorMode = 'off' | 'playing' | 'muted' | 'both';
 type BorderRadius = 'none' | 'small' | 'medium' | 'large' | 'full';
 type ButtonSize = 'small' | 'medium' | 'large';
-type IconPack = 'gx' | 'default' | 'minimal';
-type MenuPosition = 'left' | 'center' | 'right';
 type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | 'icon-horse';
 
 interface AppearanceSettings {
@@ -92,15 +84,10 @@ interface AppearanceSettings {
 ## VAULT STORAGE TYPES
 
 ```typescript
-interface VaultStorageConfig {
-  syncEnabled: boolean;
-}
-
 type VaultStorageErrorType = 
-  | 'QUOTA_EXCEEDED'
-  | 'SYNC_FAILED'
-  | 'CORRUPTION'
-  | 'CHUNK_MISMATCH';
+  | 'QUOTA_EXCEEDED' | 'SYNC_FAILED' | 'CORRUPTION' | 'CHUNK_MISMATCH';
+
+type QuotaWarningLevel = 'none' | 'warning' | 'critical';
 
 interface VaultQuotaInfo {
   used: number;
@@ -116,7 +103,6 @@ interface VaultQuotaInfo {
 ## USAGE
 
 ```typescript
-// Import from central location
 import type { Tab, Island, VaultItem, AppearanceSettings } from '../types/index';
 ```
 
