@@ -5,7 +5,6 @@ import React from 'react';
 
 let mockProximityGapResult = { 
   ref: vi.fn(), 
-  isOver: false as boolean, 
   expanded: false as boolean 
 };
 
@@ -34,7 +33,6 @@ describe('DroppableGap', () => {
   beforeEach(async () => {
     mockProximityGapResult = { 
       ref: vi.fn(), 
-      isOver: false, 
       expanded: false 
     };
     mockDndContextResult = { active: null };
@@ -60,15 +58,6 @@ describe('DroppableGap', () => {
       const { DroppableGap: Gap } = await import('../DroppableGap');
       const { container } = render(<Gap index={0} panelType="live" />);
       expect(container.firstChild).toHaveClass('h-[2.375rem]');
-    });
-
-    it('applies accent background when isOver and expanded', async () => {
-      mockProximityGapResult.isOver = true;
-      mockProximityGapResult.expanded = true;
-      vi.resetModules();
-      const { DroppableGap: Gap } = await import('../DroppableGap');
-      const { container } = render(<Gap index={0} panelType="live" />);
-      expect(container.firstChild).toHaveClass('bg-gx-accent/20');
     });
   });
 
