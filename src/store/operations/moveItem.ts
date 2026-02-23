@@ -42,16 +42,16 @@ export function determineTargetPanel(
 ): boolean | null {
   if (overId === 'live-panel-dropzone' || overId === 'live-bottom') return true;
   if (overId === 'vault-dropzone' || overId === 'vault-bottom') return false;
-  
+
   const overIdStr = String(overId);
   if (overIdStr.startsWith('live-gap-')) return true;
   if (overIdStr.startsWith('vault-gap-')) return false;
-  
+
   if (over) {
     if (isItemInList(islands, overId)) return true;
     if (isItemInList(vault, overId)) return false;
   }
-  
+
   return activeInLive;
 }
 
@@ -192,7 +192,7 @@ export function prepareOptimisticMove(
 
   if (!active) return null;
 
-  const activeInLive = isItemInList(islands, activeId);
+  const activeInLive = !!findItemInList(islands, activeId);
   const targetIsLive = determineTargetPanel(overId, over, islands, vault, activeInLive);
 
   if (targetIsLive !== activeInLive) return null;

@@ -1,24 +1,27 @@
 import { ISLAND_CREATION_REFRESH_DELAY_MS, REFRESH_UI_DELAY_MS } from './constants';
 import { quotaService } from './services/quotaService';
 import { isAppearanceSettings, defaultAppearanceSettings } from './store/utils';
-import { backgroundLogger } from './utils/backgroundLogger';
+import { backgroundLogger, syncDebugMode } from './utils/backgroundLogger';
 
 chrome.action.onClicked.addListener(async () => {
   const tab = await chrome.tabs.create({ url: 'index.html' });
   backgroundLogger.debug('Background', 'Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
-  
+
   let settings = defaultAppearanceSettings;
   try {
     const result = await chrome.storage.sync.get(['appearanceSettings']);
     settings = result.appearanceSettings && isAppearanceSettings(result.appearanceSettings)
       ? result.appearanceSettings
       : defaultAppearanceSettings;
+
+    // Sync debug mode with settings
+    syncDebugMode(settings.debugMode ?? false);
   } catch (error) {
     backgroundLogger.error('Background', 'Failed to load appearance settings:', error);
   }
-  
+
   backgroundLogger.debug('Background', 'Auto-pin setting:', settings.autoPinTabManager);
-  
+
   if (settings.autoPinTabManager && tab.id) {
     try {
       backgroundLogger.debug('Background', 'Attempting to pin tab:', tab.id);
@@ -50,7 +53,7 @@ chrome.tabs.onMoved.addListener((tabId, moveInfo) => {
     tabId: tabId,
     fromIndex: moveInfo.fromIndex,
     toIndex: moveInfo.toIndex
-  }).catch(() => {});
+  }).catch(() => { });
   notifyUI();
 });
 
@@ -61,7 +64,7 @@ chrome.tabGroups.onMoved.addListener((group) => {
   chrome.runtime.sendMessage({
     type: 'GROUP_MOVED',
     groupId: group.id
-  }).catch(() => {});
+  }).catch(() => { });
   notifyUI();
 });
 
@@ -71,25 +74,25 @@ function notifyUI() {
   if (islandCreationInProgress) {
     setTimeout(() => {
       if (!islandCreationInProgress) {
-        chrome.runtime.sendMessage({ type: 'REFRESH_TABS' }).catch(() => {});
+        chrome.runtime.sendMessage({ type: 'REFRESH_TABS' }).catch(() => { });
       }
     }, ISLAND_CREATION_REFRESH_DELAY_MS);
     return;
   }
-  chrome.runtime.sendMessage({ type: 'REFRESH_TABS' }).catch(() => {});
+  chrome.runtime.sendMessage({ type: 'REFRESH_TABS' }).catch(() => { });
 }
 
 export function messageListener(
-  message: { type: string; tabId?: number }, 
-  _sender: chrome.runtime.MessageSender, 
+  message: { type: string; tabId?: number },
+  _sender: chrome.runtime.MessageSender,
   sendResponse: (response?: { success: boolean }) => void
 ) {
   if (message.type === 'START_ISLAND_CREATION') {
     islandCreationInProgress = true;
     sendResponse({ success: true });
     return false;
-  } 
-  
+  }
+
   if (message.type === 'END_ISLAND_CREATION') {
     islandCreationInProgress = false;
     setTimeout(() => notifyUI(), REFRESH_UI_DELAY_MS);
