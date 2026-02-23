@@ -4,7 +4,10 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 let debugModeEnabled = false;
 
-export const setBackgroundDebugMode = setDebugMode;
+export const setBackgroundDebugMode = (enabled: boolean) => {
+  setDebugMode(enabled);
+  debugModeEnabled = enabled;
+};
 
 const formatMessage = (level: LogLevel, context: string, ...args: unknown[]): void => {
   const timestamp = new Date().toISOString();
@@ -35,5 +38,6 @@ export const backgroundLogger = {
 
 // Sync with main logger
 export const syncDebugMode = (enabled: boolean) => {
+  setDebugMode(enabled);
   debugModeEnabled = enabled;
 };

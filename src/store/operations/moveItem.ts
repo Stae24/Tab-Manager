@@ -158,15 +158,16 @@ export function applyOptimisticMove(
 
   const sourceItem = sourceArr[active.index];
 
+  let resolvedIndex = active.index;
   if (!sourceItem || String(sourceItem.id) !== String(activeId)) {
     const correctIndex = sourceArr.findIndex(
       (item) => String((item as LiveItem | VaultItem).id) === String(activeId)
     );
     if (correctIndex === -1) return null;
-    active.index = correctIndex;
+    resolvedIndex = correctIndex;
   }
 
-  const [movedItem] = sourceArr.splice(active.index, 1);
+  const [movedItem] = sourceArr.splice(resolvedIndex, 1);
   if (!movedItem) return null;
 
   const safeTargetIndex = Math.max(0, Math.min(Number(target.targetIndex), targetArr.length));
