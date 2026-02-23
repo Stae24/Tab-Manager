@@ -95,9 +95,9 @@ describe('useStore - syncLiveTabs', () => {
       { id: 10, title: 'Group A', color: 'grey', collapsed: false },
     ];
     
-    // @ts-ignore
+    // @ts-expect-error
     chrome.tabs.query.mockResolvedValue(mockTabs);
-    // @ts-ignore
+    // @ts-expect-error
     chrome.tabGroups.query.mockResolvedValue(mockGroups);
 
     await useStore.getState().syncLiveTabs();
@@ -134,7 +134,7 @@ describe('useStore - moveToVault', () => {
     };
     
     useStore.setState({ islands: [liveTab] });
-    // @ts-ignore
+    // @ts-expect-error
     chrome.tabs.remove.mockResolvedValue(undefined);
     
     await useStore.getState().moveToVault(liveTab.id);
@@ -169,11 +169,11 @@ describe('useStore - restoreFromVault', () => {
     } as any;
     
     useStore.setState({ vault: [vaultItem] });
-    // @ts-ignore
+    // @ts-expect-error
     chrome.tabs.create.mockResolvedValue({ id: 1 });
-    // @ts-ignore
+    // @ts-expect-error
     chrome.tabs.query.mockResolvedValue([]);
-    // @ts-ignore
+    // @ts-expect-error
     chrome.tabGroups.query.mockResolvedValue([]);
     
     await useStore.getState().restoreFromVault(vaultItem.id);

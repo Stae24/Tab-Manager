@@ -45,7 +45,7 @@ describe('Sync Storage Robustness', () => {
 
   it('should retry on sync failure with exponential backoff', async () => {
     let attempts = 0;
-    // @ts-ignore
+    // @ts-expect-error
     chrome.storage.sync.set.mockImplementation(() => {
       attempts++;
       if (attempts < 3) {
@@ -72,7 +72,7 @@ describe('Sync Storage Robustness', () => {
   it('should log quota exceeded errors specifically', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     
-    // @ts-ignore
+    // @ts-expect-error
     chrome.storage.sync.set.mockRejectedValue(new Error('QUOTA_EXCEEDED'));
 
     const { setAppearanceSettings } = useStore.getState();

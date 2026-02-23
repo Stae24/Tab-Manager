@@ -13,22 +13,40 @@ vi.mock('@dnd-kit/core', () => ({
   }))
 }));
 
+const pointerState = {
+  pointerPosition: null as { x: number; y: number } | null,
+  isDragging: false,
+};
+
+vi.mock('../../contexts/PointerPositionContext', () => ({
+  usePointerPosition: () => ({
+    get pointerPosition() {
+      return pointerState.pointerPosition;
+    },
+    get isDragging() {
+      return pointerState.isDragging;
+    },
+  }),
+}));
+
 describe('useProximityGap memory leak', () => {
-  let addSpy: any;
-  let removeSpy: any;
+  let addSpy: ReturnType<typeof vi.spyOn>;
+  let removeSpy: ReturnType<typeof vi.spyOn>;
 
   const mockActive = { id: 'active-item' } as Active;
 
   beforeEach(() => {
     addSpy = vi.spyOn(document, 'addEventListener');
     removeSpy = vi.spyOn(document, 'removeEventListener');
+    pointerState.pointerPosition = null;
+    pointerState.isDragging = false;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('should clean up listeners when active toggles', () => {
+  it('should NOT add pointermove listeners at hook level (uses context)', () => {
     const mockNode = document.createElement('div');
     const { rerender, unmount } = renderHook(
       (props: { active: Active | null; isDraggingGroup: boolean }) => {
@@ -41,24 +59,18 @@ describe('useProximityGap memory leak', () => {
       { initialProps: { active: mockActive as Active | null, isDraggingGroup: false } }
     );
 
-    expect(addSpy).toHaveBeenCalledWith('pointermove', expect.any(Function));
-    const initialAddCount = addSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;
-    expect(initialAddCount).toBe(1);
+    const pointerAddCalls = addSpy.mock.calls.filter((call: unknown[]) => call[0] === 'pointermove').length;
+    expect(pointerAddCalls).toBe(0);
 
     rerender({ active: null, isDraggingGroup: false });
-    const removeCountAfterToggle = removeSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;
-    expect(removeCountAfterToggle).toBe(1);
-
-    rerender({ active: mockActive, isDraggingGroup: false });
-    const addCountAfterBack = addSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;
-    expect(addCountAfterBack).toBe(2);
+    
+    const pointerRemoveCalls = removeSpy.mock.calls.filter((call: unknown[]) => call[0] === 'pointermove').length;
+    expect(pointerRemoveCalls).toBe(0);
 
     unmount();
-    const finalRemoveCount = removeSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;
-    expect(finalRemoveCount).toBe(2);
   });
 
-  it('should handle rapid toggling without accumulating listeners', () => {
+  it('should handle rapid toggling without adding listeners at hook level', () => {
     const mockNode = document.createElement('div');
     const { rerender, unmount } = renderHook(
       (props: { active: Active | null }) => {
@@ -76,13 +88,13 @@ describe('useProximityGap memory leak', () => {
       rerender({ active: mockActive });
     }
 
-    const addCount = addSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;
-    const removeCount = removeSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length;
+    const addCount = addSpy.mock.calls.filter((call: unknown[]) => call[0] === 'pointermove').length;
+    const removeCount = removeSpy.mock.calls.filter((call: unknown[]) => call[0] === 'pointermove').length;
 
-    expect(addCount).toBe(11);
-    expect(removeCount).toBe(10);
+    expect(addCount).toBe(0);
+    expect(removeCount).toBe(0);
 
     unmount();
-    expect(removeSpy.mock.calls.filter((call: any[]) => call[0] === 'pointermove').length).toBe(11);
+    expect(removeSpy.mock.calls.filter((call: unknown[]) => call[0] === 'pointermove').length).toBe(0);
   });
 });

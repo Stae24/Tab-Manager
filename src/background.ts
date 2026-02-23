@@ -1,10 +1,11 @@
 import { ISLAND_CREATION_REFRESH_DELAY_MS, REFRESH_UI_DELAY_MS } from './constants';
 import { quotaService } from './services/quotaService';
 import { isAppearanceSettings, defaultAppearanceSettings } from './store/utils';
+import { backgroundLogger } from './utils/backgroundLogger';
 
 chrome.action.onClicked.addListener(async () => {
   const tab = await chrome.tabs.create({ url: 'index.html' });
-  console.log('[Background] Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
+  backgroundLogger.debug('Background', 'Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
   
   let settings = defaultAppearanceSettings;
   try {
@@ -13,18 +14,18 @@ chrome.action.onClicked.addListener(async () => {
       ? result.appearanceSettings
       : defaultAppearanceSettings;
   } catch (error) {
-    console.error('[Background] Failed to load appearance settings:', error);
+    backgroundLogger.error('Background', 'Failed to load appearance settings:', error);
   }
   
-  console.log('[Background] Auto-pin setting:', settings.autoPinTabManager);
+  backgroundLogger.debug('Background', 'Auto-pin setting:', settings.autoPinTabManager);
   
   if (settings.autoPinTabManager && tab.id) {
     try {
-      console.log('[Background] Attempting to pin tab:', tab.id);
+      backgroundLogger.debug('Background', 'Attempting to pin tab:', tab.id);
       const updatedTab = await chrome.tabs.update(tab.id, { pinned: true });
-      console.log('[Background] Pin result:', { id: updatedTab?.id, pinned: updatedTab?.pinned });
+      backgroundLogger.debug('Background', 'Pin result:', { id: updatedTab?.id, pinned: updatedTab?.pinned });
     } catch (error) {
-      console.error('[Background] Failed to pin tab:', error);
+      backgroundLogger.error('Background', 'Failed to pin tab:', error);
     }
   }
 });
@@ -33,10 +34,10 @@ chrome.action.onClicked.addListener(async () => {
   try {
     const orphanedCount = await quotaService.cleanupOrphanedChunks();
     if (orphanedCount > 0) {
-      console.log(`[Background] Cleaned up ${orphanedCount} orphaned vault chunks`);
+      backgroundLogger.info('Background', `Cleaned up ${orphanedCount} orphaned vault chunks`);
     }
   } catch (error) {
-    console.error('[Background] Cleanup failed:', error);
+    backgroundLogger.error('Background', 'Cleanup failed:', error);
   }
 })();
 

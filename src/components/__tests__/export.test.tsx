@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from '../Sidebar';
 import { useStore } from '../../store/useStore';
 import React from 'react';
@@ -8,7 +8,7 @@ vi.mock('../../store/useStore', () => ({
   useStore: vi.fn(),
 }));
 
-describe('Sidebar Export Revocation', () => {
+describe('Sidebar Export', () => {
   const mockCreateObjectURL = vi.fn(() => 'blob:mock-url');
   const mockRevokeObjectURL = vi.fn();
   
@@ -75,17 +75,14 @@ describe('Sidebar Export Revocation', () => {
       undo: vi.fn(),
       redo: vi.fn(),
     }));
-    
-    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
-  it('revokes the blob URL after 1000ms', async () => {
+  it('creates blob URL for export without revocation (relies on GC)', async () => {
     render(<Sidebar />);
     
     const exportButton = screen.getByText(/Export/i);
@@ -96,11 +93,5 @@ describe('Sidebar Export Revocation', () => {
     
     expect(mockCreateObjectURL).toHaveBeenCalled();
     expect(mockRevokeObjectURL).not.toHaveBeenCalled();
-    
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    
-    expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
 });

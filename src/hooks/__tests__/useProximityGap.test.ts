@@ -11,9 +11,27 @@ vi.mock('@dnd-kit/core', () => ({
   })),
 }));
 
+const pointerState = {
+  pointerPosition: null as { x: number; y: number } | null,
+  isDragging: false,
+};
+
+vi.mock('../../contexts/PointerPositionContext', () => ({
+  usePointerPosition: () => ({
+    get pointerPosition() {
+      return pointerState.pointerPosition;
+    },
+    get isDragging() {
+      return pointerState.isDragging;
+    },
+  }),
+}));
+
 describe('useProximityGap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    pointerState.pointerPosition = null;
+    pointerState.isDragging = false;
   });
 
   it('returns ref, isOver, and expanded state', () => {
@@ -93,12 +111,11 @@ describe('useProximityGap', () => {
     expect(result.current.expanded).toBe(false);
   });
 
-  it('cleans up pointermove listener when active becomes null', () => {
+  it('reads pointer position from context instead of adding listeners', () => {
     const active = { id: 'test-active' } as any;
     const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
-    const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
 
-    const { result, rerender } = renderHook(
+    const { result } = renderHook(
       ({ active }) => useProximityGap('test-gap', active, false),
       { initialProps: { active } }
     );
@@ -108,35 +125,14 @@ describe('useProximityGap', () => {
       result.current.ref(mockNode);
     });
 
-    const rectSpy = vi.spyOn(mockNode, 'getBoundingClientRect').mockReturnValue({
-      top: 100,
-      left: 0,
-      right: 100,
-      bottom: 120,
-      width: 100,
-      height: 20,
-      x: 0,
-      y: 100,
-      toJSON: () => ({}),
-    } as DOMRect);
-
-    rerender({ active: { id: 'test-active-2' } as any });
-
-    expect(addEventListenerSpy).toHaveBeenCalledWith('pointermove', expect.any(Function));
-
-    rerender({ active: null });
-
-    expect(removeEventListenerSpy).toHaveBeenCalled();
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('pointermove', expect.any(Function));
 
     addEventListenerSpy.mockRestore();
-    removeEventListenerSpy.mockRestore();
-    rectSpy.mockRestore();
   });
 
   it('handles rapid active changes without memory leaks', () => {
     const active1 = { id: 'test-active-1' } as any;
     const active2 = { id: 'test-active-2' } as any;
-    const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
     const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
 
     const { rerender } = renderHook(
@@ -148,28 +144,20 @@ describe('useProximityGap', () => {
     rerender({ active: active1 });
     rerender({ active: null });
 
-    const addCalls = addEventListenerSpy.mock.calls.length;
-    const removeCalls = removeEventListenerSpy.mock.calls.length;
+    expect(removeEventListenerSpy).not.toHaveBeenCalledWith('pointermove', expect.any(Function));
 
-    expect(removeCalls).toBeGreaterThanOrEqual(addCalls - 1);
-
-    addEventListenerSpy.mockRestore();
     removeEventListenerSpy.mockRestore();
   });
 
   it('expands gap when pointer is within vertical threshold below gap', () => {
     const active = { id: 'test-active' } as any;
     
-    const { result } = renderHook(
+    const { result, rerender } = renderHook(
       ({ active }) => useProximityGap('test-gap', active, false),
       { initialProps: { active } }
     );
 
     const mockNode = document.createElement('div');
-    act(() => {
-      result.current.ref(mockNode);
-    });
-
     const rectSpy = vi.spyOn(mockNode, 'getBoundingClientRect').mockReturnValue({
       top: 100,
       left: 0,
@@ -181,25 +169,67 @@ describe('useProximityGap', () => {
       y: 100,
       toJSON: () => ({}),
     } as DOMRect);
+    
+    vi.stubGlobal('getComputedStyle', vi.fn().mockReturnValue({ fontSize: '16px' }));
 
-    expect(result.current.expanded).toBe(false);
+    act(() => {
+      result.current.ref(mockNode);
+    });
+
+    pointerState.pointerPosition = { x: 50, y: 110 };
+    rerender({ active });
+
+    expect(result.current.expanded).toBe(true);
 
     rectSpy.mockRestore();
+    vi.unstubAllGlobals();
   });
 
   it('expands gap when pointer is within vertical threshold above gap', () => {
     const active = { id: 'test-active' } as any;
     
-    const { result } = renderHook(
+    const { result, rerender } = renderHook(
       ({ active }) => useProximityGap('test-gap', active, false),
       { initialProps: { active } }
     );
 
     const mockNode = document.createElement('div');
+    const rectSpy = vi.spyOn(mockNode, 'getBoundingClientRect').mockReturnValue({
+      top: 100,
+      left: 0,
+      right: 100,
+      bottom: 120,
+      width: 100,
+      height: 20,
+      x: 0,
+      y: 100,
+      toJSON: () => ({}),
+    } as DOMRect);
+    
+    vi.stubGlobal('getComputedStyle', vi.fn().mockReturnValue({ fontSize: '16px' }));
+
     act(() => {
       result.current.ref(mockNode);
     });
 
+    pointerState.pointerPosition = { x: 50, y: 90 };
+    rerender({ active });
+
+    expect(result.current.expanded).toBe(true);
+
+    rectSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it('does not expand when pointer is outside horizontal bounds', () => {
+    const active = { id: 'test-active' } as any;
+    
+    const { result, rerender } = renderHook(
+      ({ active }) => useProximityGap('test-gap', active, false),
+      { initialProps: { active } }
+    );
+
+    const mockNode = document.createElement('div');
     const rectSpy = vi.spyOn(mockNode, 'getBoundingClientRect').mockReturnValue({
       top: 100,
       left: 0,
@@ -212,64 +242,27 @@ describe('useProximityGap', () => {
       toJSON: () => ({}),
     } as DOMRect);
 
-    expect(result.current.expanded).toBe(false);
-
-    rectSpy.mockRestore();
-  });
-
-  it('does not expand when pointer is outside horizontal bounds', async () => {
-    const active = { id: 'test-active' } as any;
-    
-    const { result } = renderHook(
-      ({ active }) => useProximityGap('test-gap', active, false),
-      { initialProps: { active } }
-    );
-
-    const mockNode = document.createElement('div');
     act(() => {
       result.current.ref(mockNode);
     });
 
-    const rectSpy = vi.spyOn(mockNode, 'getBoundingClientRect').mockReturnValue({
-      top: 100,
-      left: 0,
-      right: 100,
-      bottom: 120,
-      width: 100,
-      height: 20,
-      x: 0,
-      y: 100,
-      toJSON: () => ({}),
-    } as DOMRect);
-
-    const pointerEvent = new PointerEvent('pointermove', {
-      clientY: 110,
-      clientX: 150,
-    });
-    document.dispatchEvent(pointerEvent);
-
-    await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
-    });
+    pointerState.pointerPosition = { x: 150, y: 110 };
+    rerender({ active });
 
     expect(result.current.expanded).toBe(false);
 
     rectSpy.mockRestore();
   });
 
-  it('does not expand when pointer is too far below gap', async () => {
+  it('does not expand when pointer is too far below gap', () => {
     const active = { id: 'test-active' } as any;
     
-    const { result } = renderHook(
+    const { result, rerender } = renderHook(
       ({ active }) => useProximityGap('test-gap', active, false),
       { initialProps: { active } }
     );
 
     const mockNode = document.createElement('div');
-    act(() => {
-      result.current.ref(mockNode);
-    });
-
     const rectSpy = vi.spyOn(mockNode, 'getBoundingClientRect').mockReturnValue({
       top: 100,
       left: 0,
@@ -284,19 +277,50 @@ describe('useProximityGap', () => {
 
     vi.stubGlobal('getComputedStyle', vi.fn().mockReturnValue({ fontSize: '16px' }));
 
-    const pointerEvent = new PointerEvent('pointermove', {
-      clientY: 200,
-      clientX: 50,
+    act(() => {
+      result.current.ref(mockNode);
     });
-    document.dispatchEvent(pointerEvent);
 
-    await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
-    });
+    pointerState.pointerPosition = { x: 50, y: 200 };
+    rerender({ active });
 
     expect(result.current.expanded).toBe(false);
 
     rectSpy.mockRestore();
     vi.unstubAllGlobals();
+  });
+
+  it('does not expand when pointerPosition is null', () => {
+    const active = { id: 'test-active' } as any;
+    pointerState.pointerPosition = null;
+    
+    const { result, rerender } = renderHook(
+      ({ active }) => useProximityGap('test-gap', active, false),
+      { initialProps: { active } }
+    );
+
+    const mockNode = document.createElement('div');
+    const rectSpy = vi.spyOn(mockNode, 'getBoundingClientRect').mockReturnValue({
+      top: 100,
+      left: 0,
+      right: 100,
+      bottom: 120,
+      width: 100,
+      height: 20,
+      x: 0,
+      y: 100,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    act(() => {
+      result.current.ref(mockNode);
+    });
+
+    pointerState.pointerPosition = null;
+    rerender({ active });
+
+    expect(result.current.expanded).toBe(false);
+
+    rectSpy.mockRestore();
   });
 });

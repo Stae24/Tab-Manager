@@ -31,10 +31,11 @@ import { useStore, parseNumericId, findItemInList } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { closeTab, createIsland } from '../utils/chromeApi';
 import { Island as IslandType, Tab as TabType, UniversalId, LiveItem } from '../types/index';
-import ErrorBoundary from './ErrorBoundary';
+import { ErrorBoundary } from './ErrorBoundary';
 import { logger } from '../utils/logger';
 import { MoveTabCommand } from '../store/commands/MoveTabCommand';
 import { MoveIslandCommand } from '../store/commands/MoveIslandCommand';
+import { PointerPositionProvider } from '../contexts/PointerPositionContext';
 import {
   DND_ACTIVATION_DISTANCE,
   DIVIDER_POSITION_MIN,
@@ -452,8 +453,9 @@ export const Dashboard: React.FC = () => {
           onDragEnd={handleDragEnd}
           modifiers={[scaleModifier]}
         >
-          <div className="flex flex-1 overflow-hidden relative overscroll-none">
-            <LivePanel
+          <PointerPositionProvider isDragging={activeItem !== null}>
+            <div className="flex flex-1 overflow-hidden relative overscroll-none">
+              <LivePanel
               dividerPosition={dividerPosition}
               islands={islands}
               handleTabClick={handleTabClick}
@@ -508,9 +510,10 @@ export const Dashboard: React.FC = () => {
               </>
             )}
           </div>
-          <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.1' } } }) }}>
-            {activeItem ? <DragOverlayContent activeItem={activeItem} /> : null}
-          </DragOverlay>
+            <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.1' } } }) }}>
+              {activeItem ? <DragOverlayContent activeItem={activeItem} /> : null}
+            </DragOverlay>
+          </PointerPositionProvider>
         </DndContext>
       </ErrorBoundary>
 

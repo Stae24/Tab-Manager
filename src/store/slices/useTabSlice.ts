@@ -5,6 +5,7 @@ import { tabService } from '../../services/tabService';
 import { logger } from '../../utils/logger';
 import { parseNumericId, findItemInList, isIsland, cloneWithDeepGroups } from '../utils';
 import { initBrowserCapabilities } from '../../utils/browser';
+import { prepareOptimisticMove } from '../operations/moveItem';
 
 import type { StoreState } from '../types';
 
@@ -197,117 +198,16 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         pendingOverId = null;
         rafId = null;
 
-        if (activeIdVal === overIdVal) return;
+        const moveData = prepareOptimisticMove(islands, vault, activeIdVal, overIdVal);
+        
+        if (!moveData) return;
 
-        const active = findItemInList(islands, activeIdVal) || findItemInList(vault, activeIdVal);
-        const over = findItemInList(islands, overIdVal) || findItemInList(vault, overIdVal);
+        const { result } = moveData;
 
-        if (!active) return;
-
-        const activeInLive = islands.some((i: LiveItem) => i && (String(i.id) === String(activeIdVal) || ('tabs' in i && i.tabs?.some((t: Tab) => t && String(t.id) === String(activeIdVal)))));
-
-        let targetIsLive = activeInLive;
-
-        if (overIdVal === 'live-panel-dropzone' || overIdVal === 'live-bottom') targetIsLive = true;
-        else if (overIdVal === 'vault-dropzone' || overIdVal === 'vault-bottom') targetIsLive = false;
-        else if (over) {
-          const overInIslands = islands.some((i: LiveItem) => i && (String(i.id) === String(overIdVal) || ('tabs' in i && i.tabs?.some((t: Tab) => t && String(t.id) === String(overIdVal)))));
-          const overInVault = vault.some((v: VaultItem) => v && (String(v.id) === String(overIdVal) || ('tabs' in v && v.tabs?.some((t: Tab) => t && String(t.id) === String(overIdVal)))));
-
-          if (overInIslands) targetIsLive = true;
-          else if (overInVault) targetIsLive = false;
-        }
-
-        if (activeInLive !== targetIsLive) return;
-
-        let targetContainerId: UniqueIdentifier = 'root';
-        let targetIndex = -1;
-
-        const isActiveGroup = active.item && 'tabs' in active.item;
-
-        if (['live-panel-dropzone', 'live-bottom', 'vault-dropzone', 'vault-bottom'].includes(String(overIdVal))) {
-          targetIndex = activeInLive ? islands.length : vault.length;
-        }
-        else if (String(overIdVal).startsWith('live-gap-') || String(overIdVal).startsWith('vault-gap-')) {
-          const gapIndex = parseInt(String(overIdVal).split('-')[2], 10);
-          targetIndex = isNaN(gapIndex) ? (activeInLive ? islands.length : vault.length) : gapIndex;
-          targetContainerId = 'root';
-        }
-        else if (over) {
-          targetContainerId = over.containerId;
-          targetIndex = over.index;
-
-          if (over.item && 'tabs' in over.item && !isActiveGroup) {
-            if (active.containerId === over.item.id) {
-              targetContainerId = 'root';
-              targetIndex = over.index;
-            } else if (over.item.collapsed) {
-              targetContainerId = 'root';
-              targetIndex = over.index;
-            } else {
-              targetContainerId = over.item.id;
-              targetIndex = 0;
-            }
-          }
-
-          if (isActiveGroup && targetContainerId !== 'root') {
-            const currentRoot = activeInLive ? islands : vault;
-            const parentGroupIndex = currentRoot.findIndex((i: LiveItem) => String(i.id) === String(targetContainerId));
-
-            if (parentGroupIndex !== -1) {
-              targetContainerId = 'root';
-              targetIndex = parentGroupIndex;
-            } else {
-              return;
-            }
-          }
-
-          if (active.containerId !== targetContainerId && over.item && !('tabs' in over.item)) {
-            const targetGroup = (activeInLive ? islands : vault).find((i: LiveItem) => String(i.id) === String(targetContainerId));
-            if (targetGroup && 'tabs' in targetGroup && targetGroup.tabs && targetIndex === targetGroup.tabs.length - 1) {
-              targetIndex = targetIndex + 1;
-            }
-          }
-        }
-
-        if (targetIndex === -1) return;
-        if (active.containerId === targetContainerId && active.index === targetIndex) return;
-
-        const newIslands = activeInLive ? cloneWithDeepGroups(islands) : [...islands];
-        const newVault = activeInLive ? [...vault] : cloneWithDeepGroups(vault);
-        const rootList = activeInLive ? newIslands : newVault;
-
-        const getTargetList = <T extends LiveItem | VaultItem>(root: T[], cId: UniqueIdentifier): (T | Tab)[] | null => {
-          if (cId === 'root') return root;
-          const cIdStr = String(cId);
-          const group = root.find(i => i && String(i.id) === cIdStr);
-          if (group && 'tabs' in group && Array.isArray(group.tabs)) return group.tabs;
-          return null;
-        };
-
-        const sourceArr = getTargetList(rootList, active.containerId);
-        const targetArr = getTargetList(rootList, targetContainerId);
-
-        if (!sourceArr || !targetArr) return;
-
-        const sourceItem = sourceArr[active.index];
-
-        if (!sourceItem || String(sourceItem.id) !== String(activeIdVal)) {
-          const correctIndex = sourceArr.findIndex((item: LiveItem | VaultItem) => String(item.id) === String(activeIdVal));
-          if (correctIndex === -1) return;
-          active.index = correctIndex;
-        }
-
-        const [movedItem] = sourceArr.splice(active.index, 1);
-        if (!movedItem) return;
-
-        const safeTargetIndex = Math.max(0, Math.min(Number(targetIndex), targetArr.length));
-        targetArr.splice(safeTargetIndex, 0, movedItem);
-
-        if (activeInLive) {
-          set({ islands: newIslands });
+        if (result.isLive) {
+          set({ islands: result.newIslands });
         } else {
-          set({ vault: newVault });
+          set({ vault: result.newVault });
         }
       });
     };

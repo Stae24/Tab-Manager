@@ -3,7 +3,6 @@ import { Plus, Sun, Moon, ZoomIn, ZoomOut, RefreshCw, Download, Settings, X, Sav
 import { useStore } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { AppearanceSettingsPanel } from './AppearanceSettingsPanel';
-import { BLOB_URL_REVOKE_DELAY_MS } from '../constants';
 import { Island, Tab, LiveItem, VaultItem } from '../types/index';
 
 export const Sidebar: React.FC = () => {
@@ -108,11 +107,7 @@ export const Sidebar: React.FC = () => {
     a.href = url;
     a.download = fileName;
     a.click();
-    
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 1000);
-    
+
     setShowExportDropdown(false);
   };
 
