@@ -2,10 +2,10 @@
 
 ## Tooling
 
-- Dev server: `npm run dev`
+- DO NOT RUN `npm run dev`
 - Build: `npm run build`
-- Tests: `npm test` or `npm run test:watch`
-- Benchmarks: `npm run bench` or `npm run bench:search`
+- Benchmarks: `npm run bench`
+- Minimize token noise: if a tool output is large, use filtering or sampling (e.g., `grep`, `tail`) to extract only the relevant lines.
 
 ## Verification Loop
 
@@ -14,6 +14,7 @@ Before finishing any task, run tests:
 npm run test
 ```
 If tests fail, fix the code and re-run until passing.
+Then run `npm run build` to ensure the code compiles.
 
 ## TypeScript
 
