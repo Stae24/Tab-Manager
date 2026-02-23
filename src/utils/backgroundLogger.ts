@@ -1,17 +1,21 @@
+import { setDebugMode } from './logger';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const DEBUG_MODE = false;
+let debugModeEnabled = false;
+
+export const setBackgroundDebugMode = setDebugMode;
 
 const formatMessage = (level: LogLevel, context: string, ...args: unknown[]): void => {
   const timestamp = new Date().toISOString();
   const prefix = `[${timestamp}] [${context}]`;
-  
+
   switch (level) {
     case 'debug':
-      if (DEBUG_MODE) console.log(prefix, ...args);
+      if (debugModeEnabled) console.log(prefix, ...args);
       break;
     case 'info':
-      if (DEBUG_MODE) console.log(prefix, ...args);
+      if (debugModeEnabled) console.log(prefix, ...args);
       break;
     case 'warn':
       console.warn(prefix, ...args);
@@ -27,4 +31,9 @@ export const backgroundLogger = {
   info: (context: string, ...args: unknown[]) => formatMessage('info', context, ...args),
   warn: (context: string, ...args: unknown[]) => formatMessage('warn', context, ...args),
   error: (context: string, ...args: unknown[]) => formatMessage('error', context, ...args),
+};
+
+// Sync with main logger
+export const syncDebugMode = (enabled: boolean) => {
+  debugModeEnabled = enabled;
 };

@@ -26,6 +26,11 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
     }
 
     const gapRect = gapRef.current.getBoundingClientRect();
+    if (!gapRect) {
+      setExpanded(false);
+      return;
+    }
+
     const baseRem = parseFloat(getComputedStyle(document.documentElement).fontSize) || BASE_FONT_SIZE;
     const pointerY = pointerPosition.y;
 
