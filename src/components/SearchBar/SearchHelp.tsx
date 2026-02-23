@@ -175,5 +175,3 @@ export const SearchHelp: React.FC<SearchHelpProps> = ({ isOpen, onClose }) => {
     </div>
   );
 };
-
-export default SearchHelp;

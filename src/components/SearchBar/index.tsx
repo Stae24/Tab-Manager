@@ -336,5 +336,3 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
     </div>
   );
 });
-
-export default SearchBar;

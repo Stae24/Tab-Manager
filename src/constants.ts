@@ -49,7 +49,6 @@ export const VIRTUAL_ROW_ESTIMATE_SIZE = 40;
 export const VIRTUAL_ROW_OVERSCAN = 10;
 export const VIRTUAL_ROW_GAP_PX = 8;
 export const CLEANUP_ANIMATION_DELAY_MS = 500;
-export const BLOB_URL_REVOKE_DELAY_MS = 1000;
 export const NO_TABS_ICON_SIZE = 48;
 export const INTERSECTION_OBSERVER_MARGIN_PX = 500;
 export const TAB_LOAD_DELAY_BASE_MS = 50;
