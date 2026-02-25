@@ -1,13 +1,12 @@
 # Agent Directives
 
 ## Tooling
-- Use `rg` instead of `grep`
 - DO NOT RUN `npm run dev`
 - Test: `npm run test`
 - Output only failed tests: `npm run test:fail-only`
 - Build: `npm run build`
 - Benchmarks: `npm run bench`
-- **ALWAYS MINIMIZE TOKEN NOISE**: if a tool output is large, ALWAYS use filtering or sampling (e.g., `rg`, `head`, `tail`) to extract only the relevant lines.
+- **ALWAYS MINIMIZE TOKEN NOISE**: if a tool output is large, ALWAYS use filtering or sampling (e.g., `grep`, `head`, `tail`) to extract only the relevant lines.
 
 ## Verification Loop
 
