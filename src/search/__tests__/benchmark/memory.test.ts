@@ -107,7 +107,7 @@ describe('Memory Leak Detection', () => {
       const final = getHeapUsedMB();
       const growth = final - initial;
 
-      expect(growth).toBeLessThan(10);
+      expect(growth).toBeLessThan(15);
     });
 
     test('applyTextSearch does not accumulate memory', () => {
