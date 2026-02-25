@@ -44,7 +44,7 @@ export type BangType =
   | 'groupname'
   | 'groupcolor';
 
-export type CommandType = 'delete' | 'save' | 'freeze';
+export type CommandType = 'delete' | 'save' | 'freeze' | 'group' | 'ungroup';
 
 export type SortType = 'index' | 'title' | 'url';
 

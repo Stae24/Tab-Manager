@@ -86,10 +86,64 @@ const freezeCommand: CommandFunction = async (
   };
 };
 
+const groupCommand: CommandFunction = async (
+  tabs: Tab[],
+  _context: SearchContext
+): Promise<CommandResult> => {
+  if (tabs.length === 0) {
+    return { success: true, affectedCount: 0 };
+  }
+
+  const tabIds = tabs
+    .map((tab) => parseNumericId(tab.id))
+    .filter((id): id is number => id !== null);
+
+  if (tabIds.length < 2) {
+    return { success: false, affectedCount: 0, error: 'Need at least 2 tabs to group' };
+  }
+
+  try {
+    const { tabService } = await import('../../services/tabService');
+    await tabService.consolidateAndGroupTabs(tabIds, { color: 'random' });
+    return { success: true, affectedCount: tabIds.length };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return { success: false, affectedCount: 0, error: msg };
+  }
+};
+
+const ungroupCommand: CommandFunction = async (
+  tabs: Tab[],
+  _context: SearchContext
+): Promise<CommandResult> => {
+  if (tabs.length === 0) {
+    return { success: true, affectedCount: 0 };
+  }
+
+  const tabIds = tabs
+    .map((tab) => parseNumericId(tab.id))
+    .filter((id): id is number => id !== null);
+
+  if (tabIds.length === 0) {
+    return { success: false, affectedCount: 0, error: 'No valid tab IDs found' };
+  }
+
+  try {
+    const { ungroupTab } = await import('../../utils/chromeApi');
+    await ungroupTab(tabIds);
+    return { success: true, affectedCount: tabIds.length };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return { success: false, affectedCount: 0, error: msg };
+  }
+};
+
 export const COMMAND_IMPLEMENTATIONS: Record<CommandType, CommandFunction> = {
   delete: deleteCommand,
   save: saveCommand,
   freeze: freezeCommand,
+  group: groupCommand,
+  ungroup: ungroupCommand,
 };
 
 export async function executeCommand(
