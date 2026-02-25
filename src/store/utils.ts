@@ -49,6 +49,16 @@ export const parseNumericId = (id: UniqueIdentifier): number | null => {
   return null;
 };
 
+export const isVaultId = (id: UniqueIdentifier): boolean => {
+  const idStr = String(id);
+  return idStr.startsWith('vault-');
+};
+
+export const isLiveId = (id: UniqueIdentifier): boolean => {
+  const idStr = String(id);
+  return idStr.startsWith('live-');
+};
+
 export const isTab = (item: unknown): item is Tab => {
   if (!item || typeof item !== 'object') return false;
   const t = item as Partial<Tab>;

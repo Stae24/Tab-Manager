@@ -15,7 +15,8 @@ export const DroppableGap: React.FC<DroppableGapProps> = ({ index, panelType, is
   const { ref, expanded } = useProximityGap(
     gapId,
     active,
-    isDraggingGroup
+    isDraggingGroup,
+    panelType
   );
 
   return (

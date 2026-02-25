@@ -15,8 +15,7 @@ import {
   DragCancelEvent,
   UniqueIdentifier,
   MeasuringStrategy,
-  defaultDropAnimationSideEffects,
-  Modifier
+  defaultDropAnimationSideEffects
 } from '@dnd-kit/core';
 
 import {
@@ -28,7 +27,7 @@ import { VaultPanel } from './VaultPanel';
 import { Island } from './Island';
 import { TabCard } from './TabCard';
 import { QuotaExceededModal, QuotaExceededAction } from './QuotaExceededModal';
-import { useStore, parseNumericId, findItemInList } from '../store/useStore';
+import { useStore, parseNumericId, findItemInList, isVaultId } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { closeTab, createIsland } from '../utils/chromeApi';
 import { Island as IslandType, Tab as TabType, UniversalId, LiveItem, VaultItem } from '../types/index';
@@ -122,6 +121,17 @@ export const Dashboard: React.FC = () => {
   const preDragSnapshot = useRef<{ islands: LiveItem[]; vault: VaultItem[] } | null>(null);
   const isUnmounted = useRef(false);
 
+  useEffect(() => {
+    return () => {
+      setActiveItem(null);
+      setIsDraggingVaultItem(false);
+      setIsDraggingGroup(false);
+      setIsCreatingIsland(false);
+      setCreatingTabId(null);
+      setDragStartInfo(null);
+    };
+  }, []);
+
   const vaultTabCount = useMemo(() => {
     return (vault || []).reduce((acc, i) => {
       if (!i) return acc;
@@ -136,14 +146,6 @@ export const Dashboard: React.FC = () => {
     }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-
-  const scaleModifier: Modifier = useCallback(({ transform }) => {
-    return {
-      ...transform,
-      x: transform.x / appearanceSettings.uiScale,
-      y: transform.y / appearanceSettings.uiScale,
-    };
-  }, [appearanceSettings.uiScale]);
 
   const handleQuotaExceededAction = useCallback(async (action: QuotaExceededAction) => {
     if (action === 'switch-local') {
@@ -229,14 +231,16 @@ export const Dashboard: React.FC = () => {
       if (numericId !== null) {
         addPendingOperation(numericId);
       }
+    } else {
+      setDragStartInfo(null);
     }
 
     const isGroup = data && 'island' in data && data.type === 'island';
     setIsDraggingGroup(!!isGroup);
 
-    const isVault = event.active.id.toString().startsWith('vault-') ||
-      (data?.type === 'island' && data.island.id.toString().startsWith('vault-')) ||
-      (data?.type === 'tab' && data.tab.id.toString().startsWith('vault-'));
+    const isVault = isVaultId(event.active.id) ||
+      (data?.type === 'island' && isVaultId(data.island.id)) ||
+      (data?.type === 'tab' && isVaultId(data.tab.id));
 
     setIsDraggingVaultItem(isVault);
   };
@@ -316,9 +320,9 @@ export const Dashboard: React.FC = () => {
 
     const activeIdStr = activeId.toString();
     const overIdStr = overId.toString();
-    const isVaultSource = activeIdStr.startsWith('vault-');
+    const isVaultSource = isVaultId(activeId);
 
-    const isVaultTarget = overIdStr === 'vault-dropzone' || overIdStr === 'vault-bottom' || overIdStr.startsWith('vault-');
+    const isVaultTarget = overIdStr === 'vault-dropzone' || overIdStr === 'vault-bottom' || isVaultId(overId);
 
     if (isVaultSource && isVaultTarget) {
       await useStore.getState().reorderVault(finalVault);
@@ -384,12 +388,14 @@ export const Dashboard: React.FC = () => {
         await new Promise(r => setTimeout(r, POST_ISLAND_CREATION_DELAY_MS));
       } catch (e) {
         logger.error('[ISLAND] Tab no longer exists or access denied', e);
-        await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
       } finally {
         setIsCreatingIsland(false);
         setCreatingTabId(null);
+        try {
+          await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
+        } catch {}
+        cleanupPendingOperation();
       }
-      cleanupPendingOperation();
       return;
     }
 
@@ -511,7 +517,6 @@ export const Dashboard: React.FC = () => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
-          modifiers={[scaleModifier]}
         >
           <PointerPositionProvider isDragging={activeItem !== null}>
             <div className="flex flex-1 overflow-hidden relative overscroll-none">
@@ -525,6 +530,7 @@ export const Dashboard: React.FC = () => {
               onRenameGroup={renameGroup}
               onToggleCollapse={toggleLiveGroupCollapse}
               isDraggingGroup={isDraggingGroup}
+              isDraggingVaultItem={isDraggingVaultItem}
               groupSearchResults={groupSearchResults}
               groupUngroupedTabs={groupUngroupedTabs}
               deleteDuplicateTabs={deleteDuplicateTabs}
@@ -570,7 +576,7 @@ export const Dashboard: React.FC = () => {
               </>
             )}
           </div>
-            <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.1' } } }) }}>
+            <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: String(appearanceSettings.dragOpacity) } } }) }}>
               {activeItem ? <DragOverlayContent activeItem={activeItem} /> : null}
             </DragOverlay>
           </PointerPositionProvider>

@@ -32,6 +32,7 @@ interface LivePanelProps {
   onRenameGroup: (id: UniversalId, title: string) => void;
   onToggleCollapse: (id: UniversalId) => void;
   isDraggingGroup?: boolean;
+  isDraggingVaultItem?: boolean;
   groupSearchResults: (tabs: TabType[]) => Promise<void>;
   groupUngroupedTabs: () => Promise<void>;
   deleteDuplicateTabs: () => Promise<void>;
@@ -52,6 +53,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   onRenameGroup,
   onToggleCollapse,
   isDraggingGroup,
+  isDraggingVaultItem,
   groupSearchResults,
   groupUngroupedTabs,
   deleteDuplicateTabs,
@@ -387,7 +389,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             isCreatingIsland && "border-gx-cyan bg-gx-cyan/5 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse-glow",
             !isCreatingIsland && isCreateOver && !isDraggingGroup && "border-gx-accent bg-gx-accent/10",
             !isCreatingIsland && !isCreateOver && "hover:border-gx-accent/50 hover:bg-gx-accent/5",
-            isDraggingGroup && "opacity-30 cursor-not-allowed grayscale"
+            (isDraggingGroup || isDraggingVaultItem) && "opacity-30 cursor-not-allowed grayscale"
           )}
         >
           <div className={cn(
