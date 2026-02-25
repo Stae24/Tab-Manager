@@ -3,7 +3,7 @@ import { UniqueIdentifier } from '@dnd-kit/core';
 import { Island, Tab, LiveItem, UniversalId, VaultItem } from '../../types/index';
 import { tabService } from '../../services/tabService';
 import { logger } from '../../utils/logger';
-import { parseNumericId, findItemInList, isIsland, cloneWithDeepGroups } from '../utils';
+import { parseNumericId, isIsland } from '../utils';
 import { initBrowserCapabilities } from '../../utils/browser';
 import { prepareOptimisticMove } from '../operations/moveItem';
 
@@ -81,7 +81,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       const entities = await tabService.getLiveTabsAndGroups();
       set({ islands: entities, isRefreshing: false });
     } catch (error) {
-      logger.error('Failed to sync live tabs:', error);
+      logger.error('TabSlice', 'Failed to sync live tabs:', error);
       set({ isRefreshing: false });
     }
   },
@@ -153,14 +153,14 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
     try {
       const supported = await initBrowserCapabilities();
       set({ supportsGroupCollapse: supported });
-      
+
       if (supported) {
-        logger.info('[initBrowserCapabilities] Browser supports group collapse');
+        logger.info('TabSlice', '[initBrowserCapabilities] Browser supports group collapse');
       } else {
-        logger.info('[initBrowserCapabilities] Browser does NOT support group collapse');
+        logger.info('TabSlice', '[initBrowserCapabilities] Browser does NOT support group collapse');
       }
     } catch (error) {
-      logger.error('[initBrowserCapabilities] error:', error);
+      logger.error('TabSlice', '[initBrowserCapabilities] error:', error);
       set({ supportsGroupCollapse: false });
     }
   },
@@ -195,7 +195,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         const { islands, vault } = get();
 
         const moveData = prepareOptimisticMove(islands, vault, activeIdVal, overIdVal);
-        
+
         if (!moveData) return;
 
         const { result } = moveData;
@@ -249,7 +249,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       await tabService.closeTabs(idsArray);
       await get().syncLiveTabs();
     } catch (error) {
-      logger.error("[Deduplicator] Fatal error during deduplication:", error);
+      logger.error('TabSlice', "[Deduplicator] Fatal error during deduplication:", error);
     }
   },
 
@@ -288,7 +288,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
             currentIdx += 1;
           }
         } catch (itemError) {
-          logger.warn(`[Sorter] Failed to move item ${item.id}:`, itemError);
+          logger.warn('TabSlice', `[Sorter] Failed to move item ${item.id}:`, itemError);
           currentIdx += isIsland(item) ? (item.tabs?.length || 0) : 1;
         }
       }
@@ -319,7 +319,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
         .filter((tab: Tab) => !tab.pinned)
         .map((tab: Tab) => parseNumericId(tab.id))
         .filter((id: number | null): id is number => id !== null);
-      
+
       if (ungroupedTabIds.length >= 2) {
         await tabService.consolidateAndGroupTabs(ungroupedTabIds, { color: 'random' });
         await syncLiveTabs();

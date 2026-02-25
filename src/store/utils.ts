@@ -1,17 +1,18 @@
 import { UniqueIdentifier } from '@dnd-kit/core';
 import { Island, Tab, VaultItem, AppearanceSettings, LiveItem, HotkeyBinding } from '../types/index';
 import { logger } from '../utils/logger';
-import { 
-  DEBOUNCE_DEFAULT_MS, 
-  CHROME_32BIT_INT_MAX, 
-  DEFAULT_DRAG_OPACITY, 
-  MAX_SYNC_RETRIES, 
-  INITIAL_SYNC_BACKOFF, 
+import {
+  DEBOUNCE_DEFAULT_MS,
+  CHROME_32BIT_INT_MAX,
+  DEFAULT_DRAG_OPACITY,
+  MAX_SYNC_RETRIES,
+  INITIAL_SYNC_BACKOFF,
   SYNC_SETTINGS_DEBOUNCE_MS,
   SEARCH_DEBOUNCE_MS,
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_DEFAULT_DOCK_SIDE,
-  SIDEBAR_DEFAULT_LAYOUT_MODE
+  SIDEBAR_DEFAULT_LAYOUT_MODE,
+  SIDEBAR_MAX_WIDTH_PCT_DEFAULT
 } from '../constants';
 
 export const debounce = <T extends (...args: any[]) => any>(fn: T, ms = DEBOUNCE_DEFAULT_MS) => {
@@ -58,9 +59,9 @@ export const parseNumericId = (id: UniqueIdentifier): number | null => {
 
   // Log failure to aid debugging, especially for "live-" prefixed IDs which should always have a numeric component
   if (isLiveId(idStr)) {
-    logger.error(`[Store] Failed to parse mandatory numeric ID from live item: ${idStr}`);
+    logger.error('Store', `Failed to parse mandatory numeric ID from live item: ${idStr}`);
   } else {
-    logger.debug(`[Store] No numeric ID found in: ${idStr}`);
+    logger.debug('Store', `No numeric ID found in: ${idStr}`);
   }
 
   return null;
@@ -112,7 +113,7 @@ export const isVaultItems = (items: unknown): items is VaultItem[] => {
 export const isAppearanceSettings = (settings: unknown): settings is AppearanceSettings => {
   if (!settings || typeof settings !== 'object') return false;
   const s = settings as Partial<AppearanceSettings>;
-  
+
   const isHotkeyBinding = (h: unknown): h is HotkeyBinding => {
     if (!h || typeof h !== 'object') return false;
     const hb = h as Partial<HotkeyBinding>;
@@ -156,6 +157,7 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     !!s.sidebarLayoutMode && ['overlay', 'push'].includes(s.sidebarLayoutMode) &&
     !!s.sidebarDockSide && ['left', 'right'].includes(s.sidebarDockSide) &&
     typeof s.sidebarWidthPx === 'number' &&
+    typeof s.sidebarWidthMaxPct === 'number' &&
     isHotkeyBinding(s.sidebarToggleHotkey) &&
     isHotkeyBinding(s.managerPageHotkey) &&
     (typeof s.debugMode === 'boolean' || s.debugMode === undefined)
@@ -171,7 +173,7 @@ export const mergeAppearanceSettings = (settings: unknown): AppearanceSettings =
 
 // Tactical Item Discovery
 export const findItemInList = <T extends LiveItem | VaultItem>(
-  list: T[], 
+  list: T[],
   id: UniqueIdentifier
 ): { item: T | Tab; containerId: UniqueIdentifier | 'root'; index: number } | null => {
   const idStr = String(id);
@@ -254,6 +256,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   sidebarLayoutMode: SIDEBAR_DEFAULT_LAYOUT_MODE,
   sidebarDockSide: SIDEBAR_DEFAULT_DOCK_SIDE,
   sidebarWidthPx: SIDEBAR_DEFAULT_WIDTH,
+  sidebarWidthMaxPct: SIDEBAR_MAX_WIDTH_PCT_DEFAULT,
   sidebarToggleHotkey: DEFAULT_SIDEBAR_TOGGLE_HOTKEY,
   managerPageHotkey: DEFAULT_MANAGER_PAGE_HOTKEY,
   debugMode: false,
@@ -273,9 +276,9 @@ export const performSync = async (settings: SyncState, retryCount = 0) => {
     const message = error instanceof Error ? error.message : String(error);
     const isQuotaError = message.includes('QUOTA_EXCEEDED');
     const isThrottled = message.includes('MAX_WRITE_OPERATIONS') || message.includes('throttled');
-    
-    logger.error(`[SyncSettings] Failed to sync settings (attempt ${retryCount + 1}):`, error);
-    
+
+    logger.error('SyncSettings', `Failed to sync settings (attempt ${retryCount + 1}):`, error);
+
     if (retryCount < MAX_SYNC_RETRIES && (isQuotaError || isThrottled)) {
       const delay = INITIAL_SYNC_BACKOFF * Math.pow(2, retryCount);
       setTimeout(() => performSync(settings, retryCount + 1), delay);

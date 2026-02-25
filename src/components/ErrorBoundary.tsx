@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    logger.error(`[ErrorBoundary:${this.props.name || 'Global'}]`, error, errorInfo);
+    logger.error('ErrorBoundary', `Module: ${this.props.name || 'Global'}`, error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -47,9 +47,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="fixed inset-0 z-[9999] bg-gx-dark/95 backdrop-blur-2xl flex items-center justify-center p-6 select-none overflow-hidden">
-          <div className="absolute inset-0 opacity-10 pointer-events-none" 
-               style={{ backgroundImage: 'linear-gradient(rgba(239, 68, 68, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(239, 68, 68, 0.1) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-          
+          <div className="absolute inset-0 opacity-10 pointer-events-none"
+            style={{ backgroundImage: 'linear-gradient(rgba(239, 68, 68, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(239, 68, 68, 0.1) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+
           <div className="relative w-full max-w-2xl bg-gx-gray/20 border border-gx-red/30 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(239,64,64,0.15)] animate-in fade-in zoom-in duration-300">
             <div className="bg-gx-red/10 border-b border-gx-red/20 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">

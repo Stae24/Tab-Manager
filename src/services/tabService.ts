@@ -11,15 +11,15 @@ const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = M
     } catch (error: unknown) {
       lastError = error;
       const msg = error instanceof Error ? error.message : String(error);
-      const isRetryable = msg.includes('Tab cannot be modified') || 
-                         msg.includes('dragging') || 
-                         msg.includes('moving') ||
-                         msg.includes('tabs cannot be edited') ||
-                         msg.includes('editable');
-      
+      const isRetryable = msg.includes('Tab cannot be modified') ||
+        msg.includes('dragging') ||
+        msg.includes('moving') ||
+        msg.includes('tabs cannot be edited') ||
+        msg.includes('editable');
+
       if (isRetryable && attempt < maxAttempts) {
         const delay = TAB_ACTION_RETRY_DELAY_BASE * Math.pow(2, attempt - 1);
-        logger.warn(`[${label}] Attempt ${attempt} failed. Retrying in ${delay}ms...`, msg);
+        logger.warn('TabService', `Attempt ${attempt} failed. Retrying in ${delay}ms...`, msg);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -98,7 +98,7 @@ export const tabService = {
         'moveIsland'
       );
     } catch (error) {
-      logger.error(`[moveIsland] Failed to move group ${groupId} to index ${index} (window ${windowId}):`, error);
+      logger.error('TabService', `moveIsland: Failed to move group ${groupId} to index ${index} (window ${windowId}):`, error);
       throw error;
     }
   },
@@ -110,7 +110,7 @@ export const tabService = {
         'moveTab'
       );
     } catch (error) {
-      logger.error(`[moveTab] Failed to move tab ${tabId} to index ${index} (window ${windowId}):`, error);
+      logger.error('TabService', `moveTab: Failed to move tab ${tabId} to index ${index} (window ${windowId}):`, error);
       throw error;
     }
   },
@@ -121,14 +121,14 @@ export const tabService = {
         tabIds.map(id => chrome.tabs.get(id).catch(() => null))
       );
       const validTabs = tabs.filter((t): t is chrome.tabs.Tab => t !== null && t.id !== undefined);
-      
+
       if (validTabs.length === 0) return null;
 
       let targetWindowId: number | undefined = windowId;
 
       if (targetWindowId === chrome.windows.WINDOW_ID_CURRENT) {
-          const currentWindow = await chrome.windows.getCurrent();
-          targetWindowId = currentWindow.id;
+        const currentWindow = await chrome.windows.getCurrent();
+        targetWindowId = currentWindow.id;
       }
 
       if (!targetWindowId) {
@@ -137,9 +137,9 @@ export const tabService = {
           const wid = t.windowId;
           windowCounts.set(wid, (windowCounts.get(wid) || 0) + 1);
         });
-        
+
         let maxCount = -1;
-        targetWindowId = validTabs[0].windowId; 
+        targetWindowId = validTabs[0].windowId;
 
         for (const [wid, count] of windowCounts.entries()) {
           if (count > maxCount) {
@@ -153,17 +153,17 @@ export const tabService = {
       const finalTabIds = sameWindowTabs.map(t => t.id as number);
 
       if (finalTabIds.length === 0) {
-          logger.warn(`[createIsland] No tabs found for target window ${targetWindowId}`);
-          return null;
+        logger.warn('TabService', `createIsland: No tabs found for target window ${targetWindowId}`);
+        return null;
       }
-      
+
       await getBrowserCapabilities();
-      
+
       if (finalTabIds.length === 1 && needsCompanionTabForSingleTabGroup()) {
         try {
           const sourceTab = sameWindowTabs[0];
-          const newTab = await chrome.tabs.create({ 
-            windowId: targetWindowId, 
+          const newTab = await chrome.tabs.create({
+            windowId: targetWindowId,
             active: false,
             index: sourceTab.index + 1
           });
@@ -171,25 +171,25 @@ export const tabService = {
             finalTabIds.push(newTab.id);
           }
         } catch (e) {
-          logger.warn('[createIsland] Could not create companion tab:', e);
+          logger.warn('TabService', 'createIsland: Could not create companion tab:', e);
         }
       }
 
-      const groupId = await chrome.tabs.group({ 
-        tabIds: finalTabIds as [number, ...number[]], 
+      const groupId = await chrome.tabs.group({
+        tabIds: finalTabIds as [number, ...number[]],
         createProperties: { windowId: targetWindowId }
       });
-      
+
       if (groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-        await tabService.updateTabGroup(groupId, { 
-          title: title || '', 
+        await tabService.updateTabGroup(groupId, {
+          title: title || '',
           color: color || 'cyan'
         });
       }
-      
+
       return groupId;
     } catch (error) {
-      logger.error('[createIsland] Grouping failed:', error);
+      logger.error('TabService', 'createIsland: Grouping failed:', error);
       return null;
     }
   },
@@ -201,14 +201,14 @@ export const tabService = {
         'ungroupTab'
       );
     } catch (error) {
-      logger.error(`[ungroupTab] Failed to ungroup tabs:`, error);
+      logger.error('TabService', `ungroupTab: Failed to ungroup tabs:`, error);
       throw error;
     }
   },
 
   updateTabGroup: async (groupId: number, properties: chrome.tabGroups.UpdateProperties): Promise<boolean> => {
     if (!Number.isInteger(groupId) || groupId <= 0) return false;
-    
+
     try {
       return await withRetry(async () => {
         return new Promise((resolve, reject) => {
@@ -218,7 +218,7 @@ export const tabService = {
               if (msg.includes('saved') || msg.includes('editable')) {
                 reject(new Error(msg));
               } else {
-                logger.error(`[updateTabGroup] Error updating group ${groupId}:`, msg);
+                logger.error('TabService', `updateTabGroup: Error updating group ${groupId}:`, msg);
                 resolve(false);
               }
             } else {
@@ -230,9 +230,9 @@ export const tabService = {
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg.includes('saved') || msg.includes('editable')) {
-        logger.warn(`[updateTabGroup] Group ${groupId} is not editable (likely saved):`, msg);
+        logger.warn('TabService', `updateTabGroup: Group ${groupId} is not editable (likely saved):`, msg);
       } else {
-        logger.error(`[updateTabGroup] Fatal error updating group ${groupId}:`, error);
+        logger.error('TabService', `updateTabGroup: Fatal error updating group ${groupId}:`, error);
       }
       return false;
     }
@@ -240,12 +240,12 @@ export const tabService = {
 
   updateTabGroupCollapse: async (groupId: number, collapsed: boolean): Promise<boolean> => {
     const success = await tabService.updateTabGroup(groupId, { collapsed: !!collapsed });
-    
+
     if (success) {
       try {
         const group = await chrome.tabGroups.get(groupId);
         const changeApplied = group.collapsed === collapsed;
-        
+
         if (changeApplied) {
           const cached = getCachedCapabilities();
           if (cached?.vendor === 'brave') {
@@ -267,15 +267,15 @@ export const tabService = {
             }
           }
         }
-        
+
         if (!changeApplied) {
           return false;
         }
       } catch (error) {
-        logger.warn('[updateTabGroupCollapse] Could not verify collapse state:', error);
+        logger.warn('TabService', 'updateTabGroupCollapse: Could not verify collapse state:', error);
       }
     }
-    
+
     return success;
   },
 
@@ -367,20 +367,20 @@ export const tabService = {
         () => chrome.windows.getLastFocused({ windowTypes: ['normal'] }),
         'getLastFocused'
       );
-      
+
       if (!targetWindow.id) {
-        logger.error('[GroupSearchResults] No target window found');
+        logger.error('TabService', 'groupSearchResults: No target window found');
         return undefined;
       }
 
       const windowId = targetWindow.id;
-      
+
       const tabs = await Promise.all(
         tabIds.map(id => chrome.tabs.get(id).catch(() => null))
       );
-      
+
       const restrictedUrlPatterns = ['about:', 'chrome:', 'edge:', 'opera:', 'brave:', 'chrome-extension:'];
-      
+
       const validTabs = tabs.filter((t): t is chrome.tabs.Tab => {
         if (!t || t.id === undefined) return false;
         if (t.pinned) return false;
@@ -393,7 +393,7 @@ export const tabService = {
 
       const tabsToGroup: number[] = [];
       let groupedGroupId: number | undefined;
-      
+
       for (const tab of validTabs) {
         if (tab.windowId !== windowId) {
           try {
@@ -403,7 +403,7 @@ export const tabService = {
             );
             tabsToGroup.push(tab.id as number);
           } catch (error) {
-            logger.error(`[GroupSearchResults] Failed to move tab ${tab.id}:`, error);
+            logger.error('TabService', `groupSearchResults: Failed to move tab ${tab.id}:`, error);
           }
         } else {
           tabsToGroup.push(tab.id as number);
@@ -416,11 +416,11 @@ export const tabService = {
             () => chrome.tabs.group({ tabIds: tabsToGroup as [number, ...number[]] }),
             'groupTabs'
           );
-          
+
           groupedGroupId = groupId;
-          
+
           const allTabs = await withRetry(() => chrome.tabs.query({ windowId }), 'queryAllTabs');
-          
+
           let targetIndex = 0;
           let newGroupStartIndex = -1;
           let newGroupSize = 0;
@@ -431,43 +431,43 @@ export const tabService = {
               newGroupSize++;
             }
 
-            const isOtherGroup = tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && 
-                                 String(tab.groupId) !== String(groupId);
-                                 
+            const isOtherGroup = tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE &&
+              String(tab.groupId) !== String(groupId);
+
             if (isOtherGroup) {
               if (tab.index + 1 > targetIndex) {
                 targetIndex = tab.index + 1;
               }
             }
           }
-          
+
           if (newGroupStartIndex !== -1 && newGroupStartIndex < targetIndex) {
-              targetIndex = Math.max(0, targetIndex - newGroupSize);
+            targetIndex = Math.max(0, targetIndex - newGroupSize);
           }
-          
+
           await withRetry(
             () => chrome.tabGroups.move(groupId, { index: targetIndex }),
             'moveGroup'
           );
-          
+
           if (options.color && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
             let groupColor = options.color;
-            
+
             if (options.color === 'random') {
               const availableColors = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
               groupColor = availableColors[Math.floor(Math.random() * availableColors.length)];
             }
-            
+
             await tabService.updateTabGroup(groupId, { color: groupColor as chrome.tabGroups.Color });
           }
         } catch (error) {
-          logger.error('[GroupSearchResults] Failed to group tabs:', error);
+          logger.error('TabService', 'groupSearchResults: Failed to group tabs:', error);
         }
       }
 
       return { groupedCount: tabsToGroup.length, groupId: groupedGroupId };
     } catch (error) {
-      logger.error('[GroupSearchResults] Consolidation failed:', error);
+      logger.error('TabService', 'groupSearchResults: Consolidation failed:', error);
       return undefined;
     }
   }

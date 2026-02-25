@@ -89,7 +89,7 @@ export const Dashboard: React.FC = () => {
   const dismissCompressionWarning = useStore(state => state.dismissCompressionWarning);
 
   useEffect(() => {
-    logger.debug('[Dashboard] Sync state:', {
+    logger.debug('Dashboard', 'Sync state:', {
       effectiveSyncEnabled,
       appearanceVaultSyncEnabled: appearanceSettings?.vaultSyncEnabled,
       vaultLength: vault?.length,
@@ -183,7 +183,7 @@ export const Dashboard: React.FC = () => {
       try {
         await chrome.tabs.update(numericId, { active: true });
       } catch (e) {
-        logger.error('[Dashboard] Failed to activate tab:', e);
+        logger.error('Dashboard', 'Failed to activate tab:', e);
       }
     }
   };
@@ -201,11 +201,11 @@ export const Dashboard: React.FC = () => {
 
     const { islands, vault } = useStore.getState();
     preDragSnapshot.current = { islands, vault };
-    
+
     const found = findItemInList(islands, event.active.id) || findItemInList(vault, event.active.id);
     if (found) {
       const { item, index, containerId } = found;
-    const isIslandItem = 'tabs' in item;
+      const isIslandItem = 'tabs' in item;
       setDragStartInfo({
         index,
         containerId,
@@ -344,7 +344,7 @@ export const Dashboard: React.FC = () => {
       const tabId = resolveTabId();
 
       if (!tabId) {
-        logger.error(`[FAILED] Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
+        logger.error('Dashboard', `Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
         cleanupPendingOperation();
         return;
       }
@@ -352,7 +352,7 @@ export const Dashboard: React.FC = () => {
       try {
         const tab = await chrome.tabs.get(tabId);
         if (tab.pinned) {
-          logger.warn('[ISLAND] Cannot create island from pinned tab');
+          logger.warn('Dashboard', 'Cannot create island from pinned tab');
           cleanupPendingOperation();
           return;
         }
@@ -362,21 +362,21 @@ export const Dashboard: React.FC = () => {
 
         await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
 
-        logger.debug(`[ISLAND] Creating island for tab: ${tabId}`);
+        logger.debug('Dashboard', `Creating island for tab: ${tabId}`);
 
         const groupId = await createIsland([tabId], undefined, 'blue' as chrome.tabGroups.Color);
 
         if (groupId) {
-          logger.info(`[SUCCESS] Created island ${groupId} for tab: ${tabId}`);
+          logger.info('Dashboard', `Created island ${groupId} for tab: ${tabId}`);
         } else {
-          logger.error(`[FAILED] createIsland returned null for tab: ${tabId}`);
+          logger.error('Dashboard', `createIsland returned null for tab: ${tabId}`);
         }
 
         await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
 
         await new Promise(r => setTimeout(r, POST_ISLAND_CREATION_DELAY_MS));
       } catch (e) {
-        logger.error('[ISLAND] Tab no longer exists or access denied', e);
+        logger.error('Dashboard', 'Tab no longer exists or access denied', e);
       } finally {
         setIsCreatingIsland(false);
         setCreatingTabId(null);
@@ -512,61 +512,61 @@ export const Dashboard: React.FC = () => {
           <PointerPositionProvider isDragging={activeItem !== null}>
             <div className="flex flex-1 overflow-hidden relative overscroll-none">
               <LivePanel
-              dividerPosition={dividerPosition}
-              islands={islands}
-              handleTabClick={handleTabClick}
-              moveToVault={moveToVault}
-              saveToVault={saveToVault}
-              closeTab={handleCloseTab}
-              onRenameGroup={renameGroup}
-              onToggleCollapse={toggleLiveGroupCollapse}
-              isDraggingGroup={isDraggingGroup}
-              isDraggingVaultItem={isDraggingVaultItem}
-              groupSearchResults={groupSearchResults}
-              groupUngroupedTabs={groupUngroupedTabs}
-              deleteDuplicateTabs={deleteDuplicateTabs}
-              sortGroupsToTop={sortGroupsToTop}
-              showVault={showVault}
-              isCreatingIsland={isCreatingIsland}
-              creatingTabId={creatingTabId}
-              vaultItems={vault}
-            />
-            {showVault && (
-              <>
-                <div
-                  onMouseDown={showAppearancePanel ? undefined : handleMouseDown}
-                  className={cn(
-                    "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-col-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative",
-                    showAppearancePanel && "pointer-events-none opacity-0"
-                  )}
-                >
-                  <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
-                  <GripVertical className="w-4 h-4 text-gx-gray group-hover:text-white transition-colors" />
-                </div>
-                <VaultPanel
-                  dividerPosition={dividerPosition}
-                  vault={vault}
-                  removeFromVault={removeFromVault}
-                  isDraggingLiveItem={!isDraggingVaultItem && activeItem !== null}
-                  isDraggingGroup={isDraggingGroup}
-                  createVaultGroup={createVaultGroup}
-                  onRenameGroup={renameGroup}
-                  onToggleCollapse={toggleVaultGroupCollapse}
-                  sortVaultGroupsToTop={sortVaultGroupsToTop}
-                  deleteVaultDuplicates={deleteVaultDuplicates}
-                  restoreFromVault={restoreFromVault}
-                  vaultQuota={vaultQuota}
-                  effectiveSyncEnabled={effectiveSyncEnabled}
-                  syncRecovered={syncRecovered}
-                  onClearSyncRecovered={clearSyncRecovered}
-                  vaultTabCount={vaultTabCount}
-                  compressionTier={compressionTier}
-                  showCompressionWarning={showCompressionWarning}
-                  onDismissCompressionWarning={dismissCompressionWarning}
-                />
-              </>
-            )}
-          </div>
+                dividerPosition={dividerPosition}
+                islands={islands}
+                handleTabClick={handleTabClick}
+                moveToVault={moveToVault}
+                saveToVault={saveToVault}
+                closeTab={handleCloseTab}
+                onRenameGroup={renameGroup}
+                onToggleCollapse={toggleLiveGroupCollapse}
+                isDraggingGroup={isDraggingGroup}
+                isDraggingVaultItem={isDraggingVaultItem}
+                groupSearchResults={groupSearchResults}
+                groupUngroupedTabs={groupUngroupedTabs}
+                deleteDuplicateTabs={deleteDuplicateTabs}
+                sortGroupsToTop={sortGroupsToTop}
+                showVault={showVault}
+                isCreatingIsland={isCreatingIsland}
+                creatingTabId={creatingTabId}
+                vaultItems={vault}
+              />
+              {showVault && (
+                <>
+                  <div
+                    onMouseDown={showAppearancePanel ? undefined : handleMouseDown}
+                    className={cn(
+                      "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-col-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative",
+                      showAppearancePanel && "pointer-events-none opacity-0"
+                    )}
+                  >
+                    <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
+                    <GripVertical className="w-4 h-4 text-gx-gray group-hover:text-white transition-colors" />
+                  </div>
+                  <VaultPanel
+                    dividerPosition={dividerPosition}
+                    vault={vault}
+                    removeFromVault={removeFromVault}
+                    isDraggingLiveItem={!isDraggingVaultItem && activeItem !== null}
+                    isDraggingGroup={isDraggingGroup}
+                    createVaultGroup={createVaultGroup}
+                    onRenameGroup={renameGroup}
+                    onToggleCollapse={toggleVaultGroupCollapse}
+                    sortVaultGroupsToTop={sortVaultGroupsToTop}
+                    deleteVaultDuplicates={deleteVaultDuplicates}
+                    restoreFromVault={restoreFromVault}
+                    vaultQuota={vaultQuota}
+                    effectiveSyncEnabled={effectiveSyncEnabled}
+                    syncRecovered={syncRecovered}
+                    onClearSyncRecovered={clearSyncRecovered}
+                    vaultTabCount={vaultTabCount}
+                    compressionTier={compressionTier}
+                    showCompressionWarning={showCompressionWarning}
+                    onDismissCompressionWarning={dismissCompressionWarning}
+                  />
+                </>
+              )}
+            </div>
             <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: String(appearanceSettings.dragOpacity) } } }) }}>
               {activeItem ? <DragOverlayContent activeItem={activeItem} /> : null}
             </DragOverlay>
