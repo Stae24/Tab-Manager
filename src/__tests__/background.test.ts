@@ -61,6 +61,9 @@ const chromeMock = {
       set: vi.fn().mockResolvedValue(undefined),
     },
   },
+  sidePanel: {
+    open: vi.fn().mockResolvedValue(undefined),
+  },
 };
 
 Object.defineProperty(globalThis, 'chrome', {
@@ -102,9 +105,9 @@ describe('Background Script Listener Management', () => {
     (chrome.tabs.discard as any).mockResolvedValue({ id: 1 });
 
     const result = messageListener({ type: 'FREEZE_TAB', tabId: 1 }, {} as any, sendResponse);
-    
+
     expect(result).toBe(true);
-    
+
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(sendResponse).toHaveBeenCalledWith({ success: true });
   });
@@ -119,9 +122,9 @@ describe('background - Tab Events', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetModules();
-    
+
     await import('../background');
-    
+
     tabCreatedHandler = (chrome.tabs.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
     tabRemovedHandler = (chrome.tabs.onRemoved.addListener as unknown as MockFn).mock.calls[0]?.[0];
     tabUpdatedHandler = (chrome.tabs.onUpdated.addListener as unknown as MockFn).mock.calls[0]?.[0];
@@ -136,25 +139,25 @@ describe('background - Tab Events', () => {
 
     it('handles tab creation event', () => {
       const mockTab = { id: 1, title: 'New Tab', url: 'https://example.com' };
-      
+
       expect(() => tabCreatedHandler(mockTab)).not.toThrow();
     });
 
     it('ignores tabs without ID', () => {
       const mockTab = { title: 'No ID' };
-      
+
       expect(() => tabCreatedHandler(mockTab)).not.toThrow();
     });
 
     it('handles pinned tabs', () => {
       const mockTab = { id: 1, pinned: true };
-      
+
       expect(() => tabCreatedHandler(mockTab)).not.toThrow();
     });
 
     it('handles grouped tabs', () => {
       const mockTab = { id: 1, groupId: 10 };
-      
+
       expect(() => tabCreatedHandler(mockTab)).not.toThrow();
     });
   });
@@ -187,70 +190,70 @@ describe('background - Tab Events', () => {
     it('handles title change', () => {
       const changeInfo = { title: 'New Title' };
       const tab = { id: 1, title: 'Old Title' };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
 
     it('handles URL change', () => {
       const changeInfo = { url: 'https://newurl.com' };
       const tab = { id: 1, url: 'https://oldurl.com' };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
 
     it('handles audible state change', () => {
       const changeInfo = { audible: true };
       const tab = { id: 1, audible: false };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
 
     it('handles muted state change', () => {
       const changeInfo = { mutedInfo: { muted: true } };
       const tab = { id: 1 };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
 
     it('handles discarded state change', () => {
       const changeInfo = { discarded: true };
       const tab = { id: 1 };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
 
     it('handles favIconUrl change', () => {
       const changeInfo = { favIconUrl: 'https://example.com/icon.png' };
       const tab = { id: 1 };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
 
     it('handles status: loading events', () => {
       const changeInfo = { status: 'loading' };
       const tab = { id: 1 };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
 
     it('handles status: complete events', () => {
       const changeInfo = { status: 'complete' };
       const tab = { id: 1 };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
 
     it('handles pinned state change', () => {
       const changeInfo = { pinned: true };
       const tab = { id: 1 };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
 
     it('handles groupId change', () => {
       const changeInfo = { groupId: 10 };
       const tab = { id: 1, groupId: -1 };
-      
+
       expect(() => tabUpdatedHandler(1, changeInfo, tab)).not.toThrow();
     });
   });
@@ -263,21 +266,21 @@ describe('background - Tab Events', () => {
 
     it('handles tab move within window', () => {
       const moveInfo = { windowId: 1, fromIndex: 0, toIndex: 5 };
-      
+
       expect(() => tabMovedHandler(1, moveInfo)).not.toThrow();
     });
 
     it('handles tab move between windows', () => {
       const moveInfo = { windowId: 2, fromIndex: 0, toIndex: 0 };
-      
+
       expect(() => tabMovedHandler(1, moveInfo)).not.toThrow();
     });
 
     it('sends TAB_MOVED message on move', () => {
       const moveInfo = { windowId: 1, fromIndex: 0, toIndex: 5 };
-      
+
       tabMovedHandler(1, moveInfo);
-      
+
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
         type: 'TAB_MOVED',
         tabId: 1,
@@ -297,9 +300,9 @@ describe('background - Group Events', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetModules();
-    
+
     await import('../background');
-    
+
     groupCreatedHandler = (chrome.tabGroups.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
     groupUpdatedHandler = (chrome.tabGroups.onUpdated.addListener as unknown as MockFn).mock.calls[0]?.[0];
     groupRemovedHandler = (chrome.tabGroups.onRemoved.addListener as unknown as MockFn).mock.calls[0]?.[0];
@@ -314,7 +317,7 @@ describe('background - Group Events', () => {
 
     it('handles group creation', () => {
       const group = { id: 10, title: 'New Group', color: 'blue', windowId: 1 };
-      
+
       expect(() => groupCreatedHandler(group)).not.toThrow();
     });
   });
@@ -327,19 +330,19 @@ describe('background - Group Events', () => {
 
     it('handles title change', () => {
       const group = { id: 10, title: 'Updated Title' };
-      
+
       expect(() => groupUpdatedHandler(group)).not.toThrow();
     });
 
     it('handles color change', () => {
       const group = { id: 10, color: 'red' };
-      
+
       expect(() => groupUpdatedHandler(group)).not.toThrow();
     });
 
     it('handles collapsed state change', () => {
       const group = { id: 10, collapsed: true };
-      
+
       expect(() => groupUpdatedHandler(group)).not.toThrow();
     });
   });
@@ -352,7 +355,7 @@ describe('background - Group Events', () => {
 
     it('handles group removal', () => {
       const group = { id: 10, windowId: 1 };
-      
+
       expect(() => groupRemovedHandler(group)).not.toThrow();
     });
   });
@@ -365,15 +368,15 @@ describe('background - Group Events', () => {
 
     it('handles group move', () => {
       const group = { id: 10, windowId: 1 };
-      
+
       expect(() => groupMovedHandler(group)).not.toThrow();
     });
 
     it('sends GROUP_MOVED message on move', () => {
       const group = { id: 10, windowId: 1 };
-      
+
       groupMovedHandler(group);
-      
+
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
         type: 'GROUP_MOVED',
         groupId: 10
@@ -388,31 +391,31 @@ describe('background - Message Handlers Extended', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetModules();
-    
+
     await import('../background');
-    
+
     messageListener = (chrome.runtime.onMessage.addListener as unknown as MockFn).mock.calls[0][0];
   });
 
   describe('END_ISLAND_CREATION', () => {
     it('responds with success', async () => {
       const sendResponse = vi.fn();
-      
+
       const result = messageListener(
         { type: 'END_ISLAND_CREATION' },
         {},
         sendResponse
       );
-      
+
       expect(sendResponse).toHaveBeenCalledWith({ success: true });
     });
 
     it('resets islandCreationInProgress flag', async () => {
       const sendResponse = vi.fn();
-      
+
       messageListener({ type: 'START_ISLAND_CREATION' }, {} as any, vi.fn());
       messageListener({ type: 'END_ISLAND_CREATION' }, {} as any, sendResponse);
-      
+
       expect(sendResponse).toHaveBeenCalledWith({ success: true });
     });
   });
@@ -421,13 +424,13 @@ describe('background - Message Handlers Extended', () => {
     it('handles discard failure', async () => {
       const sendResponse = vi.fn();
       (chrome.tabs.discard as any).mockRejectedValue(new Error('Cannot discard'));
-      
+
       messageListener(
         { type: 'FREEZE_TAB', tabId: 1 },
         {},
         sendResponse
       );
-      
+
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(sendResponse).toHaveBeenCalledWith({ success: false });
     });
@@ -435,26 +438,26 @@ describe('background - Message Handlers Extended', () => {
     it('handles already discarded tab', async () => {
       const sendResponse = vi.fn();
       (chrome.tabs.discard as any).mockResolvedValue(null);
-      
+
       messageListener(
         { type: 'FREEZE_TAB', tabId: 1 },
         {},
         sendResponse
       );
-      
+
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(sendResponse).toHaveBeenCalledWith({ success: false });
     });
 
     it('handles missing tabId for FREEZE_TAB', async () => {
       const sendResponse = vi.fn();
-      
+
       messageListener(
         { type: 'FREEZE_TAB' },
         {},
         sendResponse
       );
-      
+
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(sendResponse).toHaveBeenCalledWith({ success: false });
     });
@@ -463,13 +466,13 @@ describe('background - Message Handlers Extended', () => {
   describe('Unknown message type', () => {
     it('returns false for unhandled messages', () => {
       const sendResponse = vi.fn();
-      
+
       const result = messageListener(
         { type: 'UNKNOWN_TYPE' },
         {},
         sendResponse
       );
-      
+
       expect(result).toBe(false);
       expect(sendResponse).not.toHaveBeenCalled();
     });
@@ -478,9 +481,9 @@ describe('background - Message Handlers Extended', () => {
   describe('Message validation', () => {
     it('handles missing type field', () => {
       const sendResponse = vi.fn();
-      
+
       const result = messageListener({}, {}, sendResponse);
-      
+
       expect(result).toBe(false);
     });
   });
@@ -492,7 +495,7 @@ describe('background - Action Handler', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetModules();
-    
+
     (chrome.storage.sync.get as any) = vi.fn().mockResolvedValue({
       appearanceSettings: {
         toolbarClickAction: 'open-manager-page',
@@ -508,9 +511,9 @@ describe('background - Action Handler', () => {
     (chrome.contextMenus.create as any) = vi.fn();
     (chrome.contextMenus.removeAll as any) = vi.fn();
     (chrome.contextMenus.update as any) = vi.fn();
-    
+
     await import('../background');
-    
+
     actionClickHandler = (chrome.action.onClicked.addListener as unknown as MockFn).mock.calls[0]?.[0];
   });
 
@@ -522,7 +525,7 @@ describe('background - Action Handler', () => {
 
     it('loads appearance settings from storage', async () => {
       await actionClickHandler({ id: 1, windowId: 1 });
-      
+
       expect(chrome.storage.sync.get).toHaveBeenCalledWith(['appearanceSettings']);
     });
 
@@ -531,29 +534,28 @@ describe('background - Action Handler', () => {
         appearanceSettings: { toolbarClickAction: 'toggle-sidebar' }
       });
       (chrome.tabs.query as any) = vi.fn().mockResolvedValue([{ id: 1, windowId: 1, url: 'https://example.com' }]);
-      
+
       await actionClickHandler({ id: 1, windowId: 1 });
-      
-      expect(chrome.storage.session.get).toHaveBeenCalled();
-      expect(chrome.storage.session.set).toHaveBeenCalled();
+
+      expect(chrome.sidePanel.open).toHaveBeenCalledWith({ windowId: 1 });
     });
 
     it('handles open-manager-page action', async () => {
       vi.clearAllMocks();
       vi.resetModules();
-      
+
       (chrome.storage.sync.get as any) = vi.fn().mockResolvedValue({
         appearanceSettings: { toolbarClickAction: 'open-manager-page', focusExistingTab: false }
       });
       (chrome.tabs.create as any) = vi.fn().mockResolvedValue({ id: 1, url: 'index.html', pinned: false, windowId: 1 });
       (chrome.tabs.query as any) = vi.fn().mockResolvedValue([]);
-      
+
       await import('../background');
-      
+
       const actionClickHandler = (chrome.action.onClicked.addListener as unknown as MockFn).mock.calls[0]?.[0];
-      
+
       await actionClickHandler({ id: 1, windowId: 1 });
-      
+
       // Note: The handler uses sidebarService which needs to be properly initialized
       // This test verifies the handler is registered
       expect(actionClickHandler).toBeDefined();
@@ -573,36 +575,36 @@ describe('background - notifyUI Function', () => {
 
   it('sends REFRESH_TABS message when not in progress', async () => {
     vi.useFakeTimers();
-    
+
     await import('../background');
-    
+
     const tabCreatedHandler = (chrome.tabs.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
     tabCreatedHandler({ id: 1 });
-    
+
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'REFRESH_TABS' });
-    
+
     vi.useRealTimers();
   });
 
   it('delays refresh when island creation is in progress', async () => {
     vi.useFakeTimers();
-    
+
     await import('../background');
-    
+
     const { messageListener } = await import('../background');
     messageListener({ type: 'START_ISLAND_CREATION' }, {} as any, vi.fn());
-    
+
     const tabCreatedHandler = (chrome.tabs.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
     tabCreatedHandler({ id: 1 });
-    
+
     expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-    
+
     vi.advanceTimersByTime(100);
-    
+
     expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-    
+
     messageListener({ type: 'END_ISLAND_CREATION' }, {} as any, vi.fn());
-    
+
     vi.useRealTimers();
   });
 });
@@ -611,9 +613,9 @@ describe('background - Lifecycle', () => {
   describe('Module initialization', () => {
     it('registers all event listeners on import', async () => {
       vi.resetModules();
-      
+
       await import('../background');
-      
+
       expect(chrome.tabs.onCreated.addListener).toHaveBeenCalled();
       expect(chrome.tabs.onRemoved.addListener).toHaveBeenCalled();
       expect(chrome.tabs.onUpdated.addListener).toHaveBeenCalled();
@@ -629,9 +631,9 @@ describe('background - Lifecycle', () => {
 
     it('registers action onClicked listener', async () => {
       vi.resetModules();
-      
+
       await import('../background');
-      
+
       expect(chrome.action.onClicked.addListener).toHaveBeenCalled();
     });
   });
@@ -639,14 +641,14 @@ describe('background - Lifecycle', () => {
   describe('onSuspend handler', () => {
     it('removes message listener on suspend', async () => {
       vi.resetModules();
-      
+
       await import('../background');
-      
+
       const registeredListener = mockAddListener.mock.calls[0][0];
       const suspendHandler = (chrome.runtime.onSuspend.addListener as unknown as MockFn).mock.calls[0][0];
-      
+
       suspendHandler();
-      
+
       expect(mockRemoveListener).toHaveBeenCalledWith(registeredListener);
     });
   });
@@ -656,7 +658,7 @@ describe('background - Edge Cases', () => {
   describe('Error handling', () => {
     it('handles chrome API errors gracefully during import', async () => {
       vi.resetModules();
-      
+
       await expect(import('../background')).resolves.toBeDefined();
     });
   });
@@ -665,9 +667,9 @@ describe('background - Edge Cases', () => {
     it('handles rapid tab events', async () => {
       vi.resetModules();
       await import('../background');
-      
+
       const tabCreatedHandler = (chrome.tabs.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
-      
+
       for (let i = 0; i < 100; i++) {
         expect(() => tabCreatedHandler({ id: i, title: `Tab ${i}` })).not.toThrow();
       }
@@ -676,9 +678,9 @@ describe('background - Edge Cases', () => {
     it('handles rapid group events', async () => {
       vi.resetModules();
       await import('../background');
-      
+
       const groupCreatedHandler = (chrome.tabGroups.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
-      
+
       for (let i = 0; i < 100; i++) {
         expect(() => groupCreatedHandler({ id: i, title: `Group ${i}` })).not.toThrow();
       }
