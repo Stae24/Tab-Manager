@@ -3,15 +3,17 @@
 ## Tooling
 
 - DO NOT RUN `npm run dev`
+- Test: `npm run test`
+- Output only failed tests: `npm run test:fail-only`
 - Build: `npm run build`
 - Benchmarks: `npm run bench`
-- Minimize token noise: if a tool output is large, use filtering or sampling (e.g., `grep`, `tail`) to extract only the relevant lines.
+- **ALWAYS MINIMIZE TOKEN NOISE**: if a tool output is large, ALWAYS use filtering or sampling (e.g., `grep`, `tail`) to extract only the relevant lines.
 
 ## Verification Loop
 
-Before finishing any task, run tests:
+Before finishing any task, check for any failing tests:
 ```bash
-npm run test
+npm run test:fail-only
 ```
 If tests fail, fix the code and re-run until passing.
 Then run `npm run build` to ensure the code compiles.

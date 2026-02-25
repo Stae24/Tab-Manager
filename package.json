@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
+    "test:fail-only": "npm run test -- --reporter=default --silent 2>&1 >/dev/null | grep -v \"Not implemented\"",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage --coverage.provider=istanbul",
     "bench": "vitest bench",
