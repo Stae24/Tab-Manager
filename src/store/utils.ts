@@ -19,10 +19,7 @@ export const debounce = <T extends (...args: any[]) => any>(fn: T, ms = DEBOUNCE
 };
 
 // Helper to check if an ID starts with a given prefix
-const startsWithPrefix = (id: string | UniqueIdentifier, prefix: string): boolean => {
-  if (typeof id === 'string') {
-    return id.startsWith(prefix);
-  }
+const startsWithPrefix = (id: UniqueIdentifier, prefix: string): boolean => {
   return String(id).startsWith(prefix);
 };
 
