@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDroppable, Active } from '@dnd-kit/core';
 import { usePointerPosition } from '../contexts/PointerPositionContext';
 import { BASE_FONT_SIZE } from '../constants';
+import { isVaultId } from '../store/utils';
 
-export const useProximityGap = (gapId: string, active: Active | null, isDraggingGroup?: boolean) => {
+export const useProximityGap = (gapId: string, active: Active | null, isDraggingGroup?: boolean, panelType?: 'live' | 'vault') => {
   const { pointerPosition } = usePointerPosition();
   const { setNodeRef, isOver } = useDroppable({ id: gapId });
   const gapRef = useRef<HTMLDivElement>(null);
@@ -16,6 +17,19 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
 
   useEffect(() => {
     if (!active || !gapRef.current || isDraggingGroup) {
+      setExpanded(false);
+      return;
+    }
+
+    const activeId = String(active.id);
+    const isVaultItem = isVaultId(activeId);
+    const isLiveItem = activeId.startsWith('live-');
+
+    if (panelType === 'live' && isVaultItem) {
+      setExpanded(false);
+      return;
+    }
+    if (panelType === 'vault' && isLiveItem) {
       setExpanded(false);
       return;
     }
@@ -41,7 +55,7 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
     const isWithinHorizontal = pointerPosition.x >= gapRect.left && pointerPosition.x <= gapRect.right;
 
     setExpanded((expandUp || expandDown) && isWithinHorizontal);
-  }, [active, isDraggingGroup, pointerPosition]);
+  }, [active, isDraggingGroup, pointerPosition, panelType]);
 
   return { ref, isOver, expanded };
 };

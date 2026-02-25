@@ -32,7 +32,7 @@ export type {
 
 // Re-export constants and helpers for public API consistency
 export { defaultAppearanceSettings } from './utils';
-export { parseNumericId, isTab, isIsland, isVaultItem, isVaultItems, isAppearanceSettings, findItemInList, cloneWithDeepGroups } from './utils';
+export { parseNumericId, isTab, isIsland, isVaultItem, isVaultItems, isAppearanceSettings, findItemInList, cloneWithDeepGroups, isVaultId, isLiveId } from './utils';
 
 export const useStore = create<StoreState>()((...a) => ({
   ...createTabSlice(...a),
