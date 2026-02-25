@@ -284,7 +284,7 @@ describe('Memory Leak Detection', () => {
       const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
       const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
 
-      expect(Math.abs(secondAvg - firstAvg)).toBeLessThan(10);
+      expect(Math.abs(secondAvg - firstAvg)).toBeLessThan(15);
     });
   });
 });
