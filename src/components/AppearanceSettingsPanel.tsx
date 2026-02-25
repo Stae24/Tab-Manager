@@ -35,6 +35,7 @@ import {
   Keyboard,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { backgroundLogger } from '../utils/backgroundLogger';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
 import { 
   PANEL_CLOSE_DELAY_MS, 
@@ -372,6 +373,7 @@ export const AppearanceSettingsPanel: React.FC<{
 
   const [showLabels, setShowLabels] = useState(true);
   const [shouldWrapTabs, setShouldWrapTabs] = useState(false);
+  const [shortcutCopied, setShortcutCopied] = useState(false);
 
   useEffect(() => {
     if (!isResizing) {
@@ -1132,13 +1134,22 @@ export const AppearanceSettingsPanel: React.FC<{
                   description="Automatically pin the Tab Manager page when opened via extension icon"
                 />
                 <ToggleSwitch
-                  checked={appearanceSettings.focusExistingTab}
+                  checked={appearanceSettings.focusExistingTab ?? true}
                   onChange={(checked) => setAppearanceSettings({ focusExistingTab: checked })}
                   label="Focus Existing Tab"
                   description="If Tab Manager is already open, switch to it instead of creating a new tab"
                 />
+                <div className="h-2" />
                 <button
-                  onClick={() => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' })}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText('chrome://extensions/shortcuts');
+                      setShortcutCopied(true);
+                      setTimeout(() => setShortcutCopied(false), 2000);
+                    } catch (err) {
+                      backgroundLogger.error('AppearanceSettingsPanel', 'Failed to copy shortcut URL:', err);
+                    }
+                  }}
                   className="flex items-center gap-3 w-full p-3 rounded-lg transition-all border bg-gx-gray border-white/5 hover:border-gx-accent/20"
                 >
                   <Keyboard className="w-5 h-5 text-gx-accent" />
@@ -1147,7 +1158,9 @@ export const AppearanceSettingsPanel: React.FC<{
                       Configure Shortcut
                     </span>
                     <span className="text-[10px] text-gray-500 block mt-0.5">
-                      Customize the keyboard shortcut to open Tab Manager
+                      {shortcutCopied
+                        ? 'Copied! Paste in address bar to open shortcuts'
+                        : 'Copy link and paste in address bar to customize keyboard shortcut'}
                     </span>
                   </div>
                 </button>

@@ -22,6 +22,7 @@ const chromeMock = {
   },
   commands: {
     onCommand: { addListener: vi.fn() },
+    getAll: vi.fn().mockResolvedValue([]),
   },
   tabs: {
     onCreated: { addListener: vi.fn() },
@@ -479,10 +480,10 @@ describe('background - Action Handler', () => {
     vi.clearAllMocks();
     vi.resetModules();
     
-    // Setup fresh mocks for each test - using mockReturnValue for synchronous return
-    (chrome.tabs.create as any) = vi.fn().mockReturnValue({ id: 1, url: 'index.html', pinned: false });
-    (chrome.tabs.update as any) = vi.fn().mockReturnValue({ id: 1, pinned: true });
-    (chrome.storage.sync.get as any) = vi.fn().mockReturnValue({});
+    // Setup fresh mocks for each test - using mockResolvedValue for async return
+    (chrome.tabs.create as any) = vi.fn().mockResolvedValue({ id: 1, url: 'index.html', pinned: false });
+    (chrome.tabs.update as any) = vi.fn().mockResolvedValue({ id: 1, pinned: true });
+    (chrome.storage.sync.get as any) = vi.fn().mockResolvedValue({});
     
     await import('../background');
     
@@ -498,7 +499,7 @@ describe('background - Action Handler', () => {
     it('creates a new tab on click', async () => {
       await actionClickHandler({ id: 1 });
       
-      expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'index.html' });
+      expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'chrome-extension://abc123/index.html' });
     });
 
     it('loads appearance settings from storage', async () => {
@@ -609,6 +610,7 @@ describe('background - Lifecycle', () => {
       expect(chrome.tabGroups.onMoved.addListener).toHaveBeenCalled();
       expect(chrome.runtime.onMessage.addListener).toHaveBeenCalled();
       expect(chrome.runtime.onSuspend.addListener).toHaveBeenCalled();
+      expect(chrome.commands.onCommand.addListener).toHaveBeenCalled();
     });
 
     it('registers action onClicked listener', async () => {
