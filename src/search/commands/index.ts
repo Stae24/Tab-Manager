@@ -98,14 +98,21 @@ const groupCommand: CommandFunction = async (
     .map((tab) => parseNumericId(tab.id))
     .filter((id): id is number => id !== null);
 
+  if (tabIds.length === 0) {
+    return { success: false, affectedCount: 0, error: 'No valid tab IDs found' };
+  }
+
   if (tabIds.length < 2) {
     return { success: false, affectedCount: 0, error: 'Need at least 2 tabs to group' };
   }
 
   try {
     const { tabService } = await import('../../services/tabService');
-    await tabService.consolidateAndGroupTabs(tabIds, { color: 'random' });
-    return { success: true, affectedCount: tabIds.length };
+    const result = await tabService.consolidateAndGroupTabs(tabIds, { color: 'random' });
+    if (!result) {
+      return { success: false, affectedCount: 0, error: 'Failed to group tabs' };
+    }
+    return { success: true, affectedCount: result.groupedCount };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return { success: false, affectedCount: 0, error: msg };

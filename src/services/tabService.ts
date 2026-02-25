@@ -361,7 +361,7 @@ export const tabService = {
     return chrome.tabs.create(options);
   },
 
-  consolidateAndGroupTabs: async (tabIds: number[], options: { color?: string }) => {
+  consolidateAndGroupTabs: async (tabIds: number[], options: { color?: string }): Promise<{ groupedCount: number; groupId?: number } | undefined> => {
     try {
       const targetWindow = await withRetry(
         () => chrome.windows.getLastFocused({ windowTypes: ['normal'] }),
@@ -370,7 +370,7 @@ export const tabService = {
       
       if (!targetWindow.id) {
         logger.error('[GroupSearchResults] No target window found');
-        return;
+        return undefined;
       }
 
       const windowId = targetWindow.id;
@@ -389,9 +389,10 @@ export const tabService = {
         return true;
       });
 
-      if (validTabs.length === 0) return;
+      if (validTabs.length === 0) return undefined;
 
       const tabsToGroup: number[] = [];
+      let groupedGroupId: number | undefined;
       
       for (const tab of validTabs) {
         if (tab.windowId !== windowId) {
@@ -415,6 +416,8 @@ export const tabService = {
             () => chrome.tabs.group({ tabIds: tabsToGroup as [number, ...number[]] }),
             'groupTabs'
           );
+          
+          groupedGroupId = groupId;
           
           const allTabs = await withRetry(() => chrome.tabs.query({ windowId }), 'queryAllTabs');
           
@@ -461,8 +464,11 @@ export const tabService = {
           logger.error('[GroupSearchResults] Failed to group tabs:', error);
         }
       }
+
+      return { groupedCount: tabsToGroup.length, groupId: groupedGroupId };
     } catch (error) {
       logger.error('[GroupSearchResults] Consolidation failed:', error);
+      return undefined;
     }
   }
 };
