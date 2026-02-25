@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
 
@@ -62,11 +62,11 @@ vi.mock('@dnd-kit/utilities', () => ({
 }));
 
 vi.mock('../LivePanel', () => ({
-  LivePanel: () => <div data-testid="live-panel">Live Panel</div>,
+  LivePanel: ({ islands, title }: { islands?: any[]; title?: string }) => <div data-testid="live-panel">Live Panel - {(islands || []).length} items</div>,
 }));
 
 vi.mock('../VaultPanel', () => ({
-  VaultPanel: () => <div data-testid="vault-panel">Vault Panel</div>,
+  VaultPanel: ({ vault, title }: { vault?: any[]; title?: string }) => <div data-testid="vault-panel">Vault Panel - {(vault || []).length} items</div>,
 }));
 
 vi.mock('../DroppableGap', () => ({
@@ -255,8 +255,7 @@ describe('Dashboard DnD Integration', () => {
       render(<Dashboard />);
 
       expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      expect(mockStore.islands).toHaveLength(1);
-      expect(mockStore.islands[0].title).toBe('Tab 1');
+      expect(screen.getByTestId('live-panel')).toBeInTheDocument();
     });
 
     it('renders with Live groups (smoke test)', () => {
@@ -273,9 +272,7 @@ describe('Dashboard DnD Integration', () => {
       render(<Dashboard />);
 
       expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      expect(mockStore.islands).toHaveLength(1);
-      expect(mockStore.islands[0].title).toBe('Group');
-      expect(mockStore.islands[0].tabs).toHaveLength(2);
+      expect(screen.getByTestId('live-panel')).toBeInTheDocument();
     });
 
     it('renders with Vault tabs and empty Live (smoke test)', () => {
@@ -285,8 +282,6 @@ describe('Dashboard DnD Integration', () => {
       render(<Dashboard />);
 
       expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      expect(mockStore.vault).toHaveLength(1);
-      expect(mockStore.vault[0].title).toBe('Archived Tab');
     });
 
     it('renders with Vault groups (smoke test)', () => {
@@ -302,12 +297,9 @@ describe('Dashboard DnD Integration', () => {
       render(<Dashboard />);
 
       expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      expect(mockStore.vault).toHaveLength(1);
-      expect(mockStore.vault[0].title).toBe('Archived Group');
-      expect(mockStore.vault[0].tabs).toHaveLength(2);
     });
 
-    it('renders with Create Zone (smoke test)', async () => {
+    it('renders with Create Zone (smoke test)', () => {
       const mockIslands = [
         { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
       ];
@@ -315,19 +307,14 @@ describe('Dashboard DnD Integration', () => {
 
       render(<Dashboard />);
 
-      // The create zone should be present
-      await waitFor(() => {
-        expect(screen.getByTestId('live-panel')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('live-panel')).toBeInTheDocument();
     });
 
-    it('renders when isUpdating (smoke test)', async () => {
+    it('renders when isUpdating (smoke test)', () => {
       mockStore.isUpdating = true;
 
       const { container } = render(<Dashboard />);
 
-      // When isUpdating is true, drag operations should be blocked
-      // The component should still render
       expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
     });
   });
@@ -345,10 +332,9 @@ describe('Dashboard DnD Integration', () => {
       expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
     });
 
-    it('syncLiveTabs available (smoke test)', () => {
+    it('renders with syncLiveTabs available (smoke test)', () => {
       render(<Dashboard />);
-
-      expect(mockStore.syncLiveTabs).toBeDefined();
+      expect(screen.getByTestId('live-panel')).toBeInTheDocument();
     });
 
     it('cross-panel drag blocked when showVault=false', async () => {
@@ -363,18 +349,15 @@ describe('Dashboard DnD Integration', () => {
   });
 
   describe('Visual Feedback', () => {
-    it('drag overlay shows correct preview', async () => {
+    it('drag overlay shows correct preview', () => {
       mockStore.islands = [{ id: 'live-tab-1', title: 'My Tab', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 }];
 
       render(<Dashboard />);
 
-      // DragOverlay should be present in the rendered component
-      await waitFor(() => {
-        expect(screen.getByTestId('drag-overlay')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('drag-overlay')).toBeInTheDocument();
     });
 
-    it('keyboard drag works with space/arrow keys', async () => {
+    it('keyboard drag works with space/arrow keys', () => {
       mockStore.islands = [
         { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
         { id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
@@ -382,33 +365,22 @@ describe('Dashboard DnD Integration', () => {
 
       render(<Dashboard />);
 
-      // DndContext should have sensors configured (KeyboardSensor is included)
-      await waitFor(() => {
-        expect(screen.getByTestId('dnd-context')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('dnd-context')).toBeInTheDocument();
     });
   });
 
   describe('Panel Interactions', () => {
-    it('updates divider position on drag', async () => {
+    it('updates divider position on drag', () => {
       render(<Dashboard />);
 
-      // The divider should be present when showVault is true
-      await waitFor(() => {
-        expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      });
-
-      // The setDividerPosition function should be available in the store
+      expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
       expect(mockStore.setDividerPosition).toBeDefined();
     });
 
-    it('persists divider position to settings', async () => {
+    it('persists divider position to settings', () => {
       render(<Dashboard />);
 
-      // The setDividerPosition should be callable
-      await waitFor(() => {
-        expect(mockStore.setDividerPosition).toBeDefined();
-      });
+      expect(mockStore.setDividerPosition).toBeDefined();
     });
   });
 

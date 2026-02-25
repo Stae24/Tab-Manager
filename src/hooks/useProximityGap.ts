@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDroppable, Active } from '@dnd-kit/core';
 import { usePointerPosition } from '../contexts/PointerPositionContext';
 import { BASE_FONT_SIZE } from '../constants';
-import { isVaultId } from '../store/utils';
+import { isVaultId, isLiveId } from '../store/utils';
 
 export const useProximityGap = (gapId: string, active: Active | null, isDraggingGroup?: boolean, panelType?: 'live' | 'vault') => {
   const { pointerPosition } = usePointerPosition();
@@ -23,7 +23,7 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
 
     const activeId = String(active.id);
     const isVaultItem = isVaultId(activeId);
-    const isLiveItem = activeId.startsWith('live-');
+    const isLiveItem = isLiveId(activeId);
 
     if (panelType === 'live' && isVaultItem) {
       setExpanded(false);

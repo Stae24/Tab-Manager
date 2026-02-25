@@ -121,17 +121,6 @@ export const Dashboard: React.FC = () => {
   const preDragSnapshot = useRef<{ islands: LiveItem[]; vault: VaultItem[] } | null>(null);
   const isUnmounted = useRef(false);
 
-  useEffect(() => {
-    return () => {
-      setActiveItem(null);
-      setIsDraggingVaultItem(false);
-      setIsDraggingGroup(false);
-      setIsCreatingIsland(false);
-      setCreatingTabId(null);
-      setDragStartInfo(null);
-    };
-  }, []);
-
   const vaultTabCount = useMemo(() => {
     return (vault || []).reduce((acc, i) => {
       if (!i) return acc;
@@ -393,7 +382,9 @@ export const Dashboard: React.FC = () => {
         setCreatingTabId(null);
         try {
           await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
-        } catch {}
+        } catch (e) {
+          logger.debug('END_ISLAND_CREATION sendMessage failed:', e);
+        }
         cleanupPendingOperation();
       }
       return;

@@ -387,7 +387,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
           className={cn(
             "p-10 border-2 border-dashed border-gx-gray/50 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group flex-shrink-0 cursor-pointer",
             isCreatingIsland && "border-gx-cyan bg-gx-cyan/5 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse-glow",
-            !isCreatingIsland && isCreateOver && !isDraggingGroup && "border-gx-accent bg-gx-accent/10",
+            !isCreatingIsland && isCreateOver && !isDraggingGroup && !isDraggingVaultItem && "border-gx-accent bg-gx-accent/10",
             !isCreatingIsland && !isCreateOver && "hover:border-gx-accent/50 hover:bg-gx-accent/5",
             (isDraggingGroup || isDraggingVaultItem) && "opacity-30 cursor-not-allowed grayscale"
           )}

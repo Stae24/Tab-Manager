@@ -29,14 +29,6 @@ export const PointerPositionProvider: React.FC<PointerPositionProviderProps> = (
   const [pointerPosition, setPointerPosition] = useState<PointerPosition | null>(null);
   const rafRef = useRef<number | null>(null);
   const pendingPositionRef = useRef<PointerPosition | null>(null);
-  const isMountedRef = useRef(false);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
     pendingPositionRef.current = { x: e.clientX, y: e.clientY };
@@ -44,8 +36,9 @@ export const PointerPositionProvider: React.FC<PointerPositionProviderProps> = (
     if (rafRef.current) return;
     
     rafRef.current = requestAnimationFrame(() => {
-      if (pendingPositionRef.current && isMountedRef.current) {
+      if (pendingPositionRef.current) {
         setPointerPosition(pendingPositionRef.current);
+        pendingPositionRef.current = null;
       }
       rafRef.current = null;
     });
