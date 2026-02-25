@@ -106,6 +106,18 @@ export const COMMAND_REGISTRY: Record<CommandType, CommandDefinition> = {
     description: 'Freeze/suspend all matching tabs',
     destructive: false,
   },
+  group: {
+    name: 'group',
+    short: 'g',
+    description: 'Group all matching tabs',
+    destructive: false,
+  },
+  ungroup: {
+    name: 'ungroup',
+    short: 'ug',
+    description: 'Ungroup all matching tabs',
+    destructive: false,
+  },
 };
 
 export const SORT_OPTIONS: Record<SortType, { name: string; description: string }> = {

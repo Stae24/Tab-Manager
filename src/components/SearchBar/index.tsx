@@ -146,25 +146,6 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
         e.preventDefault();
         setSelectedIndex((i) => (i - 1 + suggestions.length) % suggestions.length);
       } else if (e.key === 'Enter') {
-        if (showAutocomplete && suggestions.length > 0) {
-          const selected = suggestions[selectedIndex];
-          if (selected) {
-            const lastBang = query.match(/!([a-zA-Z]*)$/);
-            const lastCmd = query.match(/\/([a-zA-Z]*)$/);
-            let newQuery = query;
-
-            if (lastBang) {
-              newQuery = query.slice(0, -lastBang[0].length) + selected.display + ' ';
-            } else if (lastCmd) {
-              newQuery = query.slice(0, -lastCmd[0].length) + selected.display + ' ';
-            }
-
-            onQueryChange(newQuery);
-            setShowAutocomplete(false);
-            return;
-          }
-        }
-
         if (hasCommands) {
           onExecute();
         }
