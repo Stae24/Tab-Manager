@@ -62,6 +62,15 @@ export const sidebarService = {
     const action = await this.getToolbarClickAction();
     backgroundLogger.debug('SidebarService', 'Toolbar click action:', action);
 
+    const tabs = await chrome.tabs.query({ active: true, windowId });
+    const currentTab = tabs[0];
+    const isRestricted = this.isRestrictedUrl(currentTab?.url);
+
+    if (isRestricted) {
+      await this.openManagerPage();
+      return;
+    }
+
     if (action === 'toggle-sidebar') {
       await this.toggleWindowStickyState(windowId);
       await this.broadcastSidebarState(windowId);
@@ -111,6 +120,15 @@ export const sidebarService = {
     if (!url) return false;
     const managerUrl = chrome.runtime.getURL('index.html');
     return url === managerUrl || url.startsWith(managerUrl + '?') || url.startsWith(managerUrl + '#');
+  },
+
+  isRestrictedUrl(url: string | undefined): boolean {
+    if (!url) return true;
+    const managerUrl = chrome.runtime.getURL('index.html');
+    return url.startsWith('chrome://') || 
+           url.startsWith('about:') || 
+           url.startsWith('chrome-extension://') ||
+           url === managerUrl;
   },
 
   async setupWindowListeners(): Promise<void> {

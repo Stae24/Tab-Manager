@@ -530,6 +530,7 @@ describe('background - Action Handler', () => {
       (chrome.storage.sync.get as any) = vi.fn().mockResolvedValue({
         appearanceSettings: { toolbarClickAction: 'toggle-sidebar' }
       });
+      (chrome.tabs.query as any) = vi.fn().mockResolvedValue([{ id: 1, windowId: 1, url: 'https://example.com' }]);
       
       await actionClickHandler({ id: 1, windowId: 1 });
       
