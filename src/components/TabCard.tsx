@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2, Link, Volume2, VolumeX, Copy, CopyPlus, Speaker } from 'lucide-react';
+import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2, Link, Volume2, VolumeX, Copy, CopyPlus, Speaker, ArrowDownToLine } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn, getBorderRadiusClass } from '../utils/cn';
 import { tabService } from '../services/tabService';
-import { parseNumericId, useStore } from '../store/useStore';
+import { parseNumericId, isIsland, useStore } from '../store/useStore';
 import { Favicon } from './Favicon';
 import { useScrollContainer } from '../contexts/ScrollContainerContext';
 import { ContextMenu } from './ContextMenu';
@@ -35,7 +35,18 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
   const cardRef = useRef<HTMLDivElement>(null);
   const [priority, setPriority] = useState<number | null>(null);
   const [hasStartedLoading, setHasStartedLoading] = useState(false);
-  const { appearanceSettings } = useStore();
+  const { appearanceSettings, islands, vault, removeFromVault } = useStore();
+
+  const tabsBelow = React.useMemo(() => {
+    const items = isVault ? vault : islands;
+    if (!items) return [];
+    const allTabs = items.flatMap((item) => (isIsland(item) ? item.tabs : [item]));
+    return allTabs.filter(
+      (t) => t.index > tab.index && t.windowId === tab.windowId && String(t.id) !== String(tab.id)
+    );
+  }, [isVault, vault, islands, tab.index, tab.windowId, tab.id]);
+
+  const tabsBelowCount = tabsBelow.length;
   const { containerRef } = useScrollContainer();
 
   const {
@@ -357,11 +368,41 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
             >
               <Copy size={10} /> COPY URL
             </button>
+            <button
+              onClick={() => {
+                const ids = tabsBelow.map((t) => parseNumericId(t.id)).filter((id): id is number => id !== null);
+                if (ids.length > 0) tabService.closeTabs(ids);
+                setShowMenu(false);
+              }}
+              disabled={tabsBelowCount === 0}
+              className={cn(
+                "flex items-center gap-2 px-2 py-1 text-[10px] rounded",
+                tabsBelowCount === 0 ? "text-gray-400 cursor-not-allowed" : "hover:bg-gx-red/20 text-gx-red"
+              )}
+            >
+              <ArrowDownToLine size={10} /> CLOSE TABS BELOW ({tabsBelowCount})
+            </button>
           </>
         )}
         {isVault && onRestore && (
           <button onClick={() => { onRestore(); setShowMenu(false); }} className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-green/20 hover:text-gx-green rounded">
             <ExternalLink size={10} /> OPEN IN WINDOW
+          </button>
+        )}
+        {isVault && (
+          <button
+            onClick={() => {
+              const ids = tabsBelow.map((t) => t.id);
+              ids.forEach((id) => removeFromVault(id));
+              setShowMenu(false);
+            }}
+            disabled={tabsBelowCount === 0}
+            className={cn(
+              "flex items-center gap-2 px-2 py-1 text-[10px] rounded",
+              tabsBelowCount === 0 ? "text-gray-400 cursor-not-allowed" : "hover:bg-gx-red/20 text-gx-red"
+            )}
+          >
+            <ArrowDownToLine size={10} /> DELETE TABS BELOW ({tabsBelowCount})
           </button>
         )}
         <button
