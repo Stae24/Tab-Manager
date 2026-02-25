@@ -160,6 +160,7 @@ export interface AppearanceSettings {
   // v2.2 - Behavior
   autoPinTabManager: boolean;
   focusExistingTab?: boolean;
+  searchDebounce: number;
 
   // Dev
   debugMode: boolean;

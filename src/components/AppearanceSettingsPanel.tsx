@@ -1177,6 +1177,24 @@ export const AppearanceSettingsPanel: React.FC<{
                   </div>
                 </button>
               </CollapsibleSection>
+
+              <CollapsibleSection
+                id="search"
+                title="Search"
+                icon={Search}
+                isExpanded={expandedSections.has('search')}
+                onToggle={() => toggleSection('search')}
+              >
+                <SliderControl
+                  value={appearanceSettings.searchDebounce}
+                  onChange={(value) => setAppearanceSettings({ searchDebounce: value })}
+                  min={50}
+                  max={500}
+                  step={10}
+                  label="Search Debounce"
+                  displayValue={`${appearanceSettings.searchDebounce}ms`}
+                />
+              </CollapsibleSection>
             </>
           )}
 
