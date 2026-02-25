@@ -7,11 +7,18 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
-        background: 'src/background.ts'
+        background: 'src/background.ts',
+        contentScript: 'src/contentScript.ts'
       },
       output: {
         entryFileNames: (chunkInfo) => {
-          return chunkInfo.name === 'background' ? '[name].js' : 'assets/[name]-[hash].js';
+          if (chunkInfo.name === 'background') {
+            return 'background.js';
+          }
+          if (chunkInfo.name === 'contentScript') {
+            return 'contentScript.js';
+          }
+          return 'assets/[name]-[hash].js';
         }
       }
     }

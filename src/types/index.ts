@@ -1,5 +1,17 @@
 export type UniversalId = number | string;
 
+export interface HotkeyBinding {
+  code: string;
+  ctrl: boolean;
+  meta: boolean;
+  alt: boolean;
+  shift: boolean;
+}
+
+export type ToolbarClickAction = 'toggle-sidebar' | 'open-manager-page';
+export type SidebarLayoutMode = 'overlay' | 'push';
+export type SidebarDockSide = 'left' | 'right';
+
 export interface Tab {
   id: UniversalId;
   title: string;
@@ -160,7 +172,21 @@ export interface AppearanceSettings {
   // v2.2 - Behavior
   autoPinTabManager: boolean;
   focusExistingTab?: boolean;
-  searchDebounce: number;
+
+  /**
+   * Debounce delay for search input in milliseconds.
+   * Must be a finite non-negative number (>= 0) and preferably an integer.
+   * NaN, Infinity, and negative values are invalid.
+   */
+  searchDebounce?: number;
+
+  // v3 - Custom Sidebar
+  toolbarClickAction: ToolbarClickAction;
+  sidebarLayoutMode: SidebarLayoutMode;
+  sidebarDockSide: SidebarDockSide;
+  sidebarWidthPx: number;
+  sidebarToggleHotkey: HotkeyBinding;
+  managerPageHotkey: HotkeyBinding;
 
   // Dev
   debugMode: boolean;

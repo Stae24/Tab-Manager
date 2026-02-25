@@ -1,5 +1,5 @@
 import { UniqueIdentifier } from '@dnd-kit/core';
-import { Island, Tab, VaultItem, AppearanceSettings, LiveItem } from '../types/index';
+import { Island, Tab, VaultItem, AppearanceSettings, LiveItem, HotkeyBinding } from '../types/index';
 import { logger } from '../utils/logger';
 import { 
   DEBOUNCE_DEFAULT_MS, 
@@ -7,7 +7,11 @@ import {
   DEFAULT_DRAG_OPACITY, 
   MAX_SYNC_RETRIES, 
   INITIAL_SYNC_BACKOFF, 
-  SYNC_SETTINGS_DEBOUNCE_MS 
+  SYNC_SETTINGS_DEBOUNCE_MS,
+  SEARCH_DEBOUNCE_MS,
+  SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_DEFAULT_DOCK_SIDE,
+  SIDEBAR_DEFAULT_LAYOUT_MODE
 } from '../constants';
 
 export const debounce = <T extends (...args: any[]) => any>(fn: T, ms = DEBOUNCE_DEFAULT_MS) => {
@@ -109,6 +113,18 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
   if (!settings || typeof settings !== 'object') return false;
   const s = settings as Partial<AppearanceSettings>;
   
+  const isHotkeyBinding = (h: unknown): h is HotkeyBinding => {
+    if (!h || typeof h !== 'object') return false;
+    const hb = h as Partial<HotkeyBinding>;
+    return (
+      typeof hb.code === 'string' &&
+      typeof hb.ctrl === 'boolean' &&
+      typeof hb.meta === 'boolean' &&
+      typeof hb.alt === 'boolean' &&
+      typeof hb.shift === 'boolean'
+    );
+  };
+
   return (
     !!s.theme && ['dark', 'light', 'system'].includes(s.theme) &&
     typeof s.uiScale === 'number' &&
@@ -136,6 +152,12 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     typeof s.sortVaultGroupsByCount === 'boolean' &&
     typeof s.autoPinTabManager === 'boolean' &&
     (typeof s.focusExistingTab === 'boolean' || s.focusExistingTab === undefined) &&
+    !!s.toolbarClickAction && ['toggle-sidebar', 'open-manager-page'].includes(s.toolbarClickAction) &&
+    !!s.sidebarLayoutMode && ['overlay', 'push'].includes(s.sidebarLayoutMode) &&
+    !!s.sidebarDockSide && ['left', 'right'].includes(s.sidebarDockSide) &&
+    typeof s.sidebarWidthPx === 'number' &&
+    isHotkeyBinding(s.sidebarToggleHotkey) &&
+    isHotkeyBinding(s.managerPageHotkey) &&
     (typeof s.debugMode === 'boolean' || s.debugMode === undefined)
   );
 };
@@ -182,6 +204,22 @@ export const cloneWithDeepGroups = <T extends LiveItem | VaultItem>(list: T[]): 
   });
 };
 
+const DEFAULT_SIDEBAR_TOGGLE_HOTKEY: HotkeyBinding = {
+  code: 'Space',
+  ctrl: true,
+  meta: true,
+  alt: false,
+  shift: true
+};
+
+const DEFAULT_MANAGER_PAGE_HOTKEY: HotkeyBinding = {
+  code: 'KeyM',
+  ctrl: true,
+  meta: true,
+  alt: false,
+  shift: true
+};
+
 // Default appearance settings for reset functionality
 export const defaultAppearanceSettings: AppearanceSettings = {
   theme: 'system',
@@ -211,7 +249,13 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   sortVaultGroupsByCount: true,
   autoPinTabManager: true,
   focusExistingTab: true,
-  searchDebounce: 100,
+  searchDebounce: SEARCH_DEBOUNCE_MS,
+  toolbarClickAction: 'toggle-sidebar',
+  sidebarLayoutMode: SIDEBAR_DEFAULT_LAYOUT_MODE,
+  sidebarDockSide: SIDEBAR_DEFAULT_DOCK_SIDE,
+  sidebarWidthPx: SIDEBAR_DEFAULT_WIDTH,
+  sidebarToggleHotkey: DEFAULT_SIDEBAR_TOGGLE_HOTKEY,
+  managerPageHotkey: DEFAULT_MANAGER_PAGE_HOTKEY,
   debugMode: false,
 };
 

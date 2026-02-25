@@ -57,6 +57,8 @@ vi.mock('../../store/useStore', () => ({
       syncLiveTabs: vi.fn(),
       searchQuery: '',
       setSearchQuery: mockSetSearchQuery,
+      // Note: searchDebounce is set to 100ms. When asserting debounced search execution,
+      // use vi.useFakeTimers() + vi.runAllTimersAsync() or a waitFor with duration > 100ms.
       appearanceSettings: {
         searchDebounce: 100,
       },
