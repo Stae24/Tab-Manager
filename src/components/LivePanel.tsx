@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Plus, FolderOpen, Loader2, ChevronUp, ChevronDown, Search, Group, LayoutGrid, CopyX } from 'lucide-react';
+import { FolderOpen, ChevronUp, ChevronDown, Group, LayoutGrid, CopyX, Search } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Island } from './Island';
-import { TabCard } from './TabCard';
-import { DroppableGap } from './DroppableGap';
 import { SearchBar } from './SearchBar';
 import { SearchHelp } from './SearchBar/SearchHelp';
+import { SearchResultList } from './SearchResultList';
+import { VirtualizedLiveList } from './VirtualizedLiveList';
 import { cn } from '../utils/cn';
 import { logger } from '../utils/logger';
 import { needsCompanionTabForSingleTabGroup } from '../utils/browser';
@@ -15,12 +13,10 @@ import { Island as IslandType, Tab as TabType, UniversalId, DashboardRow } from 
 import {
   VIRTUAL_ROW_ESTIMATE_SIZE,
   VIRTUAL_ROW_OVERSCAN,
-  VIRTUAL_ROW_GAP_PX,
   CLEANUP_ANIMATION_DELAY_MS,
   SEARCH_DEBOUNCE_MS
 } from '../constants';
 import { search, searchAndExecute, parseQuery, isSearchActive, hasCommands } from '../search';
-import type { SearchResult, ParsedQuery } from '../search';
 import { useStore } from '../store/useStore';
 
 interface LivePanelProps {
@@ -121,7 +117,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
       await searchPromise;
       if (currentGen !== searchGenRef.current) return;
     } catch (error) {
-      logger.error('[LivePanel] Search failed:', error);
+      logger.error('LivePanel', 'Search failed:', error);
       setSearchResults([]);
     } finally {
       if (currentGen === searchGenRef.current) {
@@ -174,7 +170,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
       setSearchResults([]);
       await syncLiveTabs();
     } catch (error) {
-      logger.error('[LivePanel] Command execution failed:', error);
+      logger.error('LivePanel', 'Command execution failed:', error);
     } finally {
       setIsSearching(false);
     }
@@ -276,173 +272,13 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   };
 
   const handleGroupResults = async () => {
-    logger.debug('[Dashboard] Grouping search results...');
+    logger.debug('LivePanel', 'Grouping search results...');
     try {
       await groupSearchResults(displayTabs);
       setSearchQuery('');
     } catch (error) {
-      logger.error('[Dashboard] Failed to group search results:', error);
+      logger.error('LivePanel', 'Failed to group search results:', error);
     }
-  };
-
-  const renderSearchResults = () => {
-    if (isSearching) {
-      return (
-        <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40">
-          <Loader2 size={32} className="mb-4 animate-spin" />
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-center">
-            Searching...
-          </p>
-        </div>
-      );
-    }
-
-    if (displayTabs.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40">
-          <Search size={48} className="mb-4" />
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-center">
-            No tabs found<br />
-            for "{searchQuery}"
-          </p>
-        </div>
-      );
-    }
-
-    return (
-      <div
-        key="search-results-list"
-        className="search-mode-enter relative"
-        style={{ height: `${searchVirtualizer.getTotalSize()}px`, width: '100%' }}
-      >
-        {searchVirtualizer.getVirtualItems().map((virtualRow) => {
-          const tab = displayTabs[virtualRow.index];
-          return (
-            <div
-              key={virtualRow.key}
-              data-index={virtualRow.index}
-              ref={searchVirtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${virtualRow.start}px)`,
-                paddingBottom: `${VIRTUAL_ROW_GAP_PX}px`,
-              }}
-              className="search-mode-enter"
-            >
-              <TabCard
-                tab={tab}
-                onClick={() => handleTabClick(tab.id)}
-                onSave={() => saveToVault(tab)}
-                disabled={!!searchQuery}
-                isLoading={isCreatingIsland && creatingTabId === tab.id}
-              />
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const renderLiveList = () => {
-    return (
-      <>
-        <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
-          <div
-            className="relative"
-            style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%' }}
-          >
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const row = rowItems[virtualRow.index];
-
-              return (
-                <div
-                  key={virtualRow.key}
-                  data-index={virtualRow.index}
-                  ref={virtualizer.measureElement}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`,
-                    ...(row.type !== 'gap' && { paddingBottom: `${VIRTUAL_ROW_GAP_PX}px` }),
-                  }}
-                >
-                  {row.type === 'gap' ? (
-                    <DroppableGap index={row.index} panelType="live" isDraggingGroup={isDraggingGroup} />
-                  ) : (
-                    row.item && 'tabs' in row.item ? (
-                      <Island
-                        island={row.item as IslandType}
-                        onTabClick={(tab) => handleTabClick(tab.id)}
-                        onNonDestructiveSave={() => saveToVault(row.item)}
-                        onSave={() => moveToVault(row.item.id)}
-                        onDelete={() => (row.item as IslandType).tabs?.forEach((t: TabType) => closeTab(t.id))}
-                        onRename={(title) => onRenameGroup(row.item.id, title)}
-                        onToggleCollapse={() => onToggleCollapse(row.item.id)}
-                        onTabSave={(tab) => saveToVault(tab)}
-                        onTabClose={(id) => closeTab(id)}
-                        disabled={!!searchQuery}
-                      />
-                    ) : (
-                      <TabCard
-                        tab={row.item as TabType}
-                        onClick={() => handleTabClick(row.item.id)}
-                        onSave={() => saveToVault(row.item)}
-                        onClose={() => closeTab(row.item.id)}
-                        disabled={!!searchQuery}
-                        isLoading={isCreatingIsland && creatingTabId === row.item.id}
-                      />
-                    )
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </SortableContext>
-
-        <div
-          ref={setBottomRef}
-          className="h-24 w-full"
-        />
-
-        <div
-          ref={setCreateRef}
-          id="new-island-dropzone"
-          className={cn(
-            "p-10 border-2 border-dashed border-gx-gray/50 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group flex-shrink-0 cursor-pointer",
-            isCreatingIsland && "border-gx-cyan bg-gx-cyan/5 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse-glow",
-            !isCreatingIsland && isCreateOver && !isDraggingGroup && !isDraggingVaultItem && "border-gx-accent bg-gx-accent/10",
-            !isCreatingIsland && !isCreateOver && "hover:border-gx-accent/50 hover:bg-gx-accent/5",
-            (isDraggingGroup || isDraggingVaultItem) && "opacity-30 cursor-not-allowed grayscale"
-          )}
-        >
-          <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-            isCreatingIsland
-              ? "bg-gx-cyan/20 animate-spin-slow"
-              : "bg-gx-gray group-hover:bg-gx-accent/20"
-          )}>
-            {isCreatingIsland ? (
-              <Loader2 className="w-5 h-5 text-gx-cyan" />
-            ) : (
-              <Plus className="w-5 h-5 text-gray-500 group-hover:text-gx-accent transition-colors" />
-            )}
-          </div>
-          <span className={cn(
-            "text-[10px] font-black uppercase tracking-[0.2em] transition-colors",
-            isCreatingIsland
-              ? "text-gx-cyan animate-pulse"
-              : "text-gray-500 group-hover:text-gray-400"
-          )}>
-            {isCreatingIsland ? "Creating Island..." : "Tactical Island creation"}
-          </span>
-        </div>
-      </>
-    );
   };
 
   return (
@@ -552,7 +388,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
         {searchQuery && (
           <div key="search-mode-header" className="px-4 py-2 bg-gradient-to-r from-gx-accent/5 via-gx-accent/10 to-gx-accent/5 border-t border-gx-accent/10 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Search size={10} className="text-gx-accent" />
+              <Search className="w-2.5 h-2.5 text-gx-accent" />
               <span className="text-[10px] font-bold text-gx-accent tracking-wider uppercase">
                 Search Mode
               </span>
@@ -589,7 +425,38 @@ export const LivePanel: React.FC<LivePanelProps> = ({
         ref={scrollRef}
         className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none scrollbar-hide"
       >
-        {searchQuery ? renderSearchResults() : renderLiveList()}
+        {searchQuery ? (
+          <SearchResultList
+            isSearching={isSearching}
+            displayTabs={displayTabs}
+            searchQuery={searchQuery}
+            searchVirtualizer={searchVirtualizer}
+            handleTabClick={handleTabClick}
+            saveToVault={saveToVault}
+            isCreatingIsland={isCreatingIsland}
+            creatingTabId={creatingTabId}
+          />
+        ) : (
+          <VirtualizedLiveList
+            islands={islands}
+            rowItems={rowItems}
+            virtualizer={virtualizer}
+            handleTabClick={handleTabClick}
+            moveToVault={moveToVault}
+            saveToVault={saveToVault}
+            closeTab={closeTab}
+            onRenameGroup={onRenameGroup}
+            onToggleCollapse={onToggleCollapse}
+            isDraggingGroup={isDraggingGroup}
+            isDraggingVaultItem={isDraggingVaultItem}
+            isCreatingIsland={isCreatingIsland}
+            creatingTabId={creatingTabId}
+            searchQuery={searchQuery}
+            setCreateRef={setCreateRef}
+            setBottomRef={setBottomRef}
+            isCreateOver={isCreateOver}
+          />
+        )}
       </div>
 
       <SearchHelp isOpen={showSearchHelp} onClose={() => setShowSearchHelp(false)} />
