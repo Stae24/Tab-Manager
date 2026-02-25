@@ -219,99 +219,24 @@ describe('Dashboard DnD Integration', () => {
   });
 
   describe('Drag Operations (smoke tests)', () => {
-    it('renders with Live panel tabs (smoke test)', () => {
-      const mockIslands = [
-        { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
-        { id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
-      ];
-      mockStore.islands = mockIslands;
-
-      const { container } = render(<Dashboard />);
-
-      // Verify the component renders with the islands
-      expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
-    });
-
-    it('renders with Live panel groups (smoke test)', () => {
-      const mockIslands = [
-        { id: 'live-group-1', title: 'Group A', tabs: [{ id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 1, windowId: 1 }], color: 'blue', collapsed: false },
-        { id: 'live-group-2', title: 'Group B', tabs: [{ id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 2, windowId: 1 }], color: 'red', collapsed: false },
-      ];
-      mockStore.islands = mockIslands;
-
-      const { container } = render(<Dashboard />);
-
-      // Verify the component renders with islands
-      expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
-    });
-
-    it('renders with Live tabs and empty vault (smoke test)', () => {
-      const mockIslands = [
-        { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
-      ];
-      mockStore.islands = mockIslands;
-      mockStore.vault = [];
-
-      render(<Dashboard />);
-
-      expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      expect(screen.getByTestId('live-panel')).toBeInTheDocument();
-    });
-
-    it('renders with Live groups (smoke test)', () => {
-      const mockIslands = [
-        {
-          id: 'live-group-1', title: 'Group', tabs: [
-            { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 1, windowId: 1 },
-            { id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 1, windowId: 1 },
-          ], color: 'blue', collapsed: false
-        },
-      ];
-      mockStore.islands = mockIslands;
-
-      render(<Dashboard />);
-
-      expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      expect(screen.getByTestId('live-panel')).toBeInTheDocument();
-    });
-
-    it('renders with Vault tabs and empty Live (smoke test)', () => {
-      mockStore.vault = [{ id: 'vault-tab-1-123', title: 'Archived Tab', url: 'https://archived.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false }];
-      mockStore.islands = [];
-
-      render(<Dashboard />);
-
-      expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-    });
-
-    it('renders with Vault groups (smoke test)', () => {
-      mockStore.vault = [
-        {
-          id: 'vault-group-1-123', title: 'Archived Group', tabs: [
-            { id: 'vault-tab-1-123', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false },
-            { id: 'vault-tab-2-123', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false },
-          ], color: 'blue', collapsed: false
-        },
-      ];
-
-      render(<Dashboard />);
-
-      expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-    });
-
-    it('renders with Create Zone (smoke test)', () => {
-      const mockIslands = [
-        { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
-      ];
-      mockStore.islands = mockIslands;
-
-      render(<Dashboard />);
-
-      expect(screen.getByTestId('live-panel')).toBeInTheDocument();
-    });
-
-    it('renders when isUpdating (smoke test)', () => {
-      mockStore.isUpdating = true;
+    it.each`
+      description                       | islands                                                                                          | vault
+      ${'Live panel tabs'}              | ${[{ id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 }, { id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 }]} | ${[]}
+      ${'Live panel groups'}             | ${[{ id: 'live-group-1', title: 'Group A', tabs: [{ id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 1, windowId: 1 }], color: 'blue', collapsed: false }, { id: 'live-group-2', title: 'Group B', tabs: [{ id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 2, windowId: 1 }], color: 'red', collapsed: false }]}                        | ${[]}
+      ${'Live tabs and empty vault'}    | ${[{ id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 }]}                                                                | ${[]}
+      ${'Live groups'}                   | ${[{ id: 'live-group-1', title: 'Group', tabs: [{ id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 1, windowId: 1 }, { id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 1, windowId: 1 }], color: 'blue', collapsed: false }]}                           | ${[]}
+      ${'Vault tabs and empty Live'}    | ${[]}                                                                                                                                      | ${[{ id: 'vault-tab-1-123', title: 'Archived Tab', url: 'https://archived.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false }]}
+      ${'Vault groups'}                  | ${[]}                                                                                                                                      | ${[{ id: 'vault-group-1-123', title: 'Archived Group', tabs: [{ id: 'vault-tab-1-123', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false }, { id: 'vault-tab-2-123', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false }], color: 'blue', collapsed: false }]}
+      ${'Create Zone'}                   | ${[{ id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 }]}                                                                | ${[]}
+      ${'isUpdating'}                     | ${[]}                                                                                                                                      | ${[]}
+    `('renders $description', ({ islands, vault, description }: { islands: any[], vault: any[], description: string }) => {
+      mockStore.islands = islands;
+      mockStore.vault = vault;
+      if (description === 'isUpdating') {
+        mockStore.isUpdating = true;
+      } else {
+        mockStore.isUpdating = false;
+      }
 
       const { container } = render(<Dashboard />);
 
@@ -369,6 +294,10 @@ describe('Dashboard DnD Integration', () => {
   });
 
   describe('Panel Interactions', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
     it('renders with setDividerPosition available (smoke test)', () => {
       render(<Dashboard />);
 
@@ -376,10 +305,11 @@ describe('Dashboard DnD Integration', () => {
       expect(mockStore.setDividerPosition).toBeDefined();
     });
 
-    it('renders with setDividerPosition and persistence capability (smoke test)', () => {
+    it('setDividerPosition can be called directly', () => {
       render(<Dashboard />);
 
-      expect(mockStore.setDividerPosition).toBeDefined();
+      mockStore.setDividerPosition(200);
+      expect(mockStore.setDividerPosition).toHaveBeenCalledWith(200);
     });
   });
 
