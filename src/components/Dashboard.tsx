@@ -120,6 +120,7 @@ export const Dashboard: React.FC = () => {
 
   const inFlightCount = useRef(0);
   const preDragSnapshot = useRef<{ islands: LiveItem[]; vault: VaultItem[] } | null>(null);
+  const isUnmounted = useRef(false);
 
   const vaultTabCount = useMemo(() => {
     return (vault || []).reduce((acc, i) => {
@@ -177,6 +178,7 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     return () => {
+      isUnmounted.current = true;
       if (inFlightCount.current === 0) {
         clearPendingOperations();
       }
@@ -283,6 +285,11 @@ export const Dashboard: React.FC = () => {
         removePendingOperation(numericActiveId);
       }
       inFlightCount.current -= 1;
+      preDragSnapshot.current = null;
+
+      if (isUnmounted.current && inFlightCount.current === 0) {
+        clearPendingOperations();
+      }
     };
 
     setActiveItem(null);
