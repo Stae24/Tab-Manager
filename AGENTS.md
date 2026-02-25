@@ -1,13 +1,13 @@
 # Agent Directives
 
 ## Tooling
-
+- Use `rg` instead of `grep`
 - DO NOT RUN `npm run dev`
 - Test: `npm run test`
 - Output only failed tests: `npm run test:fail-only`
 - Build: `npm run build`
 - Benchmarks: `npm run bench`
-- **ALWAYS MINIMIZE TOKEN NOISE**: if a tool output is large, ALWAYS use filtering or sampling (e.g., `grep`, `tail`) to extract only the relevant lines.
+- **ALWAYS MINIMIZE TOKEN NOISE**: if a tool output is large, ALWAYS use filtering or sampling (e.g., `rg`, `head`, `tail`) to extract only the relevant lines.
 
 ## Verification Loop
 
@@ -15,6 +15,8 @@ Before finishing any task, check for any failing tests:
 ```bash
 npm run test:fail-only
 ```
+It will output nothing if there are no failing tests.
+Never run the full test command unless you have to.
 If tests fail, fix the code and re-run until passing.
 Then run `npm run build` to ensure the code compiles.
 

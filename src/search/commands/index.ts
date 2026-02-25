@@ -1,6 +1,10 @@
 import { Tab } from '../../types/index';
 import { CommandType, CommandFunction, CommandResult, SearchContext } from '../types';
 import { parseNumericId } from '../../store/utils';
+import { useStore } from '../../store/useStore';
+import { findItemInList } from '../../store/utils';
+import { tabService } from '../../services/tabService';
+import { ungroupTab } from '../../utils/chromeApi';
 
 const deleteCommand: CommandFunction = async (
   tabs: Tab[],
@@ -36,8 +40,6 @@ const saveCommand: CommandFunction = async (
   }
 
   try {
-    const { useStore } = await import('../../store/useStore');
-    const { findItemInList } = await import('../../store/utils');
     const store = useStore.getState();
 
     let savedCount = 0;
@@ -107,7 +109,6 @@ const groupCommand: CommandFunction = async (
   }
 
   try {
-    const { tabService } = await import('../../services/tabService');
     const result = await tabService.consolidateAndGroupTabs(tabIds, { color: 'random' });
     if (!result) {
       return { success: false, affectedCount: 0, error: 'Failed to group tabs' };
@@ -136,7 +137,6 @@ const ungroupCommand: CommandFunction = async (
   }
 
   try {
-    const { ungroupTab } = await import('../../utils/chromeApi');
     await ungroupTab(tabIds);
     return { success: true, affectedCount: tabIds.length };
   } catch (error) {
