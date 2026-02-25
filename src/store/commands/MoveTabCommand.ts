@@ -16,7 +16,7 @@ export class MoveTabCommand implements Command {
   constructor(
     private params: MoveTabParams,
     public label: string = 'Move Tab'
-  ) {}
+  ) { }
 
   async execute() {
     await tabService.moveTab(this.params.tabId, this.params.toIndex, this.params.toWindowId);
@@ -26,7 +26,7 @@ export class MoveTabCommand implements Command {
       try {
         await chrome.tabs.ungroup(this.params.tabId);
       } catch (e) {
-        logger.warn('[MoveTabCommand] Failed to ungroup tab:', e);
+        logger.warn('MoveTabCommand', 'Failed to ungroup tab:', e);
       }
     }
   }
@@ -39,7 +39,7 @@ export class MoveTabCommand implements Command {
       try {
         await chrome.tabs.ungroup(this.params.tabId);
       } catch (e) {
-        logger.warn('[MoveTabCommand] Failed to ungroup tab in undo:', e);
+        logger.warn('MoveTabCommand', 'Failed to ungroup tab in undo:', e);
       }
     }
   }

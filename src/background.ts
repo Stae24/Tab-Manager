@@ -2,7 +2,7 @@ import { ISLAND_CREATION_REFRESH_DELAY_MS, REFRESH_UI_DELAY_MS } from './constan
 import { quotaService } from './services/quotaService';
 import { sidebarService, setupSidebarMessageListener } from './services/sidebarService';
 import { mergeAppearanceSettings, defaultAppearanceSettings } from './store/utils';
-import { backgroundLogger, syncDebugMode } from './utils/backgroundLogger';
+import { logger, setDebugMode } from './utils/logger';
 
 async function loadSettings() {
   let settings = defaultAppearanceSettings;
@@ -12,9 +12,9 @@ async function loadSettings() {
       ? mergeAppearanceSettings(result.appearanceSettings)
       : defaultAppearanceSettings;
 
-    syncDebugMode(settings.debugMode ?? false);
+    setDebugMode(settings.debugMode ?? false);
   } catch (error) {
-    backgroundLogger.error('Background', 'Failed to load appearance settings:', error);
+    logger.error('Background', 'Failed to load appearance settings:', error);
   }
   return settings;
 }
@@ -22,39 +22,39 @@ async function loadSettings() {
 async function openExtensionTab(): Promise<chrome.tabs.Tab | undefined> {
   const settings = await loadSettings();
 
-  backgroundLogger.debug('Background', 'Focus existing tab setting:', settings.focusExistingTab);
+  logger.debug('Background', 'Focus existing tab setting:', settings.focusExistingTab);
 
   if (settings.focusExistingTab) {
     const extensionUrl = chrome.runtime.getURL('index.html');
     const tabs = await chrome.tabs.query({ url: extensionUrl });
-    
+
     if (tabs.length > 0) {
       const existingTab = tabs[0];
       if (typeof existingTab.id === 'number') {
-        backgroundLogger.debug('Background', 'Found existing tab, focusing:', existingTab.id);
+        logger.debug('Background', 'Found existing tab, focusing:', existingTab.id);
         const updatedTab = await chrome.tabs.update(existingTab.id, { active: true });
         if (existingTab.windowId !== undefined) {
           await chrome.windows.update(existingTab.windowId, { focused: true });
         }
         return updatedTab ?? existingTab;
       } else {
-        backgroundLogger.debug('Background', 'Existing tab has no valid ID, creating new tab');
+        logger.debug('Background', 'Existing tab has no valid ID, creating new tab');
       }
     }
   }
 
   const tab = await chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
-  backgroundLogger.debug('Background', 'Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
+  logger.debug('Background', 'Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
 
-  backgroundLogger.debug('Background', 'Auto-pin setting:', settings.autoPinTabManager);
+  logger.debug('Background', 'Auto-pin setting:', settings.autoPinTabManager);
 
   if (settings.autoPinTabManager && tab.id) {
     try {
-      backgroundLogger.debug('Background', 'Attempting to pin tab:', tab.id);
+      logger.debug('Background', 'Attempting to pin tab:', tab.id);
       const updatedTab = await chrome.tabs.update(tab.id, { pinned: true });
-      backgroundLogger.debug('Background', 'Pin result:', { id: updatedTab?.id, pinned: updatedTab?.pinned });
+      logger.debug('Background', 'Pin result:', { id: updatedTab?.id, pinned: updatedTab?.pinned });
     } catch (error) {
-      backgroundLogger.error('Background', 'Failed to pin tab:', error);
+      logger.error('Background', 'Failed to pin tab:', error);
     }
   }
 
@@ -72,13 +72,13 @@ chrome.action.onClicked.addListener(async (tab) => {
       await sidebarService.openManagerPage();
     }
   } catch (error) {
-    backgroundLogger.error('Background', 'Error in action.onClicked listener:', error);
+    logger.error('Background', 'Error in action.onClicked listener:', error);
   }
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'toggle-island-manager') {
-    backgroundLogger.debug('Background', 'Keyboard shortcut triggered');
+    logger.debug('Background', 'Keyboard shortcut triggered');
     try {
       const settings = await sidebarService.loadSettings();
       const windows = await chrome.windows.getCurrent();
@@ -86,7 +86,7 @@ chrome.commands.onCommand.addListener(async (command) => {
         await sidebarService.handleToolbarClick(windows.id);
       }
     } catch (error) {
-      backgroundLogger.error('Background', 'Error in commands.onCommand listener:', error);
+      logger.error('Background', 'Error in commands.onCommand listener:', error);
     }
   }
 });
@@ -95,12 +95,12 @@ chrome.commands.onCommand.addListener(async (command) => {
   try {
     const orphanedCount = await quotaService.cleanupOrphanedChunks();
     if (orphanedCount > 0) {
-      backgroundLogger.info('Background', `Cleaned up ${orphanedCount} orphaned vault chunks`);
+      logger.info('Background', `Cleaned up ${orphanedCount} orphaned vault chunks`);
     }
 
     await sidebarService.initialize();
   } catch (error) {
-    backgroundLogger.error('Background', 'Cleanup failed:', error);
+    logger.error('Background', 'Cleanup failed:', error);
   }
 })();
 
@@ -176,6 +176,21 @@ export function messageListener(
       sendResponse({ success: false });
     });
     return true;
+  }
+
+  if (message.type === 'SIDEBAR_TOGGLE_WINDOW') {
+    const windowId = message.windowId || sender.tab?.windowId;
+    if (windowId !== undefined) {
+      chrome.sidePanel.open({ windowId }).then(() => {
+        sendResponse({ success: true, isOpen: true });
+      }).catch((err) => {
+        logger.error('Background', 'Failed to open sidePanel:', err);
+        sendResponse({ success: false });
+      });
+      return true;
+    }
+    sendResponse({ success: false });
+    return false;
   }
 
   if (message.type === 'SIDEBAR_SETTINGS_UPDATE' && message.settings) {

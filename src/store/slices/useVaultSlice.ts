@@ -60,7 +60,7 @@ export interface VaultSlice {
   syncRecovered: boolean;
   compressionTier: CompressionTier;
   showCompressionWarning: boolean;
-  
+
   moveToVault: (id: UniversalId) => Promise<void>;
   saveToVault: (item: LiveItem) => Promise<void>;
   restoreFromVault: (id: UniversalId) => Promise<void>;
@@ -75,7 +75,7 @@ export interface VaultSlice {
   setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
   clearSyncRecovered: () => void;
   dismissCompressionWarning: () => void;
-  
+
   persistVault: (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]) => Promise<VaultStorageResult>;
 }
 
@@ -90,31 +90,31 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   showCompressionWarning: false,
 
   clearSyncRecovered: () => set({ syncRecovered: false }),
-  
+
   dismissCompressionWarning: () => set({ showCompressionWarning: false }),
 
   persistVault: async (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]): Promise<VaultStorageResult> => {
     const capturedPreviousVault = previousVault ?? get().vault;
     const { effectiveSyncEnabled } = get();
-    
-    logger.info('[VaultSlice] persistVault called:', { 
-      syncEnabledParam: syncEnabled, 
-      effectiveSyncEnabled, 
-      vaultItemCount: vault.length 
+
+    logger.info('VaultSlice', 'persistVault called:', {
+      syncEnabledParam: syncEnabled,
+      effectiveSyncEnabled,
+      vaultItemCount: vault.length
     });
-    
+
     if (effectiveSyncEnabled) {
       const quota = await quotaService.getVaultQuota();
       if (quota.percentage >= 1.0) {
-        logger.warn(`[VaultSlice] Already at ${Math.round(quota.percentage * 100)}%, forcing local fallback`);
-        
+        logger.warn('VaultSlice', `Already at ${Math.round(quota.percentage * 100)}%, forcing local fallback`);
+
         const { appearanceSettings } = get();
         const updated = { ...appearanceSettings, vaultSyncEnabled: false };
         set({ appearanceSettings: updated, effectiveSyncEnabled: false });
         try {
           await settingsService.saveSettings({ appearanceSettings: updated });
         } catch (error) {
-          logger.error('[VaultSlice] Failed to save settings before disabling sync chunks:', error);
+          logger.error('VaultSlice', 'Failed to save settings before disabling sync chunks:', error);
         }
 
         const disableResult = await vaultService.disableVaultSync(vault);
@@ -128,20 +128,20 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
         return { success: true, warningLevel: 'none' };
       }
     }
-    
+
     const result = await vaultService.saveVault(vault, { syncEnabled: effectiveSyncEnabled });
 
     if (!result.success) {
       set({ vault: capturedPreviousVault });
-      logger.error('[VaultSlice] Persistence failed:', result.error);
+      logger.error('VaultSlice', 'Persistence failed:', result.error);
     }
 
     if (result.success) {
       if (result.compressionTier && result.compressionTier !== 'full') {
-        logger.info(`[VaultSlice] Compression tier used: ${result.compressionTier}`);
-        set({ 
-          compressionTier: result.compressionTier, 
-          showCompressionWarning: true 
+        logger.info('VaultSlice', `Compression tier used: ${result.compressionTier}`);
+        set({
+          compressionTier: result.compressionTier,
+          showCompressionWarning: true
         });
       } else {
         set({ compressionTier: 'full', showCompressionWarning: false });
@@ -150,14 +150,14 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
     if (result.fallbackToLocal) {
       const { appearanceSettings } = get();
-      logger.warn('[VaultSlice] Auto-disabling vault sync due to size limits');
+      logger.warn('VaultSlice', 'Auto-disabling vault sync due to size limits');
 
       const updated = { ...appearanceSettings, vaultSyncEnabled: false };
       set({ appearanceSettings: updated, effectiveSyncEnabled: false });
       try {
         await settingsService.saveSettings({ appearanceSettings: updated });
       } catch (error) {
-        logger.error('[VaultSlice] Failed to save settings after fallback to local:', error);
+        logger.error('VaultSlice', 'Failed to save settings after fallback to local:', error);
         const freshSettings = await settingsService.loadSettings();
         if (freshSettings.appearanceSettings && isAppearanceSettings(freshSettings.appearanceSettings)) {
           set({ appearanceSettings: freshSettings.appearanceSettings });
@@ -200,7 +200,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       try {
         await settingsService.saveSettings({ appearanceSettings: updated });
       } catch (error) {
-        logger.error('[VaultSlice] Failed to save settings after toggling sync:', error);
+        logger.error('VaultSlice', 'Failed to save settings after toggling sync:', error);
         const freshSettings = await settingsService.loadSettings();
         if (freshSettings.appearanceSettings && isAppearanceSettings(freshSettings.appearanceSettings)) {
           set({ appearanceSettings: freshSettings.appearanceSettings });
@@ -214,7 +214,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       try {
         await settingsService.saveSettings({ appearanceSettings: updated });
       } catch (error) {
-        logger.error('[VaultSlice] Failed to save settings after fallback to local:', error);
+        logger.error('VaultSlice', 'Failed to save settings after fallback to local:', error);
         const freshSettings = await settingsService.loadSettings();
         if (freshSettings.appearanceSettings && isAppearanceSettings(freshSettings.appearanceSettings)) {
           set({ appearanceSettings: freshSettings.appearanceSettings });
@@ -234,27 +234,27 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
     const found = findItemInList(islands, id);
     if (!found || !found.item) {
-      logger.warn(`[VaultSlice] moveToVault: Item ${id} not found in islands`);
+      logger.warn('VaultSlice', `moveToVault: Item ${id} not found in islands`);
       return;
     }
     const item = found.item;
     const isGroup = isIsland(item);
     const tabCount = isGroup ? (item.tabs?.length || 0) : 1;
-    
-    logger.info(`[VaultSlice] moveToVault: Moving ${isGroup ? 'group' : 'tab'} (${tabCount} tabs) to vault. ID: ${item.id}`);
-    logger.info(`[VaultSlice] moveToVault: Current vault has ${vault.length} items, syncEnabled=${appearanceSettings.vaultSyncEnabled}`);
+
+    logger.info('VaultSlice', `moveToVault: Moving ${isGroup ? 'group' : 'tab'} (${tabCount} tabs) to vault. ID: ${item.id}`);
+    logger.info('VaultSlice', `moveToVault: Current vault has ${vault.length} items, syncEnabled=${appearanceSettings.vaultSyncEnabled}`);
 
     const { effectiveSyncEnabled } = get();
     const quotaCheck = await checkQuotaBeforeSave(item, vault, effectiveSyncEnabled);
     if (!quotaCheck.allowed) {
       if (quotaCheck.shouldSwitchToLocal && appearanceSettings.vaultSyncEnabled) {
-        logger.info('[VaultSlice] moveToVault: Auto-switching to local storage due to quota');
+        logger.info('VaultSlice', 'moveToVault: Auto-switching to local storage due to quota');
         const updated = { ...appearanceSettings, vaultSyncEnabled: false };
         set({ appearanceSettings: updated, effectiveSyncEnabled: false });
         try {
           await settingsService.saveSettings({ appearanceSettings: updated });
         } catch (error) {
-          logger.error('[VaultSlice] Failed to save settings after auto-switch to local:', error);
+          logger.error('VaultSlice', 'Failed to save settings after auto-switch to local:', error);
           const freshSettings = await settingsService.loadSettings();
           if (freshSettings.appearanceSettings && isAppearanceSettings(freshSettings.appearanceSettings)) {
             set({ appearanceSettings: freshSettings.appearanceSettings });
@@ -262,7 +262,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
         }
         set({ vaultQuota: { ...(await quotaService.getVaultQuota()), warningLevel: 'none' as const } });
       } else {
-        logger.warn('[VaultSlice] moveToVault: Quota exceeded, cannot move to vault');
+        logger.warn('VaultSlice', 'moveToVault: Quota exceeded, cannot move to vault');
         return;
       }
     }
@@ -281,7 +281,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       });
     }
     set({ islands: newIslands });
-    logger.info('[VaultSlice] moveToVault: Updated islands state');
+    logger.info('VaultSlice', 'moveToVault: Updated islands state');
 
     const timestamp = Date.now();
     const itemClone = JSON.parse(JSON.stringify(item));
@@ -301,15 +301,15 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
     const newVault = [...vault, itemClone as VaultItem];
     set({ vault: newVault });
-    logger.info(`[VaultSlice] moveToVault: Updated vault state, now has ${newVault.length} items`);
-    
+    logger.info('VaultSlice', `moveToVault: Updated vault state, now has ${newVault.length} items`);
+
     const { appearanceSettings: freshSettings, effectiveSyncEnabled: freshEffective } = get();
-    logger.info('[VaultSlice] moveToVault: Calling persistVault with syncEnabled=', freshSettings.vaultSyncEnabled, 'effectiveSyncEnabled=', freshEffective);
-    
+    logger.info('VaultSlice', `moveToVault: Calling persistVault with syncEnabled=${freshSettings.vaultSyncEnabled} effectiveSyncEnabled=${freshEffective}`);
+
     const result = await persistVault(newVault, freshSettings.vaultSyncEnabled, vault);
 
     if (result.success) {
-      logger.info('[VaultSlice] moveToVault: Persistence successful, closing tabs');
+      logger.info('VaultSlice', 'moveToVault: Persistence successful, closing tabs');
       if (isIsland(item)) {
         const tabIds = (item.tabs || []).map((t: Tab) => parseNumericId(t.id)).filter((id): id is number => id !== null);
         if (tabIds.length > 0) {
@@ -321,9 +321,9 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
           await tabService.closeTab(numericId);
         }
       }
-      logger.info('[VaultSlice] moveToVault: Complete');
+      logger.info('VaultSlice', 'moveToVault: Complete');
     } else {
-      logger.error(`[VaultSlice] moveToVault: Persistence FAILED with error ${result.error}. Vault was rolled back.`);
+      logger.error('VaultSlice', `moveToVault: Persistence FAILED with error ${result.error}. Vault was rolled back.`);
       set({ islands: originalIslands });
     }
   },
@@ -331,17 +331,17 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   saveToVault: async (item) => {
     const { vault, appearanceSettings, persistVault, effectiveSyncEnabled } = get();
     const previousVault = vault;
-    
+
     const quotaCheck = await checkQuotaBeforeSave(item, vault, effectiveSyncEnabled);
     if (!quotaCheck.allowed) {
       if (quotaCheck.shouldSwitchToLocal && appearanceSettings.vaultSyncEnabled) {
-        logger.info('[VaultSlice] saveToVault: Auto-switching to local storage due to quota');
+        logger.info('VaultSlice', 'saveToVault: Auto-switching to local storage due to quota');
         const updated = { ...appearanceSettings, vaultSyncEnabled: false };
         set({ appearanceSettings: updated, effectiveSyncEnabled: false });
         try {
           await settingsService.saveSettings({ appearanceSettings: updated });
         } catch (error) {
-          logger.error('[VaultSlice] Failed to save settings after auto-switch to local:', error);
+          logger.error('VaultSlice', 'Failed to save settings after auto-switch to local:', error);
           const freshSettings = await settingsService.loadSettings();
           if (freshSettings.appearanceSettings && isAppearanceSettings(freshSettings.appearanceSettings)) {
             set({ appearanceSettings: freshSettings.appearanceSettings });
@@ -349,7 +349,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
         }
         set({ vaultQuota: { ...(await quotaService.getVaultQuota()), warningLevel: 'none' as const } });
       } else {
-        logger.warn('[VaultSlice] saveToVault: Quota exceeded, cannot save to vault');
+        logger.warn('VaultSlice', 'saveToVault: Quota exceeded, cannot save to vault');
         return;
       }
     }
@@ -371,9 +371,9 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
     const newVault = [...vault, newItem];
     set({ vault: newVault });
-    
+
     const { appearanceSettings: freshSettings, effectiveSyncEnabled: freshEffective } = get();
-    logger.info('[VaultSlice] saveToVault: Calling persistVault with syncEnabled=', freshSettings.vaultSyncEnabled, 'effectiveSyncEnabled=', freshEffective);
+    logger.info('VaultSlice', `saveToVault: Calling persistVault with syncEnabled=${freshSettings.vaultSyncEnabled} effectiveSyncEnabled=${freshEffective}`);
     await persistVault(newVault, freshSettings.vaultSyncEnabled, previousVault);
   },
 
@@ -474,9 +474,9 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
   deleteVaultDuplicates: async () => {
     const { vault, appearanceSettings, persistVault } = get();
-    
+
     const urlMap = new Map<string, VaultItem[]>();
-    
+
     const collectUrls = (item: VaultItem) => {
       if (isIsland(item)) {
         for (const tab of (item.tabs || [])) {
@@ -510,9 +510,9 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
         }
       }
     };
-    
+
     vault.forEach(collectUrls);
-    
+
     const duplicateIds = new Set<string>();
     urlMap.forEach((items) => {
       if (items.length > 1) {
@@ -521,14 +521,14 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
         });
       }
     });
-    
+
     if (duplicateIds.size === 0) return;
-    
+
     const newVault = vault.filter((v: VaultItem) => !duplicateIds.has(String(v.id)));
     set({ vault: newVault });
     await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
-    
-    logger.info(`[VaultSlice] Deleted ${duplicateIds.size} duplicate items from vault`);
+
+    logger.info('VaultSlice', `Deleted ${duplicateIds.size} duplicate items from vault`);
   },
 
   removeFromVault: async (id) => {

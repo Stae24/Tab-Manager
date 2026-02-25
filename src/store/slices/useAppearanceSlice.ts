@@ -18,9 +18,9 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
   setAppearanceSettings: (newSettings) => {
     const current = get().appearanceSettings;
     const updated = { ...current, ...newSettings };
-    
+
     if ('vaultSyncEnabled' in newSettings) {
-      logger.info('[AppearanceSlice] vaultSyncEnabled changing:', {
+      logger.info('AppearanceSlice', 'vaultSyncEnabled changing:', {
         from: current.vaultSyncEnabled,
         to: newSettings.vaultSyncEnabled,
         stack: new Error().stack
@@ -30,7 +30,7 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
     if ('debugMode' in newSettings) {
       setDebugMode(newSettings.debugMode ?? false);
     }
-    
+
     set({ appearanceSettings: updated });
 
     if (newSettings.theme) {

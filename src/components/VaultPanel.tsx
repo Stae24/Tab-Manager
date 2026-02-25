@@ -79,7 +79,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   };
 
   useEffect(() => {
-    logger.debug('[VaultPanel] Banner state:', {
+    logger.debug('VaultPanel', 'Banner state:', {
       effectiveSyncEnabled,
       vaultTabCount,
       showLocalStorageWarning,

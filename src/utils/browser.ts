@@ -18,7 +18,7 @@ let cachedCapabilities: BrowserCapabilities | null = null;
 
 export async function detectBrowser(): Promise<BrowserVendor> {
   const nav = navigator as NavigatorWithBrave;
-  
+
   // 1. Brave API (most reliable for Brave)
   if (nav.brave?.isBrave) {
     try {
@@ -27,15 +27,15 @@ export async function detectBrowser(): Promise<BrowserVendor> {
       // Fall through to UA checks
     }
   }
-  
+
   const ua = navigator.userAgent;
-  
+
   // 2. Order matters - check specific browsers before generic
   if (ua.includes('Edg/')) return 'edge';     // Edge contains "Chrome" in UA
   if (ua.includes('OPR') || ua.includes('Opera')) return 'opera';
   if (ua.includes('Firefox')) return 'firefox';
   if (ua.includes('Chrome')) return 'chrome';  // Must be last
-  
+
   // 3. Unknown - treat as Chrome-like (safest default for extensions)
   return 'chrome';
 }
@@ -44,20 +44,20 @@ export async function initBrowserCapabilities(): Promise<boolean> {
   if (cachedCapabilities !== null && cachedCapabilities.supportsGroupCollapse !== null) {
     return cachedCapabilities.supportsGroupCollapse;
   }
-  
+
   const browser = await detectBrowser();
   const supported = browser !== 'firefox';
-  
+
   cachedCapabilities = {
     vendor: browser,
     supportsGroupCollapse: supported,
     supportsSingleTabGroups: browser !== 'opera'
   };
-  
+
   if (browser === 'brave') {
-    logger.info('[initBrowserCapabilities] Brave detected - visual refresh workaround enabled');
+    logger.info('BrowserUtils', 'Brave detected - visual refresh workaround enabled');
   }
-  
+
   return supported;
 }
 
@@ -65,7 +65,7 @@ export async function getBrowserCapabilities(): Promise<BrowserCapabilities> {
   if (cachedCapabilities) {
     return cachedCapabilities;
   }
-  
+
   await initBrowserCapabilities();
   return cachedCapabilities!;
 }

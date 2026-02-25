@@ -1,4 +1,4 @@
-import { backgroundLogger } from '../utils/backgroundLogger';
+import { logger } from '../utils/logger';
 import { mergeAppearanceSettings, defaultAppearanceSettings } from '../store/utils';
 import { ToolbarClickAction } from '../types/index';
 
@@ -17,7 +17,7 @@ const setStickyStateStorage = async (state: Record<number, boolean>): Promise<vo
   try {
     await chrome.storage.session.set({ [SIDEBAR_STICKY_STATE_KEY]: state });
   } catch (error) {
-    backgroundLogger.error('SidebarService', 'Failed to persist sticky state:', error);
+    logger.error('SidebarService', 'Failed to persist sticky state:', error);
   }
 };
 
@@ -29,7 +29,7 @@ export const sidebarService = {
         ? mergeAppearanceSettings(result.appearanceSettings)
         : defaultAppearanceSettings;
     } catch (error) {
-      backgroundLogger.error('SidebarService', 'Failed to load settings:', error);
+      logger.error('SidebarService', 'Failed to load settings:', error);
       return defaultAppearanceSettings;
     }
   },
@@ -43,7 +43,7 @@ export const sidebarService = {
     const state = await getStickyStateStorage();
     state[windowId] = isOpen;
     await setStickyStateStorage(state);
-    backgroundLogger.debug('SidebarService', `Window ${windowId} sticky state:`, isOpen);
+    logger.debug('SidebarService', `Window ${windowId} sticky state:`, isOpen);
   },
 
   async toggleWindowStickyState(windowId: number): Promise<boolean> {
@@ -60,7 +60,7 @@ export const sidebarService = {
 
   async handleToolbarClick(windowId: number): Promise<void> {
     const action = await this.getToolbarClickAction();
-    backgroundLogger.debug('SidebarService', 'Toolbar click action:', action);
+    logger.debug('SidebarService', 'Toolbar click action:', action);
 
     const tabs = await chrome.tabs.query({ active: true, windowId });
     const currentTab = tabs[0];
@@ -72,8 +72,8 @@ export const sidebarService = {
     }
 
     if (action === 'toggle-sidebar') {
-      await this.toggleWindowStickyState(windowId);
-      await this.broadcastSidebarState(windowId);
+      // Use the native Side Panel API to open
+      await chrome.sidePanel.open({ windowId });
     } else if (action === 'open-manager-page') {
       await this.openManagerPage();
     }
@@ -97,23 +97,8 @@ export const sidebarService = {
     await chrome.tabs.create({ url: extensionUrl });
   },
 
-  async broadcastSidebarState(windowId: number): Promise<void> {
-    const isOpen = await this.getWindowStickyState(windowId);
-
-    try {
-      const tabs = await chrome.tabs.query({ windowId });
-      for (const tab of tabs) {
-        if (tab.id !== undefined && !this.isManagerPage(tab.url)) {
-          await chrome.tabs.sendMessage(tab.id, {
-            type: 'SIDEBAR_SET_WINDOW_OPEN',
-            windowId,
-            isOpen
-          }).catch(() => {});
-        }
-      }
-    } catch (error) {
-      backgroundLogger.error('SidebarService', 'Failed to broadcast sidebar state:', error);
-    }
+  async broadcastSidebarState(_windowId: number): Promise<void> {
+    // Deprecated for Side Panel: It manages its own state
   },
 
   isManagerPage(url: string | undefined): boolean {
@@ -125,36 +110,20 @@ export const sidebarService = {
   isRestrictedUrl(url: string | undefined): boolean {
     if (!url) return true;
     const managerUrl = chrome.runtime.getURL('index.html');
-    return url.startsWith('chrome://') || 
-           url.startsWith('about:') || 
-           url.startsWith('chrome-extension://') ||
-           url === managerUrl;
+    return url.startsWith('chrome://') ||
+      url.startsWith('about:') ||
+      url.startsWith('chrome-extension://') ||
+      url === managerUrl;
   },
 
   async setupWindowListeners(): Promise<void> {
-    chrome.tabs.onActivated.addListener(async (activeInfo) => {
-      const isSticky = await this.getWindowStickyState(activeInfo.windowId);
-      if (isSticky && activeInfo.tabId !== undefined) {
-        await this.broadcastSidebarState(activeInfo.windowId);
-      }
-    });
-
-    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-      if (changeInfo.status === 'complete' && tab.windowId !== undefined) {
-        const isSticky = await this.getWindowStickyState(tab.windowId);
-        if (isSticky && !this.isManagerPage(tab.url)) {
-          await this.broadcastSidebarState(tab.windowId);
-        }
-      }
-    });
-
     chrome.windows.onRemoved.addListener(async (windowId) => {
       const state = await getStickyStateStorage();
       delete state[windowId];
       await setStickyStateStorage(state);
     });
 
-    backgroundLogger.info('SidebarService', 'Window listeners initialized');
+    logger.info('SidebarService', 'Window listeners initialized');
   },
 
   async setupContextMenus(): Promise<void> {
@@ -203,9 +172,9 @@ export const sidebarService = {
         { checked: true }
       );
 
-      backgroundLogger.info('SidebarService', 'Context menus created');
+      logger.info('SidebarService', 'Context menus created');
     } catch (error) {
-      backgroundLogger.error('SidebarService', 'Failed to create context menus:', error);
+      logger.error('SidebarService', 'Failed to create context menus:', error);
     }
   },
 
@@ -218,8 +187,7 @@ export const sidebarService = {
 
     switch (info.menuItemId) {
       case 'toggle-sidebar':
-        await this.toggleWindowStickyState(windowId);
-        await this.broadcastSidebarState(windowId);
+        await chrome.sidePanel.open({ windowId });
         break;
 
       case 'open-manager-page':
@@ -248,29 +216,28 @@ export const sidebarService = {
 
       await this.setupContextMenus();
 
-      backgroundLogger.info('SidebarService', 'Toolbar click action updated:', action);
+      logger.info('SidebarService', 'Toolbar click action updated:', action);
     } catch (error) {
-      backgroundLogger.error('SidebarService', 'Failed to update toolbar click action:', error);
+      logger.error('SidebarService', 'Failed to update toolbar click action:', error);
     }
   },
 
   async initialize(): Promise<void> {
     await this.setupWindowListeners();
     await this.setupContextMenus();
-    backgroundLogger.info('SidebarService', 'Initialized');
+    logger.info('SidebarService', 'Initialized');
   }
 };
 
 export const setupSidebarMessageListener = (
   message: { type: string; windowId?: number },
   _sender: chrome.runtime.MessageSender,
-  sendResponse: (response?: { success: boolean; isOpen?: boolean }) => void
+  sendResponse: (response?: { success: boolean; isOpen?: boolean; isSticky?: boolean }) => void
 ): boolean => {
   if (message.type === 'SIDEBAR_TOGGLE_WINDOW') {
     if (message.windowId !== undefined) {
-      sidebarService.toggleWindowStickyState(message.windowId).then(async (isOpen) => {
-        await sidebarService.broadcastSidebarState(message.windowId!);
-        sendResponse({ success: true, isOpen });
+      chrome.sidePanel.open({ windowId: message.windowId }).then(() => {
+        sendResponse({ success: true, isOpen: true });
       });
       return true;
     }
@@ -297,6 +264,19 @@ export const setupSidebarMessageListener = (
   if (message.type === 'OPEN_MANAGER_PAGE') {
     sidebarService.openManagerPage().then(() => {
       sendResponse({ success: true });
+    });
+    return true;
+  }
+
+  if (message.type === 'SIDEBAR_GET_STICKY_STATE') {
+    if (message.windowId !== undefined) {
+      sidebarService.getWindowStickyState(message.windowId).then((isSticky) => {
+        sendResponse({ success: true, isSticky });
+      });
+      return true;
+    }
+    sidebarService.getWindowStickyState(chrome.windows.WINDOW_ID_CURRENT).then((isSticky) => {
+      sendResponse({ success: true, isSticky });
     });
     return true;
   }
