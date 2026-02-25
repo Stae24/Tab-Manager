@@ -40,7 +40,7 @@ export const parseNumericId = (id: UniqueIdentifier): number | null => {
   }
 
   // Log failure to aid debugging, especially for "live-" prefixed IDs which should always have a numeric component
-  if (idStr.startsWith('live-')) {
+  if (isLiveId(idStr)) {
     logger.error(`[Store] Failed to parse mandatory numeric ID from live item: ${idStr}`);
   } else {
     logger.debug(`[Store] No numeric ID found in: ${idStr}`);
@@ -49,14 +49,18 @@ export const parseNumericId = (id: UniqueIdentifier): number | null => {
   return null;
 };
 
-export const isVaultId = (id: UniqueIdentifier): boolean => {
+// Helper to check if an ID starts with a given prefix
+const startsWithPrefix = (id: UniqueIdentifier, prefix: string): boolean => {
   const idStr = String(id);
-  return idStr.startsWith('vault-');
+  return idStr.startsWith(prefix);
+};
+
+export const isVaultId = (id: UniqueIdentifier): boolean => {
+  return startsWithPrefix(id, 'vault-');
 };
 
 export const isLiveId = (id: UniqueIdentifier): boolean => {
-  const idStr = String(id);
-  return idStr.startsWith('live-');
+  return startsWithPrefix(id, 'live-');
 };
 
 export const isTab = (item: unknown): item is Tab => {
