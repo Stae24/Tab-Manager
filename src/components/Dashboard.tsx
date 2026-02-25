@@ -12,6 +12,7 @@ import {
   DragStartEvent,
   DragEndEvent,
   DragOverEvent,
+  DragCancelEvent,
   UniqueIdentifier,
   MeasuringStrategy,
   defaultDropAnimationSideEffects,
@@ -101,6 +102,7 @@ export const Dashboard: React.FC = () => {
   const executeCommand = useStore(state => state.executeCommand);
   const addPendingOperation = useStore(state => state.addPendingOperation);
   const removePendingOperation = useStore(state => state.removePendingOperation);
+  const clearPendingOperations = useStore(state => state.clearPendingOperations);
 
   const [isResizing, setIsResizing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -170,6 +172,12 @@ export const Dashboard: React.FC = () => {
     };
   }, [isResizing, setDividerPosition]);
 
+  useEffect(() => {
+    return () => {
+      clearPendingOperations();
+    };
+  }, [clearPendingOperations]);
+
   const handleTabClick = async (tabId: UniversalId) => {
     const numericId = parseNumericId(tabId);
     if (numericId !== null) {
@@ -234,6 +242,19 @@ export const Dashboard: React.FC = () => {
 
     moveItemOptimistically(activeId, overId);
 
+  };
+
+  const handleDragCancel = (event: DragCancelEvent) => {
+    const activeId = event.active.id;
+    const numericActiveId = parseNumericId(activeId);
+
+    if (numericActiveId !== null) {
+      removePendingOperation(numericActiveId);
+    }
+
+    setActiveItem(null);
+    setIsDraggingVaultItem(false);
+    setIsDraggingGroup(false);
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -353,14 +374,20 @@ export const Dashboard: React.FC = () => {
           if (String(item.id) === String(activeId)) {
             targetItem = item;
             isMovingGroup = 'tabs' in item;
+          }
+          if (String(item.id) === String(overId)) {
             break;
           }
           if ('tabs' in item && item.tabs) {
-            const nested = item.tabs?.find((t: TabType) => String(t.id) === String(activeId));
-            if (nested) {
-              targetItem = nested;
+            const nestedInActive = item.tabs?.find((t: TabType) => String(t.id) === String(activeId));
+            if (nestedInActive && !targetItem) {
+              targetItem = nestedInActive;
               targetIslandId = item.id;
-              browserIndex += item.tabs?.indexOf(nested) ?? 0;
+              isMovingGroup = false;
+            }
+            const nestedInOver = item.tabs?.find((t: TabType) => String(t.id) === String(overId));
+            if (nestedInOver) {
+              browserIndex += item.tabs?.indexOf(nestedInOver) ?? 0;
               break;
             }
             browserIndex += item.tabs?.length ?? 0;
@@ -451,6 +478,7 @@ export const Dashboard: React.FC = () => {
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
           modifiers={[scaleModifier]}
         >
           <PointerPositionProvider isDragging={activeItem !== null}>
