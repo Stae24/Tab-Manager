@@ -140,6 +140,13 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
   );
 };
 
+export const mergeAppearanceSettings = (settings: unknown): AppearanceSettings => {
+  if (isAppearanceSettings(settings)) {
+    return { ...defaultAppearanceSettings, ...settings };
+  }
+  return defaultAppearanceSettings;
+};
+
 // Tactical Item Discovery
 export const findItemInList = <T extends LiveItem | VaultItem>(
   list: T[], 

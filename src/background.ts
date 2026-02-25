@@ -1,14 +1,14 @@
 import { ISLAND_CREATION_REFRESH_DELAY_MS, REFRESH_UI_DELAY_MS } from './constants';
 import { quotaService } from './services/quotaService';
-import { isAppearanceSettings, defaultAppearanceSettings } from './store/utils';
+import { mergeAppearanceSettings, defaultAppearanceSettings } from './store/utils';
 import { backgroundLogger, syncDebugMode } from './utils/backgroundLogger';
 
 async function loadSettings() {
   let settings = defaultAppearanceSettings;
   try {
     const result = await chrome.storage.sync.get(['appearanceSettings']);
-    settings = result.appearanceSettings && isAppearanceSettings(result.appearanceSettings)
-      ? result.appearanceSettings
+    settings = result.appearanceSettings
+      ? mergeAppearanceSettings(result.appearanceSettings)
       : defaultAppearanceSettings;
 
     syncDebugMode(settings.debugMode ?? false);
@@ -32,7 +32,7 @@ async function openExtensionTab(): Promise<chrome.tabs.Tab | undefined> {
       if (typeof existingTab.id === 'number') {
         backgroundLogger.debug('Background', 'Found existing tab, focusing:', existingTab.id);
         const updatedTab = await chrome.tabs.update(existingTab.id, { active: true });
-        if (existingTab.windowId) {
+        if (existingTab.windowId !== undefined) {
           await chrome.windows.update(existingTab.windowId, { focused: true });
         }
         return updatedTab ?? existingTab;

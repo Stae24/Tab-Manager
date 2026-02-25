@@ -3,7 +3,7 @@ import { vaultService } from '../services/vaultService';
 import { quotaService } from '../services/quotaService';
 import { settingsService } from '../services/settingsService';
 import { logger, setDebugMode } from '../utils/logger';
-import { isAppearanceSettings, isVaultItems, defaultAppearanceSettings } from './utils';
+import { isAppearanceSettings, isVaultItems, defaultAppearanceSettings, mergeAppearanceSettings } from './utils';
 import { detectBrowser } from '../utils/browser';
 
 import { createTabSlice } from './slices/useTabSlice';
@@ -93,8 +93,8 @@ const init = async () => {
 
   const state = useStore.getState();
 
-  if (sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings)) {
-    const mergedSettings = { ...defaultAppearanceSettings, ...sync.appearanceSettings };
+  if (sync.appearanceSettings) {
+    const mergedSettings = mergeAppearanceSettings(sync.appearanceSettings);
     state.setAppearanceSettings(mergedSettings);
   } else {
     state.setAppearanceSettings(defaultAppearanceSettings);
@@ -103,19 +103,19 @@ const init = async () => {
   if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
   if (sync.settingsPanelWidth !== undefined) state.setSettingsPanelWidth(Number(sync.settingsPanelWidth));
 
-  const debugMode = (sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings))
-    ? sync.appearanceSettings.debugMode ?? defaultAppearanceSettings.debugMode
+  const debugMode = sync.appearanceSettings
+    ? mergeAppearanceSettings(sync.appearanceSettings).debugMode
     : defaultAppearanceSettings.debugMode;
   setDebugMode(debugMode);
 
-  const syncEnabled = (sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings))
-    ? sync.appearanceSettings.vaultSyncEnabled
+  const syncEnabled = sync.appearanceSettings
+    ? mergeAppearanceSettings(sync.appearanceSettings).vaultSyncEnabled
     : defaultAppearanceSettings.vaultSyncEnabled;
 
   logger.info('[Store Init] Settings loaded:', {
     hasAppearanceSettings: !!sync.appearanceSettings,
     isValidSettings: sync.appearanceSettings ? isAppearanceSettings(sync.appearanceSettings) : false,
-    storedVaultSyncEnabled: sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) ? (sync.appearanceSettings as AppearanceSettings).vaultSyncEnabled : undefined,
+    storedVaultSyncEnabled: sync.appearanceSettings ? mergeAppearanceSettings(sync.appearanceSettings).vaultSyncEnabled : undefined,
     defaultVaultSyncEnabled: defaultAppearanceSettings.vaultSyncEnabled,
     finalSyncEnabled: syncEnabled
   });
@@ -135,8 +135,8 @@ const init = async () => {
   if (migrationResult.fallbackToLocal) {
     logger.warn('[Store Init] 🔴 Migration triggered fallback to local');
     effectiveSyncEnabled = false;
-    const currentSettings = sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) 
-      ? sync.appearanceSettings 
+    const currentSettings = sync.appearanceSettings 
+      ? mergeAppearanceSettings(sync.appearanceSettings)
       : defaultAppearanceSettings;
     const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
     useStore.setState({ appearanceSettings: updatedSettings });
@@ -162,8 +162,8 @@ const init = async () => {
       logger.info('[Store Init] ✅ Sync recovered from backup');
     } else {
       effectiveSyncEnabled = false;
-      const currentSettings = sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) 
-        ? sync.appearanceSettings 
+      const currentSettings = sync.appearanceSettings 
+        ? mergeAppearanceSettings(sync.appearanceSettings)
         : defaultAppearanceSettings;
       const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
       
@@ -193,8 +193,8 @@ const init = async () => {
 
     if (quota.percentage >= 1.0) {
       logger.warn(`[Store Init] 🔴 Quota critical at ${Math.round(quota.percentage * 100)}%`);
-      const currentSettings = sync.appearanceSettings && isAppearanceSettings(sync.appearanceSettings) 
-        ? sync.appearanceSettings 
+      const currentSettings = sync.appearanceSettings 
+        ? mergeAppearanceSettings(sync.appearanceSettings)
         : defaultAppearanceSettings;
       const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
       
@@ -228,8 +228,8 @@ const init = async () => {
 
   settingsService.watchSettings(async (changes, area) => {
     if (area === 'sync') {
-      if (changes.appearanceSettings && isAppearanceSettings(changes.appearanceSettings.newValue)) {
-        state.setAppearanceSettings(changes.appearanceSettings.newValue);
+      if (changes.appearanceSettings?.newValue) {
+        state.setAppearanceSettings(mergeAppearanceSettings(changes.appearanceSettings.newValue));
       }
       if (changes.showVault) state.setShowVault(Boolean(changes.showVault.newValue));
       if (changes.dividerPosition) state.setDividerPosition(Number(changes.dividerPosition.newValue));
