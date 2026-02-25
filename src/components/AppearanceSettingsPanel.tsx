@@ -370,6 +370,7 @@ export const AppearanceSettingsPanel: React.FC<{
   const resizeStartWidth = useRef<number>(settingsPanelWidth);
   const isResizingRef = useRef(false);
   const currentWidthRef = useRef<number>(settingsPanelWidth);
+  const shortcutTimeoutRef = useRef<number | undefined>(undefined);
 
   const [showLabels, setShowLabels] = useState(true);
   const [shouldWrapTabs, setShouldWrapTabs] = useState(false);
@@ -380,6 +381,14 @@ export const AppearanceSettingsPanel: React.FC<{
       setPanelWidth(settingsPanelWidth);
     }
   }, [settingsPanelWidth, isResizing]);
+
+  useEffect(() => {
+    return () => {
+      if (shortcutTimeoutRef.current !== undefined) {
+        clearTimeout(shortcutTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const fitPanelToWindow = () => {
@@ -1144,8 +1153,11 @@ export const AppearanceSettingsPanel: React.FC<{
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText('chrome://extensions/shortcuts');
+                      if (shortcutTimeoutRef.current !== undefined) {
+                        clearTimeout(shortcutTimeoutRef.current);
+                      }
                       setShortcutCopied(true);
-                      setTimeout(() => setShortcutCopied(false), 2000);
+                      shortcutTimeoutRef.current = window.setTimeout(() => setShortcutCopied(false), 2000);
                     } catch (err) {
                       backgroundLogger.error('AppearanceSettingsPanel', 'Failed to copy shortcut URL:', err);
                     }

@@ -481,7 +481,7 @@ describe('background - Action Handler', () => {
     vi.resetModules();
     
     // Setup fresh mocks for each test - using mockResolvedValue for async return
-    (chrome.tabs.create as any) = vi.fn().mockResolvedValue({ id: 1, url: 'index.html', pinned: false });
+    (chrome.tabs.create as any) = vi.fn().mockResolvedValue({ id: 1, url: 'index.html', pinned: false, windowId: 1 });
     (chrome.tabs.update as any) = vi.fn().mockResolvedValue({ id: 1, pinned: true });
     (chrome.storage.sync.get as any) = vi.fn().mockResolvedValue({});
     
@@ -515,7 +515,7 @@ describe('background - Action Handler', () => {
     });
 
     it('uses default settings when storage is empty', async () => {
-      (chrome.storage.sync.get as any).mockReturnValue({});
+      (chrome.storage.sync.get as any).mockResolvedValue({});
       
       await actionClickHandler({ id: 1 });
       
@@ -523,8 +523,8 @@ describe('background - Action Handler', () => {
     });
 
     it('pins tab when autoPinTabManager is true', async () => {
-      (chrome.storage.sync.get as any) = vi.fn().mockImplementation(() => {
-        return { appearanceSettings: { autoPinTabManager: true } };
+      (chrome.storage.sync.get as any) = vi.fn().mockResolvedValue({
+        appearanceSettings: { autoPinTabManager: true }
       });
       
       await actionClickHandler({ id: 1 });
