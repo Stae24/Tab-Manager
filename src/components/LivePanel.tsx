@@ -81,6 +81,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchPromiseRef = useRef<Promise<void> | null>(null);
 
   const searchScope = useStore((s) => s.searchScope);
   const setSearchScope = useStore((s) => s.setSearchScope);
@@ -92,6 +93,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const setParsedQuery = useStore((s) => s.setParsedQuery);
 
   const syncLiveTabs = useStore((s) => s.syncLiveTabs);
+  const appearanceSettings = useStore((s) => s.appearanceSettings);
 
   const runSearch = useCallback(async (query: string) => {
     const parsed = parseQuery(query);
@@ -104,11 +106,15 @@ export const LivePanel: React.FC<LivePanelProps> = ({
 
     setIsSearching(true);
     try {
-      const result = await search(query, {
-        scope: searchScope,
-        vaultItems,
-      });
-      setSearchResults(result.results);
+      const searchPromise = (async () => {
+        const result = await search(query, {
+          scope: searchScope,
+          vaultItems,
+        });
+        setSearchResults(result.results);
+      })();
+      searchPromiseRef.current = searchPromise;
+      await searchPromise;
     } catch (error) {
       logger.error('[LivePanel] Search failed:', error);
       setSearchResults([]);
@@ -124,7 +130,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
 
     searchDebounceRef.current = setTimeout(() => {
       runSearch(searchQuery);
-    }, 150);
+    }, appearanceSettings.searchDebounce ?? 100);
 
     return () => {
       if (searchDebounceRef.current) {
@@ -135,6 +141,15 @@ export const LivePanel: React.FC<LivePanelProps> = ({
 
   const handleExecuteCommands = useCallback(async () => {
     if (!parsedQuery || !hasCommands(parsedQuery) || searchResults.length === 0) return;
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
+
+    if (searchPromiseRef.current) {
+      await searchPromiseRef.current;
+    }
 
     setIsSearching(true);
     try {

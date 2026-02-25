@@ -57,6 +57,9 @@ vi.mock('../../store/useStore', () => ({
       syncLiveTabs: vi.fn(),
       searchQuery: '',
       setSearchQuery: mockSetSearchQuery,
+      appearanceSettings: {
+        searchDebounce: 100,
+      },
     };
     return selector ? selector(state) : state;
   }),

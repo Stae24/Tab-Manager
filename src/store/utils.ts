@@ -211,6 +211,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   sortVaultGroupsByCount: true,
   autoPinTabManager: true,
   focusExistingTab: true,
+  searchDebounce: 100,
   debugMode: false,
 };
 
