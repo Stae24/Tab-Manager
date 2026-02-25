@@ -31,7 +31,7 @@ import { QuotaExceededModal, QuotaExceededAction } from './QuotaExceededModal';
 import { useStore, parseNumericId, findItemInList } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { closeTab, createIsland } from '../utils/chromeApi';
-import { Island as IslandType, Tab as TabType, UniversalId, LiveItem } from '../types/index';
+import { Island as IslandType, Tab as TabType, UniversalId, LiveItem, VaultItem } from '../types/index';
 import { ErrorBoundary } from './ErrorBoundary';
 import { logger } from '../utils/logger';
 import { MoveTabCommand } from '../store/commands/MoveTabCommand';
@@ -118,6 +118,9 @@ export const Dashboard: React.FC = () => {
     windowId: number;
   } | null>(null);
 
+  const inFlightCount = useRef(0);
+  const preDragSnapshot = useRef<{ islands: LiveItem[]; vault: VaultItem[] } | null>(null);
+
   const vaultTabCount = useMemo(() => {
     return (vault || []).reduce((acc, i) => {
       if (!i) return acc;
@@ -174,7 +177,9 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     return () => {
-      clearPendingOperations();
+      if (inFlightCount.current === 0) {
+        clearPendingOperations();
+      }
     };
   }, [clearPendingOperations]);
 
@@ -201,6 +206,8 @@ export const Dashboard: React.FC = () => {
     if (data) setActiveItem(data);
 
     const { islands, vault } = useStore.getState();
+    preDragSnapshot.current = { islands, vault };
+    
     const found = findItemInList(islands, event.active.id) || findItemInList(vault, event.active.id);
     if (found) {
       const { item, index, containerId } = found;
@@ -248,6 +255,12 @@ export const Dashboard: React.FC = () => {
     const activeId = event.active.id;
     const numericActiveId = parseNumericId(activeId);
 
+    if (preDragSnapshot.current) {
+      const { islands, vault } = preDragSnapshot.current;
+      useStore.setState({ islands, vault });
+      preDragSnapshot.current = null;
+    }
+
     if (numericActiveId !== null) {
       removePendingOperation(numericActiveId);
     }
@@ -262,11 +275,14 @@ export const Dashboard: React.FC = () => {
     const activeId = active.id;
     const numericActiveId = parseNumericId(activeId);
 
+    inFlightCount.current += 1;
+
     // Ensure we clean up pending operation on drag end
     const cleanupPendingOperation = () => {
       if (numericActiveId !== null) {
         removePendingOperation(numericActiveId);
       }
+      inFlightCount.current -= 1;
     };
 
     setActiveItem(null);
@@ -274,6 +290,11 @@ export const Dashboard: React.FC = () => {
     setIsDraggingGroup(false);
 
     if (!over) {
+      if (preDragSnapshot.current) {
+        const { islands, vault } = preDragSnapshot.current;
+        useStore.setState({ islands, vault });
+        preDragSnapshot.current = null;
+      }
       cleanupPendingOperation();
       return;
     }
