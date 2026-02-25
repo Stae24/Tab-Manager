@@ -181,13 +181,12 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       pendingOverId.current = overId;
 
       rafId.current = requestAnimationFrame(() => {
-        rafId.current = null;
-
         const activeIdVal = pendingId.current;
         const overIdVal = pendingOverId.current;
 
         pendingId.current = null;
         pendingOverId.current = null;
+        rafId.current = null;
 
         if (activeIdVal === null || overIdVal === null) {
           return;

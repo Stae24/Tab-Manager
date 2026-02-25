@@ -202,7 +202,6 @@ describe('Dashboard DnD Integration', () => {
     });
 
     it('renders Vault Panel when showVault is true', () => {
-      mockStore.showVault = true;
       render(<Dashboard />);
       expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
     });
@@ -211,7 +210,6 @@ describe('Dashboard DnD Integration', () => {
       mockStore.showVault = false;
       render(<Dashboard />);
       expect(screen.queryByTestId('vault-panel')).not.toBeInTheDocument();
-      mockStore.showVault = true;
     });
 
     it('renders Create Zone', () => {
@@ -220,8 +218,8 @@ describe('Dashboard DnD Integration', () => {
     });
   });
 
-  describe('Drag Operations', () => {
-    it('drag tab within Live panel reorders correctly', async () => {
+  describe('Drag Operations (smoke tests)', () => {
+    it('renders with Live panel tabs (smoke test)', async () => {
       const mockIslands = [
         { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
         { id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
@@ -234,7 +232,7 @@ describe('Dashboard DnD Integration', () => {
       expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
     });
 
-    it('drag island within Live panel reorders correctly', async () => {
+    it('renders with Live panel groups (smoke test)', async () => {
       const mockIslands = [
         { id: 'live-group-1', title: 'Group A', tabs: [{ id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 1, windowId: 1 }], color: 'blue', collapsed: false },
         { id: 'live-group-2', title: 'Group B', tabs: [{ id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 2, windowId: 1 }], color: 'red', collapsed: false },
@@ -247,24 +245,22 @@ describe('Dashboard DnD Integration', () => {
       expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
     });
 
-    it('drag tab from Live to Vault triggers moveToVault', async () => {
+    it('renders with Live tabs and empty vault (smoke test)', async () => {
       const mockIslands = [
         { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
       ];
       mockStore.islands = mockIslands;
       mockStore.vault = [];
-      mockStore.showVault = true;
 
       render(<Dashboard />);
 
-      // The moveToVault would be called on drag end when dropping on vault
       // Test that vault panel is present when showVault is true
       await waitFor(() => {
         expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
       });
     });
 
-    it('drag island from Live to Vault archives all tabs', async () => {
+    it('renders with Live groups (smoke test)', async () => {
       const mockIslands = [
         {
           id: 'live-group-1', title: 'Group', tabs: [
@@ -274,7 +270,6 @@ describe('Dashboard DnD Integration', () => {
         },
       ];
       mockStore.islands = mockIslands;
-      mockStore.showVault = true;
 
       render(<Dashboard />);
 
@@ -283,10 +278,9 @@ describe('Dashboard DnD Integration', () => {
       });
     });
 
-    it('drag tab from Vault to Live triggers restoreFromVault', async () => {
+    it('renders with Vault tabs and empty Live (smoke test)', async () => {
       mockStore.vault = [{ id: 'vault-tab-1-123', title: 'Archived Tab', url: 'https://archived.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false }];
       mockStore.islands = [];
-      mockStore.showVault = true;
 
       render(<Dashboard />);
 
@@ -295,7 +289,7 @@ describe('Dashboard DnD Integration', () => {
       });
     });
 
-    it('drag island from Vault to Live restores all tabs', async () => {
+    it('renders with Vault groups (smoke test)', async () => {
       mockStore.vault = [
         {
           id: 'vault-group-1-123', title: 'Archived Group', tabs: [
@@ -304,7 +298,6 @@ describe('Dashboard DnD Integration', () => {
           ], color: 'blue', collapsed: false
         },
       ];
-      mockStore.showVault = true;
 
       render(<Dashboard />);
 
@@ -313,7 +306,7 @@ describe('Dashboard DnD Integration', () => {
       });
     });
 
-    it('drag tab to create zone triggers createIsland', async () => {
+    it('renders with Create Zone (smoke test)', async () => {
       const mockIslands = [
         { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
       ];
@@ -327,7 +320,7 @@ describe('Dashboard DnD Integration', () => {
       });
     });
 
-    it('drag disabled during isUpdating lock', async () => {
+    it('renders when isUpdating (smoke test)', async () => {
       mockStore.isUpdating = true;
 
       const { container } = render(<Dashboard />);
@@ -335,8 +328,6 @@ describe('Dashboard DnD Integration', () => {
       // When isUpdating is true, drag operations should be blocked
       // The component should still render
       expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
-
-      mockStore.isUpdating = false;
     });
   });
 
@@ -353,11 +344,12 @@ describe('Dashboard DnD Integration', () => {
       expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
     });
 
-    it('syncLiveTabs called on drag end', async () => {
+    it('syncLiveTabs available (smoke test)', async () => {
       render(<Dashboard />);
 
-      // syncLiveTabs is called after drag operations complete
-      // In the test environment, we verify the mock is available
+      // Note: This is a smoke test. Full DnD simulation would require
+      // mocking DndContext handlers and complex event payloads.
+      // The mock is verified as available for manual testing.
       await waitFor(() => {
         expect(mockStore.syncLiveTabs).toBeDefined();
       });
@@ -371,8 +363,6 @@ describe('Dashboard DnD Integration', () => {
 
       // Vault panel should not exist when showVault is false
       expect(screen.queryByTestId('vault-panel')).not.toBeInTheDocument();
-
-      mockStore.showVault = true;
     });
   });
 
@@ -417,8 +407,6 @@ describe('Dashboard DnD Integration', () => {
     });
 
     it('persists divider position to settings', async () => {
-      mockStore.showVault = true;
-
       render(<Dashboard />);
 
       // The setDividerPosition should be callable
@@ -430,14 +418,11 @@ describe('Dashboard DnD Integration', () => {
 
   describe('Basic Rendering - Additional Tests', () => {
     it('shows divider when showVault is true', () => {
-      mockStore.showVault = true;
       const { container } = render(<Dashboard />);
 
       // Find the divider element (it's a div with cursor-col-resize class)
       const divider = container.querySelector('.cursor-col-resize');
       expect(divider).toBeInTheDocument();
-
-      mockStore.showVault = true; // Reset
     });
 
     it('hides divider when showVault is false', () => {
@@ -446,8 +431,6 @@ describe('Dashboard DnD Integration', () => {
 
       // When showVault is false, vault panel should not render
       expect(screen.queryByTestId('vault-panel')).not.toBeInTheDocument();
-
-      mockStore.showVault = true; // Reset
     });
 
     it('applies dark mode class', () => {
@@ -456,8 +439,6 @@ describe('Dashboard DnD Integration', () => {
 
       const dashboardContainer = container.querySelector('#dashboard-container');
       expect(dashboardContainer).toHaveClass('dark');
-
-      mockStore.isDarkMode = false;
     });
   });
 });
