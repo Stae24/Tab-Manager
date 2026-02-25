@@ -7,6 +7,7 @@ const mockRemoveListener = vi.fn();
 
 const chromeMock = {
   runtime: {
+    getURL: vi.fn().mockReturnValue('chrome-extension://abc123/index.html'),
     onMessage: {
       addListener: mockAddListener,
       removeListener: mockRemoveListener,
@@ -19,14 +20,21 @@ const chromeMock = {
   action: {
     onClicked: { addListener: vi.fn() },
   },
+  commands: {
+    onCommand: { addListener: vi.fn() },
+  },
   tabs: {
     onCreated: { addListener: vi.fn() },
     onRemoved: { addListener: vi.fn() },
     onUpdated: { addListener: vi.fn() },
     onMoved: { addListener: vi.fn() },
-    create: vi.fn().mockResolvedValue({ id: 1, url: 'index.html', pinned: false }),
+    create: vi.fn().mockResolvedValue({ id: 1, url: 'index.html', pinned: false, windowId: 1 }),
     update: vi.fn().mockResolvedValue({ id: 1, pinned: true }),
+    query: vi.fn().mockResolvedValue([]),
     discard: vi.fn(),
+  },
+  windows: {
+    update: vi.fn().mockResolvedValue({ focused: true }),
   },
   tabGroups: {
     onCreated: { addListener: vi.fn() },

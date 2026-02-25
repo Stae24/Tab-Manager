@@ -32,6 +32,7 @@ import {
   ArrowUp,
   Pin,
   Terminal,
+  Keyboard,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
@@ -1130,6 +1131,26 @@ export const AppearanceSettingsPanel: React.FC<{
                   label="Auto-Pin Tab Manager"
                   description="Automatically pin the Tab Manager page when opened via extension icon"
                 />
+                <ToggleSwitch
+                  checked={appearanceSettings.focusExistingTab}
+                  onChange={(checked) => setAppearanceSettings({ focusExistingTab: checked })}
+                  label="Focus Existing Tab"
+                  description="If Tab Manager is already open, switch to it instead of creating a new tab"
+                />
+                <button
+                  onClick={() => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' })}
+                  className="flex items-center gap-3 w-full p-3 rounded-lg transition-all border bg-gx-gray border-white/5 hover:border-gx-accent/20"
+                >
+                  <Keyboard className="w-5 h-5 text-gx-accent" />
+                  <div className="flex-1 text-left">
+                    <span className="text-xs font-bold block text-gray-300">
+                      Configure Shortcut
+                    </span>
+                    <span className="text-[10px] text-gray-500 block mt-0.5">
+                      Customize the keyboard shortcut to open Tab Manager
+                    </span>
+                  </div>
+                </button>
               </CollapsibleSection>
             </>
           )}

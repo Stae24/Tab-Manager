@@ -3,7 +3,7 @@
   "name": "Opera GX Island Manager",
   "version": "1.0.0",
   "description": "Advanced tab and island manager with cloud sync and memory optimization.",
-  "permissions": ["tabs", "tabGroups", "storage", "unlimitedStorage", "sidePanel"],
+  "permissions": ["tabs", "tabGroups", "storage", "unlimitedStorage", "sidePanel", "commands"],
   "host_permissions": ["<all_urls>"],
 
   "web_accessible_resources": [
@@ -28,5 +28,14 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "commands": {
+    "toggle-island-manager": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Space",
+        "mac": "Command+Shift+Space"
+      },
+      "description": "Open or focus Island Manager"
+    }
   }
 }
