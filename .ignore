@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.git/
+docs/
+package-lock.json
+*.md
+*.png
+*.zip
+*.crx
+%TMP%/
+TidyTabGroups/
+.idx/
+.opencode/
+.qodo/
+.sisyphus/
