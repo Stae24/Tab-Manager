@@ -18,6 +18,22 @@ export const debounce = <T extends (...args: any[]) => any>(fn: T, ms = DEBOUNCE
   };
 };
 
+// Helper to check if an ID starts with a given prefix
+const startsWithPrefix = (id: string | UniqueIdentifier, prefix: string): boolean => {
+  if (typeof id === 'string') {
+    return id.startsWith(prefix);
+  }
+  return String(id).startsWith(prefix);
+};
+
+export const isVaultId = (id: UniqueIdentifier): boolean => {
+  return startsWithPrefix(id, 'vault-');
+};
+
+export const isLiveId = (id: UniqueIdentifier): boolean => {
+  return startsWithPrefix(id, 'live-');
+};
+
 // Helper to extract numeric ID from prefixed strings
 export const parseNumericId = (id: UniqueIdentifier): number | null => {
   if (id === null || id === undefined) return null;
@@ -47,20 +63,6 @@ export const parseNumericId = (id: UniqueIdentifier): number | null => {
   }
 
   return null;
-};
-
-// Helper to check if an ID starts with a given prefix
-const startsWithPrefix = (id: UniqueIdentifier, prefix: string): boolean => {
-  const idStr = String(id);
-  return idStr.startsWith(prefix);
-};
-
-export const isVaultId = (id: UniqueIdentifier): boolean => {
-  return startsWithPrefix(id, 'vault-');
-};
-
-export const isLiveId = (id: UniqueIdentifier): boolean => {
-  return startsWithPrefix(id, 'live-');
 };
 
 export const isTab = (item: unknown): item is Tab => {

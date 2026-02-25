@@ -157,8 +157,6 @@ const createMockStore = () => ({
   dismissCompressionWarning: vi.fn(),
 });
 
-let mockStore = createMockStore();
-
 vi.mock('../../store/useStore', () => ({
   useStore: vi.fn((selector?: any) => {
     if (typeof selector === 'function') {
@@ -172,6 +170,8 @@ vi.mock('../../store/useStore', () => ({
   }),
   findItemInList: vi.fn(),
 }));
+
+let mockStore = createMockStore();
 
 describe('Dashboard DnD Integration', () => {
   let Dashboard: React.FC<any>;
@@ -320,7 +320,7 @@ describe('Dashboard DnD Integration', () => {
   });
 
   describe('State Management', () => {
-    it('optimistic update applied immediately on drag start', async () => {
+    it('renders with multiple islands (smoke test)', async () => {
       mockStore.islands = [
         { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
         { id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
@@ -337,19 +337,18 @@ describe('Dashboard DnD Integration', () => {
       expect(screen.getByTestId('live-panel')).toBeInTheDocument();
     });
 
-    it('cross-panel drag blocked when showVault=false', async () => {
+    it('hides vault panel when showVault=false (smoke test)', async () => {
       mockStore.showVault = false;
       mockStore.islands = [{ id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 }];
 
       render(<Dashboard />);
 
-      // Vault panel should not exist when showVault is false
       expect(screen.queryByTestId('vault-panel')).not.toBeInTheDocument();
     });
   });
 
   describe('Visual Feedback', () => {
-    it('drag overlay shows correct preview', () => {
+    it('renders drag overlay container (smoke test)', () => {
       mockStore.islands = [{ id: 'live-tab-1', title: 'My Tab', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 }];
 
       render(<Dashboard />);
@@ -357,7 +356,7 @@ describe('Dashboard DnD Integration', () => {
       expect(screen.getByTestId('drag-overlay')).toBeInTheDocument();
     });
 
-    it('keyboard drag works with space/arrow keys', () => {
+    it('renders dnd context container (smoke test)', () => {
       mockStore.islands = [
         { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
         { id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
@@ -370,14 +369,14 @@ describe('Dashboard DnD Integration', () => {
   });
 
   describe('Panel Interactions', () => {
-    it('updates divider position on drag', () => {
+    it('renders with setDividerPosition available (smoke test)', () => {
       render(<Dashboard />);
 
       expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
       expect(mockStore.setDividerPosition).toBeDefined();
     });
 
-    it('persists divider position to settings', () => {
+    it('renders with setDividerPosition and persistence capability (smoke test)', () => {
       render(<Dashboard />);
 
       expect(mockStore.setDividerPosition).toBeDefined();

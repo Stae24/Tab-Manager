@@ -36,10 +36,8 @@ export const PointerPositionProvider: React.FC<PointerPositionProviderProps> = (
     if (rafRef.current) return;
     
     rafRef.current = requestAnimationFrame(() => {
-      if (pendingPositionRef.current) {
-        setPointerPosition(pendingPositionRef.current);
-        pendingPositionRef.current = null;
-      }
+      setPointerPosition(pendingPositionRef.current);
+      pendingPositionRef.current = null;
       rafRef.current = null;
     });
   }, []);
