@@ -45,6 +45,9 @@ const chromeMock = {
   action: {
     onClicked: { addListener: vi.fn(), removeListener: vi.fn() },
   },
+  commands: {
+    onCommand: { addListener: vi.fn(), removeListener: vi.fn() },
+  },
   windows: {
     WINDOW_ID_CURRENT: -2,
   },

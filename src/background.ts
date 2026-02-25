@@ -3,10 +3,7 @@ import { quotaService } from './services/quotaService';
 import { isAppearanceSettings, defaultAppearanceSettings } from './store/utils';
 import { backgroundLogger, syncDebugMode } from './utils/backgroundLogger';
 
-chrome.action.onClicked.addListener(async () => {
-  const tab = await chrome.tabs.create({ url: 'index.html' });
-  backgroundLogger.debug('Background', 'Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
-
+async function loadSettings() {
   let settings = defaultAppearanceSettings;
   try {
     const result = await chrome.storage.sync.get(['appearanceSettings']);
@@ -14,11 +11,35 @@ chrome.action.onClicked.addListener(async () => {
       ? result.appearanceSettings
       : defaultAppearanceSettings;
 
-    // Sync debug mode with settings
     syncDebugMode(settings.debugMode ?? false);
   } catch (error) {
     backgroundLogger.error('Background', 'Failed to load appearance settings:', error);
   }
+  return settings;
+}
+
+async function openExtensionTab(): Promise<chrome.tabs.Tab | undefined> {
+  const settings = await loadSettings();
+
+  backgroundLogger.debug('Background', 'Focus existing tab setting:', settings.focusExistingTab);
+
+  if (settings.focusExistingTab) {
+    const extensionUrl = chrome.runtime.getURL('index.html');
+    const tabs = await chrome.tabs.query({ url: extensionUrl });
+    
+    if (tabs.length > 0) {
+      const existingTab = tabs[0];
+      backgroundLogger.debug('Background', 'Found existing tab, focusing:', existingTab.id);
+      await chrome.tabs.update(existingTab.id, { active: true });
+      if (existingTab.windowId) {
+        await chrome.windows.update(existingTab.windowId, { focused: true });
+      }
+      return existingTab;
+    }
+  }
+
+  const tab = await chrome.tabs.create({ url: 'index.html' });
+  backgroundLogger.debug('Background', 'Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
 
   backgroundLogger.debug('Background', 'Auto-pin setting:', settings.autoPinTabManager);
 
@@ -30,6 +51,19 @@ chrome.action.onClicked.addListener(async () => {
     } catch (error) {
       backgroundLogger.error('Background', 'Failed to pin tab:', error);
     }
+  }
+
+  return tab;
+}
+
+chrome.action.onClicked.addListener(async () => {
+  await openExtensionTab();
+});
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'toggle-island-manager') {
+    backgroundLogger.debug('Background', 'Keyboard shortcut triggered');
+    await openExtensionTab();
   }
 });
 
