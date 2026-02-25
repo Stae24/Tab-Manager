@@ -166,37 +166,34 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
   },
 
   moveItemOptimistically: (() => {
-    let pendingId: UniqueIdentifier | null = null;
-    let pendingOverId: UniqueIdentifier | null = null;
-    let updateScheduled = false;
-    let rafId: number | null = null;
+    const pendingId = { current: null as UniqueIdentifier | null };
+    const pendingOverId = { current: null as UniqueIdentifier | null };
+    const rafId = { current: null as number | null };
 
     return (activeId: UniqueIdentifier, overId: UniqueIdentifier) => {
-      pendingId = activeId;
-      pendingOverId = overId;
-
-      if (updateScheduled) return;
-      updateScheduled = true;
-
-      if (rafId) {
-        cancelAnimationFrame(rafId);
+      if (rafId.current !== null) {
+        pendingId.current = activeId;
+        pendingOverId.current = overId;
+        return;
       }
 
-      rafId = requestAnimationFrame(() => {
-        if (pendingId === null || pendingOverId === null) {
-          updateScheduled = false;
-          rafId = null;
+      pendingId.current = activeId;
+      pendingOverId.current = overId;
+
+      rafId.current = requestAnimationFrame(() => {
+        rafId.current = null;
+
+        const activeIdVal = pendingId.current;
+        const overIdVal = pendingOverId.current;
+
+        pendingId.current = null;
+        pendingOverId.current = null;
+
+        if (activeIdVal === null || overIdVal === null) {
           return;
         }
 
         const { islands, vault } = get();
-        const activeIdVal = pendingId;
-        const overIdVal = pendingOverId;
-
-        updateScheduled = false;
-        pendingId = null;
-        pendingOverId = null;
-        rafId = null;
 
         const moveData = prepareOptimisticMove(islands, vault, activeIdVal, overIdVal);
         

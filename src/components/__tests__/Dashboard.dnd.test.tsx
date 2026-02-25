@@ -119,6 +119,7 @@ const createMockStore = () => ({
   executeCommand: vi.fn(),
   addPendingOperation: vi.fn(),
   removePendingOperation: vi.fn(),
+  clearPendingOperations: vi.fn(),
   vaultQuota: null,
   quotaExceededPending: false,
   searchQuery: '',
