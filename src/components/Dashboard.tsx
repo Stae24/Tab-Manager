@@ -177,6 +177,7 @@ export const Dashboard: React.FC = () => {
   }, [isResizing, setDividerPosition]);
 
   useEffect(() => {
+    isUnmounted.current = false;
     return () => {
       isUnmounted.current = true;
       if (inFlightCount.current === 0) {
@@ -281,11 +282,14 @@ export const Dashboard: React.FC = () => {
 
     // Ensure we clean up pending operation on drag end
     const cleanupPendingOperation = () => {
+      if (isUnmounted.current && inFlightCount.current === 0) {
+        clearPendingOperations();
+        return;
+      }
       if (numericActiveId !== null) {
         removePendingOperation(numericActiveId);
       }
       inFlightCount.current -= 1;
-      preDragSnapshot.current = null;
 
       if (isUnmounted.current && inFlightCount.current === 0) {
         clearPendingOperations();

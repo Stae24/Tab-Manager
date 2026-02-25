@@ -219,7 +219,7 @@ describe('Dashboard DnD Integration', () => {
   });
 
   describe('Drag Operations (smoke tests)', () => {
-    it('renders with Live panel tabs (smoke test)', async () => {
+    it('renders with Live panel tabs (smoke test)', () => {
       const mockIslands = [
         { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
         { id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
@@ -232,7 +232,7 @@ describe('Dashboard DnD Integration', () => {
       expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
     });
 
-    it('renders with Live panel groups (smoke test)', async () => {
+    it('renders with Live panel groups (smoke test)', () => {
       const mockIslands = [
         { id: 'live-group-1', title: 'Group A', tabs: [{ id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 1, windowId: 1 }], color: 'blue', collapsed: false },
         { id: 'live-group-2', title: 'Group B', tabs: [{ id: 'live-tab-2', title: 'Tab 2', url: 'https://b.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: 2, windowId: 1 }], color: 'red', collapsed: false },
@@ -245,7 +245,7 @@ describe('Dashboard DnD Integration', () => {
       expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
     });
 
-    it('renders with Live tabs and empty vault (smoke test)', async () => {
+    it('renders with Live tabs and empty vault (smoke test)', () => {
       const mockIslands = [
         { id: 'live-tab-1', title: 'Tab 1', url: 'https://a.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false, groupId: -1, windowId: 1 },
       ];
@@ -254,13 +254,12 @@ describe('Dashboard DnD Integration', () => {
 
       render(<Dashboard />);
 
-      // Test that vault panel is present when showVault is true
-      await waitFor(() => {
-        expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
+      expect(mockStore.islands).toHaveLength(1);
+      expect(mockStore.islands[0].title).toBe('Tab 1');
     });
 
-    it('renders with Live groups (smoke test)', async () => {
+    it('renders with Live groups (smoke test)', () => {
       const mockIslands = [
         {
           id: 'live-group-1', title: 'Group', tabs: [
@@ -273,23 +272,24 @@ describe('Dashboard DnD Integration', () => {
 
       render(<Dashboard />);
 
-      await waitFor(() => {
-        expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
+      expect(mockStore.islands).toHaveLength(1);
+      expect(mockStore.islands[0].title).toBe('Group');
+      expect(mockStore.islands[0].tabs).toHaveLength(2);
     });
 
-    it('renders with Vault tabs and empty Live (smoke test)', async () => {
+    it('renders with Vault tabs and empty Live (smoke test)', () => {
       mockStore.vault = [{ id: 'vault-tab-1-123', title: 'Archived Tab', url: 'https://archived.com', favicon: '', active: false, discarded: false, muted: false, pinned: false, audible: false }];
       mockStore.islands = [];
 
       render(<Dashboard />);
 
-      await waitFor(() => {
-        expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
+      expect(mockStore.vault).toHaveLength(1);
+      expect(mockStore.vault[0].title).toBe('Archived Tab');
     });
 
-    it('renders with Vault groups (smoke test)', async () => {
+    it('renders with Vault groups (smoke test)', () => {
       mockStore.vault = [
         {
           id: 'vault-group-1-123', title: 'Archived Group', tabs: [
@@ -301,9 +301,10 @@ describe('Dashboard DnD Integration', () => {
 
       render(<Dashboard />);
 
-      await waitFor(() => {
-        expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('vault-panel')).toBeInTheDocument();
+      expect(mockStore.vault).toHaveLength(1);
+      expect(mockStore.vault[0].title).toBe('Archived Group');
+      expect(mockStore.vault[0].tabs).toHaveLength(2);
     });
 
     it('renders with Create Zone (smoke test)', async () => {
@@ -344,15 +345,10 @@ describe('Dashboard DnD Integration', () => {
       expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
     });
 
-    it('syncLiveTabs available (smoke test)', async () => {
+    it('syncLiveTabs available (smoke test)', () => {
       render(<Dashboard />);
 
-      // Note: This is a smoke test. Full DnD simulation would require
-      // mocking DndContext handlers and complex event payloads.
-      // The mock is verified as available for manual testing.
-      await waitFor(() => {
-        expect(mockStore.syncLiveTabs).toBeDefined();
-      });
+      expect(mockStore.syncLiveTabs).toBeDefined();
     });
 
     it('cross-panel drag blocked when showVault=false', async () => {
