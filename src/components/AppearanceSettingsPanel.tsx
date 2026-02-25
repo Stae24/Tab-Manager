@@ -33,6 +33,10 @@ import {
   Pin,
   Terminal,
   Keyboard,
+  PanelLeft,
+  PanelRight,
+  Sidebar,
+  Maximize2,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { backgroundLogger } from '../utils/backgroundLogger';
@@ -47,14 +51,22 @@ import {
   UI_SCALE_STEP, 
   DRAG_OPACITY_MIN, 
   DRAG_OPACITY_MAX, 
-  DRAG_OPACITY_STEP, 
+  DRAG_OPACITY_STEP,
+  SEARCH_DEBOUNCE_MIN,
+  SEARCH_DEBOUNCE_MAX,
+  SEARCH_DEBOUNCE_STEP,
+  SEARCH_DEBOUNCE_MS, 
   GX_ACCENT_COLOR, 
   GX_RED_COLOR, 
   GX_CYAN_COLOR, 
   GX_GREEN_COLOR, 
-  DROPDOWN_MAX_HEIGHT 
+  DROPDOWN_MAX_HEIGHT,
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_DEFAULT_WIDTH
 } from '../constants';
-import type { ThemeMode, AnimationIntensity, AudioIndicatorMode, BorderRadius, ButtonSize, IconPack, MenuPosition, FaviconSource, FaviconFallback, FaviconSize } from '../store/useStore';
+import type { ThemeMode, AnimationIntensity, AudioIndicatorMode, BorderRadius, ButtonSize, IconPack, MenuPosition, FaviconSource, FaviconFallback, FaviconSize, ToolbarClickAction, SidebarLayoutMode, SidebarDockSide, HotkeyBinding } from '../store/useStore';
+import { formatHotkey, isValidHotkey, hasDuplicateHotkey } from '../utils/hotkeys';
 
 type TabId = 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced' | 'dev';
 
@@ -1186,14 +1198,92 @@ export const AppearanceSettingsPanel: React.FC<{
                 onToggle={() => toggleSection('search')}
               >
                 <SliderControl
-                  value={appearanceSettings.searchDebounce}
+                  value={appearanceSettings.searchDebounce ?? SEARCH_DEBOUNCE_MS}
                   onChange={(value) => setAppearanceSettings({ searchDebounce: value })}
-                  min={50}
-                  max={500}
-                  step={10}
+                  min={SEARCH_DEBOUNCE_MIN}
+                  max={SEARCH_DEBOUNCE_MAX}
+                  step={SEARCH_DEBOUNCE_STEP}
                   label="Search Debounce"
-                  displayValue={`${appearanceSettings.searchDebounce}ms`}
+                  displayValue={`${appearanceSettings.searchDebounce ?? SEARCH_DEBOUNCE_MS}ms`}
                 />
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                id="sidebar"
+                title="Custom Sidebar"
+                icon={Sidebar}
+                isExpanded={expandedSections.has('sidebar')}
+                onToggle={() => toggleSection('sidebar')}
+              >
+                <div className="space-y-4">
+                  <DropdownSelect
+                    value={appearanceSettings.toolbarClickAction}
+                    onChange={(value) => setAppearanceSettings({ toolbarClickAction: value as ToolbarClickAction })}
+                    options={[
+                      { value: 'toggle-sidebar', label: 'Toggle Sidebar', icon: Sidebar },
+                      { value: 'open-manager-page', label: 'Open Manager Page', icon: Box },
+                    ]}
+                    label="Toolbar Click Action"
+                  />
+
+                  <DropdownSelect
+                    value={appearanceSettings.sidebarLayoutMode}
+                    onChange={(value) => setAppearanceSettings({ sidebarLayoutMode: value as SidebarLayoutMode })}
+                    options={[
+                      { value: 'overlay', label: 'Overlay (on top)', icon: Maximize2 },
+                      { value: 'push', label: 'Push (move page)', icon: Layout },
+                    ]}
+                    label="Layout Mode"
+                  />
+
+                  <DropdownSelect
+                    value={appearanceSettings.sidebarDockSide}
+                    onChange={(value) => setAppearanceSettings({ sidebarDockSide: value as SidebarDockSide })}
+                    options={[
+                      { value: 'left', label: 'Left Side', icon: PanelLeft },
+                      { value: 'right', label: 'Right Side', icon: PanelRight },
+                    ]}
+                    label="Dock Side"
+                  />
+
+                  <SliderControl
+                    value={appearanceSettings.sidebarWidthPx}
+                    onChange={(value) => setAppearanceSettings({ sidebarWidthPx: value })}
+                    min={SIDEBAR_MIN_WIDTH}
+                    max={SIDEBAR_MAX_WIDTH}
+                    step={10}
+                    label="Sidebar Width"
+                    displayValue={`${appearanceSettings.sidebarWidthPx}px`}
+                  />
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase block">Sidebar Toggle Hotkey</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-3 py-2.5 bg-gx-gray border border-white/5 rounded-lg">
+                        <span className="text-xs text-gray-200 font-mono">
+                          {formatHotkey(appearanceSettings.sidebarToggleHotkey)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setAppearanceSettings({ sidebarWidthPx: SIDEBAR_DEFAULT_WIDTH })}
+                        className="px-3 py-2 text-[10px] text-gray-500 hover:text-gx-red transition-colors"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase block">Manager Page Hotkey</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-3 py-2.5 bg-gx-gray border border-white/5 rounded-lg">
+                        <span className="text-xs text-gray-200 font-mono">
+                          {formatHotkey(appearanceSettings.managerPageHotkey)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CollapsibleSection>
             </>
           )}

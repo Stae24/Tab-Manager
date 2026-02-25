@@ -38,6 +38,10 @@ export const BASE_FONT_SIZE = 16;
 
 export const DEBOUNCE_DEFAULT_MS = 500;
 export const SYNC_SETTINGS_DEBOUNCE_MS = 5000;
+export const SEARCH_DEBOUNCE_MS = 100;
+export const SEARCH_DEBOUNCE_MIN = 50;
+export const SEARCH_DEBOUNCE_MAX = 500;
+export const SEARCH_DEBOUNCE_STEP = 10;
 export const TAB_ACTION_RETRY_DELAY_BASE = 100;
 export const PANEL_CLOSE_DELAY_MS = 200;
 export const REFRESH_UI_DELAY_MS = 100;
@@ -63,3 +67,9 @@ export const GX_GREEN_COLOR = '#00ff88';
 export const VAULT_META_KEY = 'vault_meta';
 export const VAULT_CHUNK_PREFIX = 'vault_chunk_';
 export const LEGACY_VAULT_KEY = 'vault';
+
+export const SIDEBAR_MIN_WIDTH = 300;
+export const SIDEBAR_MAX_WIDTH = 800;
+export const SIDEBAR_DEFAULT_WIDTH = 420;
+export const SIDEBAR_DEFAULT_DOCK_SIDE: 'left' | 'right' = 'right';
+export const SIDEBAR_DEFAULT_LAYOUT_MODE: 'overlay' | 'push' = 'overlay';

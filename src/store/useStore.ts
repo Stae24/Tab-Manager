@@ -27,7 +27,11 @@ export type {
   FaviconSource, 
   FaviconFallback, 
   FaviconSize,
-  AppearanceSettings
+  AppearanceSettings,
+  HotkeyBinding,
+  ToolbarClickAction,
+  SidebarLayoutMode,
+  SidebarDockSide
 } from '../types/index';
 
 // Re-export constants and helpers for public API consistency

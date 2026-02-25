@@ -1,5 +1,6 @@
 import { ISLAND_CREATION_REFRESH_DELAY_MS, REFRESH_UI_DELAY_MS } from './constants';
 import { quotaService } from './services/quotaService';
+import { sidebarService, setupSidebarMessageListener } from './services/sidebarService';
 import { mergeAppearanceSettings, defaultAppearanceSettings } from './store/utils';
 import { backgroundLogger, syncDebugMode } from './utils/backgroundLogger';
 
@@ -60,9 +61,16 @@ async function openExtensionTab(): Promise<chrome.tabs.Tab | undefined> {
   return tab;
 }
 
-chrome.action.onClicked.addListener(async () => {
+chrome.action.onClicked.addListener(async (tab) => {
   try {
-    await openExtensionTab();
+    const windowId = tab.windowId;
+    const settings = await sidebarService.loadSettings();
+
+    if (settings.toolbarClickAction === 'toggle-sidebar') {
+      await sidebarService.handleToolbarClick(windowId);
+    } else {
+      await sidebarService.openManagerPage();
+    }
   } catch (error) {
     backgroundLogger.error('Background', 'Error in action.onClicked listener:', error);
   }
@@ -72,7 +80,11 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'toggle-island-manager') {
     backgroundLogger.debug('Background', 'Keyboard shortcut triggered');
     try {
-      await openExtensionTab();
+      const settings = await sidebarService.loadSettings();
+      const windows = await chrome.windows.getCurrent();
+      if (windows.id !== undefined) {
+        await sidebarService.handleToolbarClick(windows.id);
+      }
     } catch (error) {
       backgroundLogger.error('Background', 'Error in commands.onCommand listener:', error);
     }
@@ -85,6 +97,8 @@ chrome.commands.onCommand.addListener(async (command) => {
     if (orphanedCount > 0) {
       backgroundLogger.info('Background', `Cleaned up ${orphanedCount} orphaned vault chunks`);
     }
+
+    await sidebarService.initialize();
   } catch (error) {
     backgroundLogger.error('Background', 'Cleanup failed:', error);
   }
@@ -128,11 +142,20 @@ function notifyUI() {
   chrome.runtime.sendMessage({ type: 'REFRESH_TABS' }).catch(() => { });
 }
 
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  await sidebarService.handleContextMenuClick(info, tab);
+});
+
 export function messageListener(
-  message: { type: string; tabId?: number },
-  _sender: chrome.runtime.MessageSender,
-  sendResponse: (response?: { success: boolean }) => void
+  message: { type: string; tabId?: number; windowId?: number; settings?: unknown },
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: { success: boolean; isOpen?: boolean }) => void
 ) {
+  const sidebarResponse = setupSidebarMessageListener(message, sender, sendResponse);
+  if (sidebarResponse) {
+    return true;
+  }
+
   if (message.type === 'START_ISLAND_CREATION') {
     islandCreationInProgress = true;
     sendResponse({ success: true });
@@ -154,6 +177,29 @@ export function messageListener(
     });
     return true;
   }
+
+  if (message.type === 'SIDEBAR_SETTINGS_UPDATE' && message.settings) {
+    (async () => {
+      try {
+        const result = await chrome.storage.sync.get(['appearanceSettings']);
+        const currentSettings = result.appearanceSettings
+          ? mergeAppearanceSettings(result.appearanceSettings)
+          : defaultAppearanceSettings;
+
+        const newSettings = {
+          ...currentSettings,
+          ...(message.settings as Partial<typeof currentSettings>)
+        };
+        await chrome.storage.sync.set({ appearanceSettings: newSettings });
+        sendResponse({ success: true });
+      } catch {
+        sendResponse({ success: false });
+      }
+    })();
+    return true;
+  }
+
+  return false;
 }
 
 chrome.runtime.onMessage.addListener(messageListener);

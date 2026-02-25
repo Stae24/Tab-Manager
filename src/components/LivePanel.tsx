@@ -16,7 +16,8 @@ import {
   VIRTUAL_ROW_ESTIMATE_SIZE,
   VIRTUAL_ROW_OVERSCAN,
   VIRTUAL_ROW_GAP_PX,
-  CLEANUP_ANIMATION_DELAY_MS
+  CLEANUP_ANIMATION_DELAY_MS,
+  SEARCH_DEBOUNCE_MS
 } from '../constants';
 import { search, searchAndExecute, parseQuery, isSearchActive, hasCommands } from '../search';
 import type { SearchResult, ParsedQuery } from '../search';
@@ -82,6 +83,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchPromiseRef = useRef<Promise<void> | null>(null);
+  const searchGenRef = useRef(0);
 
   const searchScope = useStore((s) => s.searchScope);
   const setSearchScope = useStore((s) => s.setSearchScope);
@@ -93,9 +95,10 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const setParsedQuery = useStore((s) => s.setParsedQuery);
 
   const syncLiveTabs = useStore((s) => s.syncLiveTabs);
-  const appearanceSettings = useStore((s) => s.appearanceSettings);
+  const searchDebounce = useStore((s) => s.appearanceSettings.searchDebounce);
 
   const runSearch = useCallback(async (query: string) => {
+    const currentGen = ++searchGenRef.current;
     const parsed = parseQuery(query);
     setParsedQuery(parsed);
 
@@ -111,15 +114,19 @@ export const LivePanel: React.FC<LivePanelProps> = ({
           scope: searchScope,
           vaultItems,
         });
+        if (currentGen !== searchGenRef.current) return;
         setSearchResults(result.results);
       })();
       searchPromiseRef.current = searchPromise;
       await searchPromise;
+      if (currentGen !== searchGenRef.current) return;
     } catch (error) {
       logger.error('[LivePanel] Search failed:', error);
       setSearchResults([]);
     } finally {
-      setIsSearching(false);
+      if (currentGen === searchGenRef.current) {
+        setIsSearching(false);
+      }
     }
   }, [searchScope, vaultItems, setSearchResults, setIsSearching, setParsedQuery]);
 
@@ -130,14 +137,14 @@ export const LivePanel: React.FC<LivePanelProps> = ({
 
     searchDebounceRef.current = setTimeout(() => {
       runSearch(searchQuery);
-    }, appearanceSettings.searchDebounce ?? 100);
+    }, searchDebounce ?? SEARCH_DEBOUNCE_MS);
 
     return () => {
       if (searchDebounceRef.current) {
         clearTimeout(searchDebounceRef.current);
       }
     };
-  }, [searchQuery, runSearch]);
+  }, [searchQuery, runSearch, searchDebounce]);
 
   const handleExecuteCommands = useCallback(async () => {
     if (!parsedQuery || !hasCommands(parsedQuery) || searchResults.length === 0) return;
@@ -150,6 +157,12 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     if (searchPromiseRef.current) {
       await searchPromiseRef.current;
     }
+
+    const currentState = useStore.getState();
+    const currentParsedQuery = currentState.parsedQuery;
+    const currentSearchResults = currentState.searchResults;
+
+    if (!currentParsedQuery || !hasCommands(currentParsedQuery) || currentSearchResults.length === 0) return;
 
     setIsSearching(true);
     try {
