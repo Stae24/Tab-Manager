@@ -29,16 +29,20 @@ async function openExtensionTab(): Promise<chrome.tabs.Tab | undefined> {
     
     if (tabs.length > 0) {
       const existingTab = tabs[0];
-      backgroundLogger.debug('Background', 'Found existing tab, focusing:', existingTab.id);
-      await chrome.tabs.update(existingTab.id, { active: true });
-      if (existingTab.windowId) {
-        await chrome.windows.update(existingTab.windowId, { focused: true });
+      if (typeof existingTab.id === 'number') {
+        backgroundLogger.debug('Background', 'Found existing tab, focusing:', existingTab.id);
+        const updatedTab = await chrome.tabs.update(existingTab.id, { active: true });
+        if (existingTab.windowId) {
+          await chrome.windows.update(existingTab.windowId, { focused: true });
+        }
+        return updatedTab ?? existingTab;
+      } else {
+        backgroundLogger.debug('Background', 'Existing tab has no valid ID, creating new tab');
       }
-      return existingTab;
     }
   }
 
-  const tab = await chrome.tabs.create({ url: 'index.html' });
+  const tab = await chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
   backgroundLogger.debug('Background', 'Created tab:', { id: tab.id, url: tab.url, pendingUrl: tab.pendingUrl });
 
   backgroundLogger.debug('Background', 'Auto-pin setting:', settings.autoPinTabManager);
@@ -57,13 +61,21 @@ async function openExtensionTab(): Promise<chrome.tabs.Tab | undefined> {
 }
 
 chrome.action.onClicked.addListener(async () => {
-  await openExtensionTab();
+  try {
+    await openExtensionTab();
+  } catch (error) {
+    backgroundLogger.error('Background', 'Error in action.onClicked listener:', error);
+  }
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'toggle-island-manager') {
     backgroundLogger.debug('Background', 'Keyboard shortcut triggered');
-    await openExtensionTab();
+    try {
+      await openExtensionTab();
+    } catch (error) {
+      backgroundLogger.error('Background', 'Error in commands.onCommand listener:', error);
+    }
   }
 });
 

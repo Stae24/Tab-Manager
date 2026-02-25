@@ -3,7 +3,7 @@
   "name": "Opera GX Island Manager",
   "version": "1.0.0",
   "description": "Advanced tab and island manager with cloud sync and memory optimization.",
-  "permissions": ["tabs", "tabGroups", "storage", "unlimitedStorage", "sidePanel", "commands"],
+  "permissions": ["tabs", "tabGroups", "storage", "unlimitedStorage", "sidePanel"],
   "host_permissions": ["<all_urls>"],
 
   "web_accessible_resources": [

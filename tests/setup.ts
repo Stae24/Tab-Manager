@@ -47,6 +47,7 @@ const chromeMock = {
   },
   commands: {
     onCommand: { addListener: vi.fn(), removeListener: vi.fn() },
+    getAll: vi.fn().mockResolvedValue([]),
   },
   windows: {
     WINDOW_ID_CURRENT: -2,
