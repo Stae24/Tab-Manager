@@ -185,6 +185,7 @@ export interface AppearanceSettings {
   sidebarLayoutMode: SidebarLayoutMode;
   sidebarDockSide: SidebarDockSide;
   sidebarWidthPx: number;
+  sidebarWidthMaxPct: number;
   sidebarToggleHotkey: HotkeyBinding;
   managerPageHotkey: HotkeyBinding;
 
