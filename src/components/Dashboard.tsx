@@ -29,7 +29,7 @@ import { TabCard } from './TabCard';
 import { QuotaExceededModal, QuotaExceededAction } from './QuotaExceededModal';
 import { useStore, parseNumericId, findItemInList, isVaultId } from '../store/useStore';
 import { cn } from '../utils/cn';
-import { closeTab, createIsland } from '../utils/chromeApi';
+import { closeTab, closeTabs, createIsland } from '../utils/chromeApi';
 import { Island as IslandType, Tab as TabType, UniversalId, LiveItem, VaultItem } from '../types/index';
 import { ErrorBoundary } from './ErrorBoundary';
 import { logger } from '../utils/logger';
@@ -188,10 +188,20 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleCloseTab = async (tabId: UniversalId) => {
+  const handleDeleteTab = async (tabId: UniversalId) => {
     const numericId = parseNumericId(tabId);
     if (numericId !== null) {
       await closeTab(numericId);
+    }
+  };
+
+  const handleDeleteIsland = async (islandId: UniversalId) => {
+    const island = islands.find(i => String(i.id) === String(islandId));
+    if (island && 'tabs' in island) {
+      const tabIds = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
+      if (tabIds.length > 0) {
+        await closeTabs(tabIds);
+      }
     }
   };
 
@@ -517,7 +527,8 @@ export const Dashboard: React.FC = () => {
                 handleTabClick={handleTabClick}
                 moveToVault={moveToVault}
                 saveToVault={saveToVault}
-                closeTab={handleCloseTab}
+                closeTab={handleDeleteTab}
+                onDeleteIsland={handleDeleteIsland}
                 onRenameGroup={renameGroup}
                 onToggleCollapse={toggleLiveGroupCollapse}
                 isDraggingGroup={isDraggingGroup}

@@ -8,6 +8,7 @@ import {
     Sparkles,
     CheckCircle2,
     Volume2,
+    Volume1,
     VolumeX,
     Snowflake
 } from 'lucide-react';
@@ -22,6 +23,8 @@ import type {
     FaviconSize,
     AudioIndicatorMode
 } from '../types';
+
+type TabDensity = AppearanceSettings['tabDensity'];
 
 interface TabSettingsProps {
     appearanceSettings: AppearanceSettings;
@@ -53,8 +56,10 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
                         { value: 'spacious', label: 'Spacious', icon: Plus },
                     ].map((density) => (
                         <button
+                            type="button"
                             key={density.value}
-                            onClick={() => setAppearanceSettings({ tabDensity: density.value as any })}
+                            onClick={() => setAppearanceSettings({ tabDensity: density.value as TabDensity })}
+                            aria-pressed={appearanceSettings.tabDensity === density.value}
                             className={cn(
                                 "flex flex-col items-center gap-2 p-4 rounded-lg border transition-all",
                                 appearanceSettings.tabDensity === density.value
@@ -92,7 +97,12 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
                 <div className="mt-4 space-y-4">
                     <Dropdown
                         value={appearanceSettings.faviconSource}
-                        onChange={(value) => setAppearanceSettings({ faviconSource: value as FaviconSource })}
+                        onChange={(value) => {
+                            setAppearanceSettings({ faviconSource: value as FaviconSource });
+                            if (appearanceSettings.faviconFallback === value) {
+                                setAppearanceSettings({ faviconFallback: 'none' });
+                            }
+                        }}
                         options={[
                             { value: 'google', label: 'Google (32px)' },
                             { value: 'google-hd', label: 'Google HD (128px)' },
@@ -101,6 +111,7 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
                             { value: 'chrome', label: 'Chrome Extension' },
                         ]}
                         label="Primary Source"
+                        disabled={!appearanceSettings.showFavicons}
                     />
                     <Dropdown
                         value={appearanceSettings.faviconSize}
@@ -112,6 +123,7 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
                             { value: '128', label: '128px (Extra Large)' },
                         ]}
                         label="Icon Size"
+                        disabled={!appearanceSettings.showFavicons}
                     />
                     <Dropdown
                         value={appearanceSettings.faviconFallback}
@@ -125,6 +137,7 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
                             ...(appearanceSettings.faviconSource !== 'chrome' ? [{ value: 'chrome', label: 'Chrome Extension' }] : []),
                         ]}
                         label="Fallback Source"
+                        disabled={!appearanceSettings.showFavicons}
                     />
                 </div>
             </CollapsibleSection>
@@ -158,7 +171,7 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
                         { value: 'off', label: 'Hidden', icon: VolumeX },
                         { value: 'playing', label: 'Only when Playing', icon: Volume2 },
                         { value: 'muted', label: 'Only when Muted', icon: VolumeX },
-                        { value: 'both', label: 'Show Both', icon: Volume2 },
+                        { value: 'both', label: 'Show Both', icon: Volume1 },
                     ]}
                     label="Display Logic"
                 />

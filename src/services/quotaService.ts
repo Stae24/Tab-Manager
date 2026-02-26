@@ -10,7 +10,7 @@ import {
   QUOTA_WARNING_THRESHOLD,
   QUOTA_CRITICAL_THRESHOLD
 } from '../constants';
-import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY, getVaultChunkKeys } from './storageKeys';
+import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY, getVaultChunkKeys, SETTINGS_KEYS } from './storageKeys';
 import { logger } from '../utils/logger';
 
 export type StorageHealthStatus = 'healthy' | 'degraded' | 'critical';
@@ -43,11 +43,17 @@ async function countOrphanedChunks(): Promise<number> {
   }
 }
 
+function classifyStorageHealth(syncUsageRatio: number, orphanCount: number): StorageHealthStatus {
+  if (syncUsageRatio > 0.95) return 'critical';
+  if (syncUsageRatio > 0.85) return 'degraded';
+  if (orphanCount > 5) return 'degraded';
+  return 'healthy';
+}
+
 export const quotaService = {
   getVaultQuota: async (): Promise<VaultQuotaInfo> => {
-    const settingsKeys = ['appearanceSettings', 'dividerPosition', 'showVault', 'vaultSyncEnabled', 'settingsPanelWidth'];
     const [settingsBytes, vaultKeys] = await Promise.all([
-      chrome.storage.sync.getBytesInUse(settingsKeys),
+      chrome.storage.sync.getBytesInUse(SETTINGS_KEYS),
       getVaultChunkKeys()
     ]);
 
@@ -129,11 +135,7 @@ export const quotaService = {
 
       const syncUsageRatio = syncStats / CHROME_SYNC_QUOTA_BYTES;
 
-      if (syncUsageRatio > 0.95) return 'critical';
-      if (syncUsageRatio > 0.85) return 'degraded';
-      if (orphanedCount > 5) return 'degraded';
-
-      return 'healthy';
+      return classifyStorageHealth(syncUsageRatio, orphanedCount);
     } catch {
       return 'degraded';
     }
@@ -164,12 +166,7 @@ export const quotaService = {
       ).length;
 
       const syncUsageRatio = syncBytesInUse / CHROME_SYNC_QUOTA_BYTES;
-      let health: StorageHealthStatus = 'healthy';
-      if (syncUsageRatio > 0.95 || orphanedChunks > 5) {
-        health = 'critical';
-      } else if (syncUsageRatio > 0.85 || orphanedChunks > 0) {
-        health = 'degraded';
-      }
+      const health = classifyStorageHealth(syncUsageRatio, orphanedChunks);
 
       const vault = (localData[LEGACY_VAULT_KEY] || localData.vault_backup || []) as VaultItem[];
 
@@ -198,14 +195,15 @@ export const quotaService = {
 
   logQuotaDetails: async (): Promise<VaultQuotaInfo> => {
     const quota = await quotaService.getVaultQuota();
-    logger.info('QuotaService', '📊 Detailed quota status:');
-    logger.info('QuotaService', `  - Settings reserve: ${SYNC_SETTINGS_RESERVE_BYTES} bytes`);
-    logger.info('QuotaService', `  - Total sync quota: ${CHROME_SYNC_QUOTA_BYTES} bytes`);
-    logger.info('QuotaService', `  - Available for vault (capacity): ${quota.total} bytes`);
-    logger.info('QuotaService', `  - Currently used by vault: ${quota.used} bytes`);
-    logger.info('QuotaService', `  - Free space: ${quota.available} bytes`);
-    logger.info('QuotaService', `  - Usage percentage: ${Math.round(quota.percentage * 100)}%`);
-    logger.info('QuotaService', `  - Warning level: ${quota.warningLevel}`);
+    logger.info('QuotaService', 'QuotaService: Detailed quota status', {
+      settingsReserve: SYNC_SETTINGS_RESERVE_BYTES,
+      totalSyncQuota: CHROME_SYNC_QUOTA_BYTES,
+      totalVaultCapacity: quota.total,
+      usedByVault: quota.used,
+      availableForVault: quota.available,
+      usagePercentage: Math.round(quota.percentage * 100),
+      warningLevel: quota.warningLevel
+    });
     return quota;
   }
 };

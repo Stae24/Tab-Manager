@@ -19,6 +19,7 @@ interface VirtualizedLiveListProps {
     closeTab: (id: UniversalId) => void;
     onRenameGroup: (id: UniversalId, title: string) => void;
     onToggleCollapse: (id: UniversalId) => void;
+    onDeleteIsland?: (id: UniversalId) => void;
     isDraggingGroup?: boolean;
     isDraggingVaultItem?: boolean;
     isCreatingIsland: boolean;
@@ -39,6 +40,7 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
     closeTab,
     onRenameGroup,
     onToggleCollapse,
+    onDeleteIsland,
     isDraggingGroup,
     isDraggingVaultItem,
     isCreatingIsland,
@@ -75,30 +77,30 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
                             >
                                 {row.type === 'gap' ? (
                                     <DroppableGap index={row.index} panelType="live" isDraggingGroup={isDraggingGroup} />
+                                ) : !row.item ? (
+                                    null
+                                ) : 'tabs' in row.item ? (
+                                    <Island
+                                        island={row.item as IslandType}
+                                        onTabClick={(tab) => handleTabClick(tab.id)}
+                                        onNonDestructiveSave={() => saveToVault(row.item)}
+                                        onSave={() => moveToVault(row.item.id)}
+                                        onDelete={() => onDeleteIsland ? onDeleteIsland(row.item.id) : (row.item as IslandType).tabs?.forEach((t: TabType) => closeTab(t.id))}
+                                        onRename={(title) => onRenameGroup(row.item.id, title)}
+                                        onToggleCollapse={() => onToggleCollapse(row.item.id)}
+                                        onTabSave={(tab) => saveToVault(tab)}
+                                        onTabClose={(id) => closeTab(id)}
+                                        disabled={!!searchQuery}
+                                    />
                                 ) : (
-                                    row.item && 'tabs' in row.item ? (
-                                        <Island
-                                            island={row.item as IslandType}
-                                            onTabClick={(tab) => handleTabClick(tab.id)}
-                                            onNonDestructiveSave={() => saveToVault(row.item)}
-                                            onSave={() => moveToVault(row.item.id)}
-                                            onDelete={() => (row.item as IslandType).tabs?.forEach((t: TabType) => closeTab(t.id))}
-                                            onRename={(title) => onRenameGroup(row.item.id, title)}
-                                            onToggleCollapse={() => onToggleCollapse(row.item.id)}
-                                            onTabSave={(tab) => saveToVault(tab)}
-                                            onTabClose={(id) => closeTab(id)}
-                                            disabled={!!searchQuery}
-                                        />
-                                    ) : (
-                                        <TabCard
-                                            tab={row.item as TabType}
-                                            onClick={() => handleTabClick(row.item.id)}
-                                            onSave={() => saveToVault(row.item)}
-                                            onClose={() => closeTab(row.item.id)}
-                                            disabled={!!searchQuery}
-                                            isLoading={isCreatingIsland && creatingTabId === row.item.id}
-                                        />
-                                    )
+                                    <TabCard
+                                        tab={row.item as TabType}
+                                        onClick={() => handleTabClick(row.item.id)}
+                                        onSave={() => saveToVault(row.item)}
+                                        onClose={() => closeTab(row.item.id)}
+                                        disabled={!!searchQuery}
+                                        isLoading={isCreatingIsland && creatingTabId === row.item.id}
+                                    />
                                 )}
                             </div>
                         );
@@ -118,7 +120,7 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
                     "p-10 border-2 border-dashed border-gx-gray/50 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group flex-shrink-0 cursor-pointer",
                     isCreatingIsland && "border-gx-cyan bg-gx-cyan/5 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse-glow",
                     !isCreatingIsland && isCreateOver && !isDraggingGroup && !isDraggingVaultItem && "border-gx-accent bg-gx-accent/10",
-                    !isCreatingIsland && !isCreateOver && "hover:border-gx-accent/50 hover:bg-gx-accent/5",
+                    !isCreatingIsland && !isCreateOver && !(isDraggingGroup || isDraggingVaultItem) && "hover:border-gx-accent/50 hover:bg-gx-accent/5",
                     (isDraggingGroup || isDraggingVaultItem) && "opacity-30 cursor-not-allowed grayscale"
                 )}
             >

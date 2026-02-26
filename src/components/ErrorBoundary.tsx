@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    logger.error('ErrorBoundary', `Module: ${this.props.name || 'Global'}`, error, errorInfo);
+    logger.error('ErrorBoundary', error, errorInfo);
     this.setState({ errorInfo });
   }
 

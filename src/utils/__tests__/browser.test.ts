@@ -158,7 +158,8 @@ describe('browser utilities', () => {
       await initBrowserCapabilities();
 
       expect(logger.info).toHaveBeenCalledWith(
-        '[initBrowserCapabilities] Brave detected - visual refresh workaround enabled'
+        'BrowserUtils',
+        'Brave detected - visual refresh workaround enabled'
       );
     });
 

@@ -11,6 +11,10 @@ interface ToggleProps {
 export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, description }) => {
     return (
         <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            aria-label={label || 'Toggle'}
             onClick={() => onChange(!checked)}
             className={cn(
                 "flex items-center gap-3 w-full p-3 rounded-lg transition-all border",
@@ -21,13 +25,13 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, descri
         >
             <div
                 className={cn(
-                    "w-11 h-6 rounded-full p-1 flex items-center transition-all duration-300",
-                    checked ? "bg-gx-accent justify-end" : "bg-gx-gray justify-start"
+                    "w-11 h-6 rounded-full p-1 transition-all duration-300",
+                    checked ? "bg-gx-accent" : "bg-gx-gray"
                 )}
             >
                 <div className={cn(
-                    "w-4 h-4 rounded-full shadow-lg transition-all duration-300",
-                    checked ? "bg-white shadow-gx-accent/50" : "bg-gray-400"
+                    "w-4 h-4 rounded-full shadow-lg transform transition-transform duration-300",
+                    checked ? "bg-white shadow-gx-accent/50 translate-x-5" : "bg-gray-400 translate-x-0"
                 )} />
             </div>
             {(label || description) && (

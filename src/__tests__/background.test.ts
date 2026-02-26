@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { REFRESH_UI_DELAY_MS } from '../constants';
 
 type MockFn = ReturnType<typeof vi.fn>;
 
@@ -62,7 +63,7 @@ const chromeMock = {
     },
   },
   sidePanel: {
-    open: vi.fn().mockResolvedValue(undefined),
+    open: vi.fn().mockImplementation(() => Promise.resolve()),
   },
 };
 
@@ -576,36 +577,45 @@ describe('background - notifyUI Function', () => {
   it('sends REFRESH_TABS message when not in progress', async () => {
     vi.useFakeTimers();
 
-    await import('../background');
+    try {
+      await import('../background');
 
-    const tabCreatedHandler = (chrome.tabs.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
-    tabCreatedHandler({ id: 1 });
+      const tabCreatedHandler = (chrome.tabs.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
+      tabCreatedHandler({ id: 1 });
 
-    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'REFRESH_TABS' });
-
-    vi.useRealTimers();
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'REFRESH_TABS' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('delays refresh when island creation is in progress', async () => {
     vi.useFakeTimers();
 
-    await import('../background');
+    try {
+      await import('../background');
 
-    const { messageListener } = await import('../background');
-    messageListener({ type: 'START_ISLAND_CREATION' }, {} as any, vi.fn());
+      const { messageListener } = await import('../background');
+      messageListener({ type: 'START_ISLAND_CREATION' }, {} as any, vi.fn());
 
-    const tabCreatedHandler = (chrome.tabs.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
-    tabCreatedHandler({ id: 1 });
+      const tabCreatedHandler = (chrome.tabs.onCreated.addListener as unknown as MockFn).mock.calls[0]?.[0];
+      tabCreatedHandler({ id: 1 });
 
-    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
 
-    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
 
-    messageListener({ type: 'END_ISLAND_CREATION' }, {} as any, vi.fn());
+      messageListener({ type: 'END_ISLAND_CREATION' }, {} as any, vi.fn());
 
-    vi.useRealTimers();
+      vi.advanceTimersByTime(REFRESH_UI_DELAY_MS);
+
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'REFRESH_TABS' });
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

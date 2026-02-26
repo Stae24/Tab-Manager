@@ -374,7 +374,11 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
     const { appearanceSettings: freshSettings, effectiveSyncEnabled: freshEffective } = get();
     logger.info('VaultSlice', `saveToVault: Calling persistVault with syncEnabled=${freshSettings.vaultSyncEnabled} effectiveSyncEnabled=${freshEffective}`);
-    await persistVault(newVault, freshSettings.vaultSyncEnabled, previousVault);
+    const result = await persistVault(newVault, freshSettings.vaultSyncEnabled, previousVault);
+    if (!result.success) {
+      logger.error('VaultSlice', `saveToVault: persistVault failed with error ${result.error}. Rolling back.`);
+      set({ vault: previousVault });
+    }
   },
 
   restoreFromVault: async (id) => {

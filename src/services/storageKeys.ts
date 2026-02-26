@@ -3,10 +3,12 @@ import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY } from '../constan
 
 export { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY };
 
+export const SETTINGS_KEYS = ['appearanceSettings', 'dividerPosition', 'showVault', 'vaultSyncEnabled', 'settingsPanelWidth'];
+
 export async function getVaultChunkKeys(): Promise<string[]> {
   const metaResult = await chrome.storage.sync.get(VAULT_META_KEY);
   const meta = metaResult[VAULT_META_KEY] as VaultMeta | undefined;
-  
+
   if (meta && Array.isArray(meta.chunkKeys)) {
     return [VAULT_META_KEY, ...meta.chunkKeys];
   }

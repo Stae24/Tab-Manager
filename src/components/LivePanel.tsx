@@ -28,6 +28,7 @@ interface LivePanelProps {
   closeTab: (id: UniversalId) => void;
   onRenameGroup: (id: UniversalId, title: string) => void;
   onToggleCollapse: (id: UniversalId) => void;
+  onDeleteIsland?: (id: UniversalId) => void;
   isDraggingGroup?: boolean;
   isDraggingVaultItem?: boolean;
   groupSearchResults: (tabs: TabType[]) => Promise<void>;
@@ -49,6 +50,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   closeTab,
   onRenameGroup,
   onToggleCollapse,
+  onDeleteIsland,
   isDraggingGroup,
   isDraggingVaultItem,
   groupSearchResults,
@@ -245,25 +247,13 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [searchQuery]);
 
-  const handleCollapseAll = async () => {
-    const groupIds = (islands || []).filter(i => i && 'tabs' in i).map(i => i.id);
-    for (const id of groupIds) {
-      const island = islands.find(i => String(i.id) === String(id));
-      if (island && 'collapsed' in island && !island.collapsed) {
-        onToggleCollapse(id);
+  const handleToggleAll = useCallback(async (targetCollapsed: boolean) => {
+    (islands || []).forEach(island => {
+      if (island && 'tabs' in island && island.collapsed !== targetCollapsed) {
+        onToggleCollapse(island.id);
       }
-    }
-  };
-
-  const handleExpandAll = async () => {
-    const groupIds = (islands || []).filter(i => i && 'tabs' in i).map(i => i.id);
-    for (const id of groupIds) {
-      const island = islands.find(i => String(i.id) === String(id));
-      if (island && 'collapsed' in island && island.collapsed) {
-        onToggleCollapse(id);
-      }
-    }
-  };
+    });
+  }, [islands, onToggleCollapse]);
 
   const handleDeleteDuplicates = async () => {
     setIsCleaning(true);
@@ -312,7 +302,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             {!searchQuery && (
               <div className="flex items-center bg-gx-gray/80 rounded-lg p-0.5 border border-white/5 shadow-inner">
                 <button
-                  onClick={handleCollapseAll}
+                  onClick={() => handleToggleAll(true)}
                   title="Collapse All"
                   className="p-1 hover:bg-gx-accent/20 hover:text-gx-accent rounded transition-all group"
                 >
@@ -320,7 +310,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                 </button>
                 <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
                 <button
-                  onClick={handleExpandAll}
+                  onClick={() => handleToggleAll(false)}
                   title="Expand All"
                   className="p-1 hover:bg-gx-accent/20 hover:text-gx-accent rounded transition-all group"
                 >
@@ -380,7 +370,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             )}
 
             <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">
-              {searchQuery ? `${displayTabs.length}` : (islands || []).reduce((acc, i) => acc + (i && 'tabs' in i && i.tabs ? i.tabs.length : 1), 0)}
+              {searchQuery ? displayTabs.length : (islands || []).reduce((acc, i) => acc + (i && 'tabs' in i && i.tabs ? i.tabs.length : 1), 0)}
             </span>
           </div>
         </div>
@@ -447,6 +437,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             closeTab={closeTab}
             onRenameGroup={onRenameGroup}
             onToggleCollapse={onToggleCollapse}
+            onDeleteIsland={onDeleteIsland}
             isDraggingGroup={isDraggingGroup}
             isDraggingVaultItem={isDraggingVaultItem}
             isCreatingIsland={isCreatingIsland}

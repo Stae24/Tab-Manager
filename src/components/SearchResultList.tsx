@@ -5,7 +5,7 @@ import { TabCard } from './TabCard';
 import { VIRTUAL_ROW_GAP_PX } from '../constants';
 import { Tab as TabType, UniversalId } from '../types';
 
-interface SearchResultListProps {
+export interface SearchResultListProps {
     isSearching: boolean;
     displayTabs: TabType[];
     searchQuery: string;
@@ -42,8 +42,8 @@ export const SearchResultList: React.FC<SearchResultListProps> = ({
             <div className="flex flex-col items-center justify-center h-48 text-gray-600 opacity-40">
                 <Search size={48} className="mb-4" />
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-center">
-                    No tabs found<br />
-                    for "{searchQuery}"
+                    No tabs found
+                    {searchQuery && <><br />for "{searchQuery}"</>}
                 </p>
             </div>
         );
@@ -51,7 +51,6 @@ export const SearchResultList: React.FC<SearchResultListProps> = ({
 
     return (
         <div
-            key="search-results-list"
             className="search-mode-enter relative"
             style={{ height: `${searchVirtualizer.getTotalSize()}px`, width: '100%' }}
         >

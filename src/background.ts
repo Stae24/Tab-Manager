@@ -179,7 +179,9 @@ export function messageListener(
   }
 
   if (message.type === 'SIDEBAR_TOGGLE_WINDOW') {
-    const windowId = message.windowId || sender.tab?.windowId;
+    // Note: Chrome's sidePanel API has no close/toggle method - only open() is available.
+    // To implement true toggle, we would need to track open state externally.
+    const windowId = message.windowId ?? sender.tab?.windowId;
     if (windowId !== undefined) {
       chrome.sidePanel.open({ windowId }).then(() => {
         sendResponse({ success: true, isOpen: true });

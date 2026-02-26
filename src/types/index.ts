@@ -131,6 +131,8 @@ export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | '
 export type FaviconFallback = FaviconSource | 'none';
 export type FaviconSize = '16' | '32' | '64' | '128';
 
+export type LoadingSpinnerStyle = 'pulse' | 'dots' | 'bars' | 'ring';
+
 export interface AppearanceSettings {
   // v1 - Essential
   theme: ThemeMode;
@@ -185,7 +187,13 @@ export interface AppearanceSettings {
   sidebarLayoutMode: SidebarLayoutMode;
   sidebarDockSide: SidebarDockSide;
   sidebarWidthPx: number;
-  sidebarWidthMaxPct: number;
+  /**
+   * Maximum sidebar width as a percentage of viewport width (0-100).
+   * When both sidebarWidthMaxPct and sidebarWidthPx are set, the effective
+   * max width is the lesser of the two constraints; sidebarWidthPx takes
+   * precedence if it results in a smaller width.
+   */
+  sidebarWidthMaxPct?: number;
   sidebarToggleHotkey: HotkeyBinding;
   managerPageHotkey: HotkeyBinding;
 

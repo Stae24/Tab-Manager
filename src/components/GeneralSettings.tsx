@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Sparkles, MousePointer, MoreHorizontal, Type, Pin, Keyboard, Search as SearchIcon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, MousePointer, SlidersHorizontal, MoreHorizontal, Type, Pin, Keyboard, Search as SearchIcon } from 'lucide-react';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Dropdown } from './ui/Dropdown';
 import { Slider } from './ui/Slider';
@@ -14,7 +14,7 @@ import {
     SEARCH_DEBOUNCE_MS
 } from '../constants';
 import { logger } from '../utils/logger';
-import type { AppearanceSettings, AnimationIntensity, IconPack, ButtonSize } from '../types';
+import type { AppearanceSettings, AnimationIntensity, IconPack, ButtonSize, LoadingSpinnerStyle } from '../types';
 
 interface GeneralSettingsProps {
     appearanceSettings: AppearanceSettings;
@@ -31,6 +31,15 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
 }) => {
     const [shortcutCopied, setShortcutCopied] = useState(false);
     const shortcutTimeoutRef = useRef<number | undefined>(undefined);
+
+    useEffect(() => {
+        return () => {
+            if (shortcutTimeoutRef.current) {
+                clearTimeout(shortcutTimeoutRef.current);
+                shortcutTimeoutRef.current = undefined;
+            }
+        };
+    }, []);
 
     return (
         <>
@@ -80,7 +89,7 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             >
                 <Dropdown
                     value={appearanceSettings.loadingSpinnerStyle}
-                    onChange={(value) => setAppearanceSettings({ loadingSpinnerStyle: value as any })}
+                    onChange={(value) => setAppearanceSettings({ loadingSpinnerStyle: value as LoadingSpinnerStyle })}
                     options={[
                         { value: 'pulse', label: 'Pulse Glow' },
                         { value: 'dots', label: 'Three Dots' },
@@ -113,7 +122,7 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             <CollapsibleSection
                 id="button-size"
                 title="Button Size"
-                icon={MousePointer}
+                icon={SlidersHorizontal}
                 isExpanded={expandedSections.has('button-size')}
                 onToggle={() => toggleSection('button-size')}
             >

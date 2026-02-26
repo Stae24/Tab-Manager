@@ -13,7 +13,7 @@ export interface SidebarSettings {
   managerPageHotkey: HotkeyBinding;
 }
 
-export let settings: SidebarSettings = {
+export const settings: SidebarSettings = {
   sidebarToggleHotkey: { code: 'Space', ctrl: true, meta: true, alt: false, shift: true },
   managerPageHotkey: { code: 'KeyM', ctrl: true, meta: true, alt: false, shift: true }
 };
@@ -33,7 +33,7 @@ export const handleKeyDown = (event: KeyboardEvent): void => {
     event.preventDefault();
     chrome.runtime.sendMessage({
       type: 'SIDEBAR_TOGGLE_WINDOW'
-    }).catch(() => { });
+    }).catch((err) => { console.debug("sendMessage SIDEBAR_TOGGLE_WINDOW", err); });
     return;
   }
 
@@ -41,14 +41,14 @@ export const handleKeyDown = (event: KeyboardEvent): void => {
     event.preventDefault();
     chrome.runtime.sendMessage({
       type: 'OPEN_MANAGER_PAGE'
-    }).catch(() => { });
+    }).catch((err) => { console.debug("sendMessage OPEN_MANAGER_PAGE", err); });
   }
 };
 
 export const isRestrictedPage = (): boolean => {
   const url = window.location.href;
   const managerUrl = chrome.runtime.getURL('index.html');
-  return url === managerUrl || url.startsWith('chrome://') || url.startsWith('about:');
+  return url.startsWith(managerUrl) || url.startsWith('chrome://') || url.startsWith('about:');
 };
 
 export const initialize = (): void => {
@@ -71,7 +71,7 @@ export const initialize = (): void => {
   document.addEventListener('keydown', handleKeyDown);
 };
 
-// Auto-initialize if not in a test environment
-if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
+// Auto-initialize by default
+if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
   initialize();
 }

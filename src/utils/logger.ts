@@ -6,7 +6,7 @@ export const setDebugMode = (enabled: boolean) => {
   debugModeEnabled = enabled;
 };
 
-const formatMessage = (level: LogLevel, context: string, ...args: unknown[]): void => {
+const logMessage = (level: LogLevel, context: string, ...args: unknown[]): void => {
   const timestamp = new Date().toISOString();
   const levelPrefix = level.toUpperCase().padEnd(5);
   const prefix = `[${timestamp}] [${levelPrefix}] [${context}]`;
@@ -16,7 +16,7 @@ const formatMessage = (level: LogLevel, context: string, ...args: unknown[]): vo
       if (debugModeEnabled) console.debug(prefix, ...args);
       break;
     case 'info':
-      if (debugModeEnabled) console.info(prefix, ...args);
+      console.info(prefix, ...args);
       break;
     case 'warn':
       console.warn(prefix, ...args);
@@ -28,8 +28,8 @@ const formatMessage = (level: LogLevel, context: string, ...args: unknown[]): vo
 };
 
 export const logger = {
-  debug: (context: string, ...args: unknown[]) => formatMessage('debug', context, ...args),
-  info: (context: string, ...args: unknown[]) => formatMessage('info', context, ...args),
-  warn: (context: string, ...args: unknown[]) => formatMessage('warn', context, ...args),
-  error: (context: string, ...args: unknown[]) => formatMessage('error', context, ...args),
+  debug: (context: string, ...args: unknown[]) => logMessage('debug', context, ...args),
+  info: (context: string, ...args: unknown[]) => logMessage('info', context, ...args),
+  warn: (context: string, ...args: unknown[]) => logMessage('warn', context, ...args),
+  error: (context: string, ...args: unknown[]) => logMessage('error', context, ...args),
 };

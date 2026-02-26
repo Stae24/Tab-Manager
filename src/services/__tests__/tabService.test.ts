@@ -426,22 +426,19 @@ describe('tabService', () => {
       expect(result).toBe(false);
     });
 
-    it('retries on editable error', async () => {
+    it('does not retry on editable error (permanent failure)', async () => {
       let callCount = 0;
       mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
         callCount++;
-        if (callCount < 2) {
-          mockRuntimeLastError = { message: 'Group is not editable' };
-        } else {
-          mockRuntimeLastError = null;
-        }
+        mockRuntimeLastError = { message: 'Group is not editable' };
         callback();
         return Promise.resolve({ id: 100 });
       });
 
       const result = await tabService.updateTabGroup(100, { title: 'Test' });
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
+      expect(callCount).toBe(1);
     }, 10000);
   });
 

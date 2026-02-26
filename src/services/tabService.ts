@@ -13,9 +13,7 @@ const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = M
       const msg = error instanceof Error ? error.message : String(error);
       const isRetryable = msg.includes('Tab cannot be modified') ||
         msg.includes('dragging') ||
-        msg.includes('moving') ||
-        msg.includes('tabs cannot be edited') ||
-        msg.includes('editable');
+        msg.includes('moving');
 
       if (isRetryable && attempt < maxAttempts) {
         const delay = TAB_ACTION_RETRY_DELAY_BASE * Math.pow(2, attempt - 1);
@@ -157,7 +155,7 @@ export const tabService = {
         return null;
       }
 
-      await getBrowserCapabilities();
+      getCachedCapabilities();
 
       if (finalTabIds.length === 1 && needsCompanionTabForSingleTabGroup()) {
         try {
@@ -292,10 +290,7 @@ export const tabService = {
   },
 
   closeTabs: async (tabIds: number | number[]) => {
-    if (Array.isArray(tabIds)) {
-      return chrome.tabs.remove(tabIds);
-    }
-    return chrome.tabs.remove(tabIds);
+    return chrome.tabs.remove(tabIds as number & number[]);
   },
 
   copyTabUrl: async (tabId: number) => {
@@ -369,7 +364,7 @@ export const tabService = {
       );
 
       if (!targetWindow.id) {
-        logger.error('TabService', 'groupSearchResults: No target window found');
+        logger.error('TabService', 'consolidateAndGroupTabs: No target window found');
         return undefined;
       }
 
@@ -403,7 +398,7 @@ export const tabService = {
             );
             tabsToGroup.push(tab.id as number);
           } catch (error) {
-            logger.error('TabService', `groupSearchResults: Failed to move tab ${tab.id}:`, error);
+            logger.error('TabService', `consolidateAndGroupTabs: Failed to move tab ${tab.id}:`, error);
           }
         } else {
           tabsToGroup.push(tab.id as number);
@@ -426,13 +421,13 @@ export const tabService = {
           let newGroupSize = 0;
 
           for (const tab of allTabs) {
-            if (String(tab.groupId) === String(groupId)) {
+            if (tab.groupId === groupId) {
               if (newGroupStartIndex === -1) newGroupStartIndex = tab.index;
               newGroupSize++;
             }
 
             const isOtherGroup = tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE &&
-              String(tab.groupId) !== String(groupId);
+              tab.groupId !== groupId;
 
             if (isOtherGroup) {
               if (tab.index + 1 > targetIndex) {
@@ -461,13 +456,13 @@ export const tabService = {
             await tabService.updateTabGroup(groupId, { color: groupColor as chrome.tabGroups.Color });
           }
         } catch (error) {
-          logger.error('TabService', 'groupSearchResults: Failed to group tabs:', error);
+          logger.error('TabService', 'consolidateAndGroupTabs: Failed to group tabs:', error);
         }
       }
 
       return { groupedCount: tabsToGroup.length, groupId: groupedGroupId };
     } catch (error) {
-      logger.error('TabService', 'groupSearchResults: Consolidation failed:', error);
+      logger.error('TabService', 'consolidateAndGroupTabs: Consolidation failed:', error);
       return undefined;
     }
   }

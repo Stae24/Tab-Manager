@@ -18,21 +18,19 @@ export const DevSettings: React.FC<DevSettingsProps> = ({
     toggleSection
 }) => {
     return (
-        <>
-            <CollapsibleSection
-                id="debug-mode"
-                title="Debug Mode"
-                icon={Terminal}
-                isExpanded={expandedSections.has('debug-mode')}
-                onToggle={() => toggleSection('debug-mode')}
-            >
-                <Toggle
-                    checked={appearanceSettings.debugMode}
-                    onChange={(checked) => setAppearanceSettings({ debugMode: checked })}
-                    label="Enable Debug Logs"
-                    description="Show detailed logs in the browser console for troubleshooting"
-                />
-            </CollapsibleSection>
-        </>
+        <CollapsibleSection
+            id="debug-mode"
+            title="Debug Mode"
+            icon={Terminal}
+            isExpanded={expandedSections.has('debug-mode')}
+            onToggle={() => toggleSection('debug-mode')}
+        >
+            <Toggle
+                checked={appearanceSettings.debugMode}
+                onChange={(checked) => setAppearanceSettings({ debugMode: checked })}
+                label="Enable Debug Logs"
+                description="Show detailed logs in the browser console for troubleshooting"
+            />
+        </CollapsibleSection>
     );
 };

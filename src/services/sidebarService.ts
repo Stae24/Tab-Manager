@@ -72,8 +72,24 @@ export const sidebarService = {
     }
 
     if (action === 'toggle-sidebar') {
-      // Use the native Side Panel API to open
-      await chrome.sidePanel.open({ windowId });
+      const isSticky = await this.getWindowStickyState(windowId);
+      if (isSticky) {
+        // Try to close if supported, otherwise toggle via open
+        if (chrome.sidePanel && (chrome.sidePanel as any).close) {
+          try {
+            await (chrome.sidePanel as any).close({ windowId });
+            await this.setWindowStickyState(windowId, false);
+            return;
+          } catch (err) {
+            logger.warn('SidebarService', 'Failed to close sidePanel:', err);
+          }
+        }
+      }
+
+      await chrome.sidePanel.open({ windowId }).catch((err) => {
+        logger.error('SidebarService', 'Failed to open sidePanel:', err);
+      });
+      await this.setWindowStickyState(windowId, true);
     } else if (action === 'open-manager-page') {
       await this.openManagerPage();
     }
@@ -109,11 +125,10 @@ export const sidebarService = {
 
   isRestrictedUrl(url: string | undefined): boolean {
     if (!url) return true;
-    const managerUrl = chrome.runtime.getURL('index.html');
-    return url.startsWith('chrome://') ||
+    return this.isManagerPage(url) ||
+      url.startsWith('chrome://') ||
       url.startsWith('about:') ||
-      url.startsWith('chrome-extension://') ||
-      url === managerUrl;
+      url.startsWith('chrome-extension://');
   },
 
   async setupWindowListeners(): Promise<void> {
@@ -187,7 +202,13 @@ export const sidebarService = {
 
     switch (info.menuItemId) {
       case 'toggle-sidebar':
-        await chrome.sidePanel.open({ windowId });
+        try {
+          await chrome.sidePanel.open({ windowId }).catch((err) => {
+            logger.error('SidebarService', 'Failed to open sidePanel from context menu:', err);
+          });
+        } catch (err) {
+          logger.error('SidebarService', 'Failed to open sidePanel from context menu:', err);
+        }
         break;
 
       case 'open-manager-page':
@@ -232,12 +253,15 @@ export const sidebarService = {
 export const setupSidebarMessageListener = (
   message: { type: string; windowId?: number },
   _sender: chrome.runtime.MessageSender,
-  sendResponse: (response?: { success: boolean; isOpen?: boolean; isSticky?: boolean }) => void
+  sendResponse: (response?: { success: boolean; isOpen?: boolean; isSticky?: boolean; error?: string }) => void
 ): boolean => {
   if (message.type === 'SIDEBAR_TOGGLE_WINDOW') {
     if (message.windowId !== undefined) {
       chrome.sidePanel.open({ windowId: message.windowId }).then(() => {
         sendResponse({ success: true, isOpen: true });
+      }).catch((err) => {
+        logger.error('SidebarService', 'Failed to open sidePanel:', err);
+        sendResponse({ success: false, isOpen: false, error: 'Failed to open sidePanel' });
       });
       return true;
     }
@@ -275,8 +299,13 @@ export const setupSidebarMessageListener = (
       });
       return true;
     }
-    sidebarService.getWindowStickyState(chrome.windows.WINDOW_ID_CURRENT).then((isSticky) => {
-      sendResponse({ success: true, isSticky });
+    chrome.windows.getLastFocused({ populate: false }).then((window) => {
+      const activeWindowId = window.id ?? chrome.windows.WINDOW_ID_CURRENT;
+      sidebarService.getWindowStickyState(activeWindowId).then((isSticky) => {
+        sendResponse({ success: true, isSticky });
+      });
+    }).catch(() => {
+      sendResponse({ success: false, isSticky: false, error: 'Failed to get focused window' });
     });
     return true;
   }

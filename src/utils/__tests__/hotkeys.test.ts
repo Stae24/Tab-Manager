@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
     normalizeHotkeyFromEvent,
     matchesHotkey,
@@ -54,6 +54,10 @@ describe('hotkeys util', () => {
     });
 
     describe('formatHotkey', () => {
+        afterEach(() => {
+            vi.unstubAllGlobals();
+        });
+
         it('should format non-Mac hotkey', () => {
             vi.stubGlobal('navigator', { platform: 'Win32' });
             const binding = { code: 'KeyS', ctrl: true, meta: false, alt: true, shift: true };
@@ -64,7 +68,6 @@ describe('hotkeys util', () => {
             vi.stubGlobal('navigator', { platform: 'MacIntel' });
             const binding = { code: 'KeyS', ctrl: true, meta: true, alt: true, shift: true };
             expect(formatHotkey(binding)).toBe('⌘+⌥+⇧+S');
-            vi.unstubAllGlobals();
         });
 
         it('should handle special keys', () => {
@@ -80,6 +83,15 @@ describe('hotkeys util', () => {
         it('should be valid if at least one modifier is present', () => {
             expect(isValidHotkey({ code: 'KeyA', ctrl: true, meta: false, alt: false, shift: false })).toBe(true);
             expect(isValidHotkey({ code: 'KeyA', ctrl: false, meta: false, alt: false, shift: false })).toBe(false);
+        });
+
+        it('should be invalid if code is empty', () => {
+            expect(isValidHotkey({ code: '', ctrl: true, meta: false, alt: false, shift: false })).toBe(false);
+        });
+
+        it('should be invalid if only shift is present for common keys', () => {
+            // Depending on implementation, some might allow Shift+Key, but usually we want a real modifier
+            expect(isValidHotkey({ code: 'KeyA', ctrl: false, meta: false, alt: false, shift: true })).toBe(true);
         });
     });
 
