@@ -173,7 +173,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
           'bg-gx-gray border border-white/5',
           tab.active && 'bg-gx-accent/10 border-gx-accent/40 shadow-[0_0_15px_rgba(127,34,254,0.15)]',
           tab.discarded && 'opacity-60 grayscale-[0.3]',
-          isOverlay && 'shadow-2xl scale-105 border-gx-accent opacity-100 ring-2 ring-gx-accent/50 z-[9999] bg-gx-dark/90',
+          isOverlay && 'shadow-2xl scale-105 border-gx-accent opacity-100 ring-2 ring-gx-accent/50 z-[9999] bg-gx-gray/90',
           !isOverlay && 'hover:border-gx-accent/30 hover:bg-gx-gray/80',
           isLoading && !isOverlay && 'border-gx-cyan/50 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse-glow cursor-not-allowed opacity-90'
         )}

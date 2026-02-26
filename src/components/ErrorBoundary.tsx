@@ -83,8 +83,8 @@ export class ErrorBoundary extends Component<Props, State> {
                   onClick={this.handleReset}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group"
                 >
-                  <RefreshCw className="w-4 h-4 text-gray-400 group-hover:text-white transition-transform group-active:rotate-180 duration-500" />
-                  <span className="text-xs font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Retry Sync</span>
+                  <RefreshCw className="w-4 h-4 text-gray-400 group-hover:text-gx-text transition-transform group-active:rotate-180 duration-500" />
+                  <span className="text-xs font-black uppercase tracking-widest text-gray-400 group-hover:text-gx-text">Retry Sync</span>
                 </button>
                 <button
                   onClick={this.handleReload}
@@ -102,7 +102,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   <div key={i} className={cn("w-1 h-1 rounded-full", i < 3 ? "bg-gx-red" : "bg-gx-red/20")} />
                 ))}
               </div>
-              <span className="text-[9px] font-black text-white/10 uppercase tracking-[0.3em]">Antigravity Protocol v1.0.4</span>
+              <span className="text-[9px] font-black text-gx-text/10 uppercase tracking-[0.3em]">Antigravity Protocol v1.0.4</span>
             </div>
           </div>
         </div>

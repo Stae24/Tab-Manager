@@ -238,7 +238,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
               title="Ungroup All"
               className={buttonPadding[appearanceSettings.buttonSize]}
             >
-              <LogOut size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-white" />
+              <LogOut size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-gx-text" />
             </button>
           )}
           {!isVault && onNonDestructiveSave && (

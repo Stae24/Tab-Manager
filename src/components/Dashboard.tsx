@@ -552,7 +552,7 @@ export const Dashboard: React.FC = () => {
                     )}
                   >
                     <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
-                    <GripVertical className="w-4 h-4 text-gx-gray group-hover:text-white transition-colors" />
+                    <GripVertical className="w-4 h-4 text-gx-gray group-hover:text-gx-text transition-colors" />
                   </div>
                   <VaultPanel
                     dividerPosition={dividerPosition}
