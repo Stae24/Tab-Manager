@@ -84,18 +84,24 @@ describe('contentScript', () => {
     });
 
     describe('isRestrictedPage', () => {
-        it('should identify restricted pages', () => {
-            // Mock window.location
-            const originalLocation = window.location;
-            delete (window as any).location;
-            (window as any).location = { href: 'chrome://settings' };
+        let originalLocation: Location;
 
+        beforeEach(() => {
+            originalLocation = window.location;
+        });
+
+        afterEach(() => {
+            vi.unstubAllGlobals();
+        });
+
+        it('should identify chrome:// settings as restricted', () => {
+            vi.stubGlobal('location', { href: 'chrome://settings' });
             expect(isRestrictedPage()).toBe(true);
+        });
 
-            (window as any).location = { href: 'https://google.com' };
+        it('should not identify https://google.com as restricted', () => {
+            vi.stubGlobal('location', { href: 'https://google.com' });
             expect(isRestrictedPage()).toBe(false);
-
-            (window as any).location = originalLocation;
         });
     });
 });

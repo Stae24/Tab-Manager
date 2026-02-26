@@ -56,7 +56,7 @@ export const formatHotkey = (binding: HotkeyBinding): string => {
 };
 
 export const isValidHotkey = (binding: HotkeyBinding): boolean => {
-  return binding.ctrl || binding.meta || binding.alt || binding.shift;
+  return !!binding.code && (binding.ctrl || binding.meta || binding.alt || binding.shift);
 };
 
 export const hotkeysEqual = (a: HotkeyBinding, b: HotkeyBinding): boolean => {

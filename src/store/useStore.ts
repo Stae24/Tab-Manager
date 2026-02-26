@@ -131,7 +131,7 @@ const init = async () => {
 
   const migrationResult = await vaultService.migrateFromLegacy({ syncEnabled });
   if (migrationResult.migrated) {
-    logger.info('VaultStorage', 'Migration complete:', migrationResult);
+    logger.info('Store', 'Migration complete:', migrationResult);
   }
 
   let effectiveSyncEnabled = syncEnabled;
@@ -154,7 +154,7 @@ const init = async () => {
   if (loadResult.fallbackToLocal && effectiveSyncEnabled) {
     logger.warn('Store', 'Load detected corrupted/missing sync data');
 
-    const recovery = await attemptSelfHealing(loadResult.vault, syncEnabled);
+    const recovery = await attemptSelfHealing(loadResult.vault, effectiveSyncEnabled);
 
     if (recovery.success && recovery.effectiveSyncEnabled) {
       useStore.setState({
@@ -231,13 +231,14 @@ const init = async () => {
   }
 
   settingsService.watchSettings(async (changes, area) => {
+    const { setAppearanceSettings, setShowVault, setDividerPosition, setSettingsPanelWidth } = useStore.getState();
     if (area === 'sync') {
       if (changes.appearanceSettings?.newValue) {
-        state.setAppearanceSettings(mergeAppearanceSettings(changes.appearanceSettings.newValue));
+        setAppearanceSettings(mergeAppearanceSettings(changes.appearanceSettings.newValue));
       }
-      if (changes.showVault) state.setShowVault(Boolean(changes.showVault.newValue));
-      if (changes.dividerPosition) state.setDividerPosition(Number(changes.dividerPosition.newValue));
-      if (changes.settingsPanelWidth) state.setSettingsPanelWidth(Number(changes.settingsPanelWidth.newValue));
+      if (changes.showVault) setShowVault(Boolean(changes.showVault.newValue));
+      if (changes.dividerPosition) setDividerPosition(Number(changes.dividerPosition.newValue));
+      if (changes.settingsPanelWidth) setSettingsPanelWidth(Number(changes.settingsPanelWidth.newValue));
 
       if (changes.vault_meta) {
         const incomingTimestamp = (changes.vault_meta.newValue as { timestamp?: number })?.timestamp ?? 0;
@@ -254,7 +255,8 @@ const init = async () => {
                 vault: loadResult.vault,
                 lastVaultTimestamp: incomingTimestamp,
                 effectiveSyncEnabled: false,
-                appearanceSettings: updatedSettings
+                appearanceSettings: updatedSettings,
+                syncRecovered: false // Explicitly set to false on fallback
               });
               await settingsService.saveSettings({ appearanceSettings: updatedSettings });
             } else {

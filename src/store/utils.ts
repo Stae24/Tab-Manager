@@ -157,7 +157,7 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     !!s.sidebarLayoutMode && ['overlay', 'push'].includes(s.sidebarLayoutMode) &&
     !!s.sidebarDockSide && ['left', 'right'].includes(s.sidebarDockSide) &&
     typeof s.sidebarWidthPx === 'number' &&
-    typeof s.sidebarWidthMaxPct === 'number' &&
+    (typeof s.sidebarWidthMaxPct === 'number' || s.sidebarWidthMaxPct === undefined) &&
     isHotkeyBinding(s.sidebarToggleHotkey) &&
     isHotkeyBinding(s.managerPageHotkey) &&
     (typeof s.debugMode === 'boolean' || s.debugMode === undefined)

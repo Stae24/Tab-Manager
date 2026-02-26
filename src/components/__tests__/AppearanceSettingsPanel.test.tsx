@@ -67,23 +67,23 @@ describe('AppearanceSettingsPanel', () => {
 
     it('should render when open', () => {
         render(<AppearanceSettingsPanel isOpen={true} onClose={mockOnClose} />);
-        expect(screen.getByPlaceholderText(/search settings/i)).toBeDefined();
-        expect(screen.getByText(/display/i)).toBeDefined();
+        expect(screen.getByPlaceholderText(/search settings/i)).toBeTruthy();
+        expect(screen.getByText(/display/i)).toBeTruthy();
     });
 
     it('should not show content when closed (via CSS classes)', () => {
         const { container } = render(<AppearanceSettingsPanel isOpen={false} onClose={mockOnClose} />);
         const panel = container.querySelector('.translate-x-full');
-        expect(panel).toBeDefined();
+        expect(panel).toBeNull();
     });
 
     it('should switch tabs', () => {
         render(<AppearanceSettingsPanel isOpen={true} onClose={mockOnClose} />);
 
-        const tabsBtn = screen.getByText(/tabs/i);
+        const tabsBtn = screen.getByRole('button', { name: /tabs/i });
         fireEvent.click(tabsBtn);
 
-        expect(screen.getByText(/tab density/i)).toBeDefined();
+        expect(screen.getByText(/tab density/i)).toBeTruthy();
     });
 
     it('should update theme setting', () => {
@@ -117,16 +117,20 @@ describe('AppearanceSettingsPanel', () => {
 
     it('should handle closing', () => {
         vi.useFakeTimers();
-        render(<AppearanceSettingsPanel isOpen={true} onClose={mockOnClose} />);
+        try {
+            render(<AppearanceSettingsPanel isOpen={true} onClose={mockOnClose} />);
 
-        const closeBtn = screen.getAllByRole('button').find(b => b.querySelector('svg.lucide-x'));
-        if (closeBtn) fireEvent.click(closeBtn);
+            const closeBtn = screen.getAllByRole('button').find(b => b.querySelector('svg.lucide-x'));
+            expect(closeBtn).toBeDefined();
+            if (closeBtn) fireEvent.click(closeBtn);
 
-        act(() => {
-            vi.advanceTimersByTime(300); // PANEL_CLOSE_DELAY_MS
-        });
+            act(() => {
+                vi.advanceTimersByTime(300); // PANEL_CLOSE_DELAY_MS
+            });
 
-        expect(mockOnClose).toHaveBeenCalled();
-        vi.useRealTimers();
+            expect(mockOnClose).toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

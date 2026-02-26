@@ -81,7 +81,8 @@ describe('Sync Storage Robustness', () => {
     await vi.advanceTimersByTimeAsync(5000);
     
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[SyncSettings] Failed to sync'),
+      expect.stringContaining('[SyncSettings]'),
+      expect.stringContaining('Failed to sync settings'),
       expect.any(Error)
     );
     

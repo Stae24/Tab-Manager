@@ -1,25 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { sidebarService, setupSidebarMessageListener } from '../sidebarService';
-import { logger } from '../../utils/logger';
 
-// Mock logger to avoid console noise
-vi.mock('../../utils/logger', () => ({
-    logger: {
-        debug: vi.fn(),
-        info: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn()
-    },
-    setDebugMode: vi.fn()
-}));
-
-vi.mock('../../store/utils', () => ({
-    mergeAppearanceSettings: vi.fn((settings) => ({ ...defaultAppearanceSettings, ...settings })),
+const { defaultAppearanceSettings: defaultSettings } = vi.hoisted(() => ({
     defaultAppearanceSettings: {
         toolbarClickAction: 'toggle-sidebar',
         focusExistingTab: true
     }
 }));
+
+const { mockLogger, mockSettingsUtils } = vi.hoisted(() => ({
+    mockLogger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn()
+    },
+    mockSettingsUtils: {
+        mergeAppearanceSettings: vi.fn((settings) => ({
+            toolbarClickAction: 'toggle-sidebar',
+            focusExistingTab: true,
+            ...settings
+        })),
+        defaultAppearanceSettings: {
+            toolbarClickAction: 'toggle-sidebar',
+            focusExistingTab: true
+        }
+    }
+}));
+
+vi.mock('../../utils/logger', () => ({
+    logger: mockLogger,
+    setDebugMode: vi.fn()
+}));
+
+vi.mock('../../store/utils', () => mockSettingsUtils);
 
 import { defaultAppearanceSettings } from '../../store/utils';
 
@@ -176,8 +190,7 @@ describe('sidebarService', () => {
             );
 
             expect(handled).toBe(true);
-            await new Promise(resolve => setTimeout(resolve, 10)); // Allow promise processing
-            expect(chrome.sidePanel.open).toHaveBeenCalledWith({ windowId: 10 });
+            await vi.waitFor(() => expect(chrome.sidePanel.open).toHaveBeenCalledWith({ windowId: 10 }));
             expect(sendResponse).toHaveBeenCalledWith({ success: true, isOpen: true });
         });
 
@@ -209,6 +222,8 @@ describe('sidebarService', () => {
             expect(sidebarService.isRestrictedUrl('chrome://extensions')).toBe(true);
             expect(sidebarService.isRestrictedUrl('about:blank')).toBe(true);
             expect(sidebarService.isRestrictedUrl('chrome-extension://other/abc')).toBe(true);
+            expect(sidebarService.isRestrictedUrl('https://example.com')).toBe(false);
+            expect(sidebarService.isRestrictedUrl('http://localhost:3000')).toBe(false);
         });
     });
 });

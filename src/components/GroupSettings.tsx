@@ -1,8 +1,13 @@
-import React from 'react';
-import { Layers, Type, ArrowUp } from 'lucide-react';
+import React, { useCallback } from 'react';
+import { Layers, Hash, ArrowDownUp } from 'lucide-react';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Toggle } from './ui/Toggle';
 import type { AppearanceSettings } from '../types';
+import {
+    GROUP_HEADERS_SECTION,
+    TAB_COUNT_SECTION,
+    SORT_GROUPS_SECTION
+} from '../constants';
 
 interface GroupSettingsProps {
     appearanceSettings: AppearanceSettings;
@@ -17,59 +22,86 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({
     expandedSections,
     toggleSection
 }) => {
+    const handleToggleGroupHeaders = useCallback(() => {
+        toggleSection(GROUP_HEADERS_SECTION);
+    }, [toggleSection]);
+
+    const handleToggleTabCount = useCallback(() => {
+        toggleSection(TAB_COUNT_SECTION);
+    }, [toggleSection]);
+
+    const handleToggleSortGroups = useCallback(() => {
+        toggleSection(SORT_GROUPS_SECTION);
+    }, [toggleSection]);
+
+    const handleCompactGroupHeadersChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ compactGroupHeaders: checked });
+    }, [setAppearanceSettings]);
+
+    const handleShowTabCountChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ showTabCount: checked });
+    }, [setAppearanceSettings]);
+
+    const handleSortGroupsByCountChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ sortGroupsByCount: checked });
+    }, [setAppearanceSettings]);
+
+    const handleSortVaultGroupsByCountChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ sortVaultGroupsByCount: checked });
+    }, [setAppearanceSettings]);
+
     return (
-        <>
+        <div className="flex flex-col gap-2">
             <CollapsibleSection
-                id="group-headers"
+                id={GROUP_HEADERS_SECTION}
                 title="Group Headers"
                 icon={Layers}
-                isExpanded={expandedSections.has('group-headers')}
-                onToggle={() => toggleSection('group-headers')}
+                isExpanded={expandedSections.has(GROUP_HEADERS_SECTION)}
+                onToggle={handleToggleGroupHeaders}
             >
                 <Toggle
                     checked={appearanceSettings.compactGroupHeaders}
-                    onChange={(checked) => setAppearanceSettings({ compactGroupHeaders: checked })}
+                    onChange={handleCompactGroupHeadersChange}
                     label="Compact Headers"
                     description="Use smaller headers for tab groups to save space"
                 />
             </CollapsibleSection>
 
             <CollapsibleSection
-                id="tab-count"
+                id={TAB_COUNT_SECTION}
                 title="Tab Count"
-                icon={Type}
-                isExpanded={expandedSections.has('tab-count')}
-                onToggle={() => toggleSection('tab-count')}
+                icon={Hash}
+                isExpanded={expandedSections.has(TAB_COUNT_SECTION)}
+                onToggle={handleToggleTabCount}
             >
                 <Toggle
                     checked={appearanceSettings.showTabCount}
-                    onChange={(checked) => setAppearanceSettings({ showTabCount: checked })}
+                    onChange={handleShowTabCountChange}
                     label="Show Tab Count"
                     description="Display the number of tabs in each group header"
                 />
             </CollapsibleSection>
 
             <CollapsibleSection
-                id="sort-groups"
+                id={SORT_GROUPS_SECTION}
                 title="Sort Groups"
-                icon={ArrowUp}
-                isExpanded={expandedSections.has('sort-groups')}
-                onToggle={() => toggleSection('sort-groups')}
+                icon={ArrowDownUp}
+                isExpanded={expandedSections.has(SORT_GROUPS_SECTION)}
+                onToggle={handleToggleSortGroups}
             >
                 <Toggle
                     checked={appearanceSettings.sortGroupsByCount}
-                    onChange={(checked) => setAppearanceSettings({ sortGroupsByCount: checked })}
+                    onChange={handleSortGroupsByCountChange}
                     label="Sort Live Groups by Tab Count"
                     description="When enabled, Live Workspace groups are sorted from most to least tabs"
                 />
-                <div className="h-2" />
                 <Toggle
                     checked={appearanceSettings.sortVaultGroupsByCount}
-                    onChange={(checked) => setAppearanceSettings({ sortVaultGroupsByCount: checked })}
+                    onChange={handleSortVaultGroupsByCountChange}
                     label="Sort Vault Groups by Tab Count"
                     description="When enabled, Neural Vault groups are sorted from most to least tabs"
                 />
             </CollapsibleSection>
-        </>
+        </div>
     );
 };

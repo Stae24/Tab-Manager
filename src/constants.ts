@@ -69,9 +69,13 @@ export const VAULT_CHUNK_PREFIX = 'vault_chunk_';
 export const LEGACY_VAULT_KEY = 'vault';
 
 export const SIDEBAR_MIN_WIDTH = 300;
-export const SIDEBAR_MAX_WIDTH_PCT_DEFAULT = 90;
 export const SIDEBAR_MAX_WIDTH_PCT_MIN = 10;
 export const SIDEBAR_MAX_WIDTH_PCT_MAX = 100;
+export const SIDEBAR_MAX_WIDTH_PCT_DEFAULT = 90;
 export const SIDEBAR_DEFAULT_WIDTH = 420;
 export const SIDEBAR_DEFAULT_DOCK_SIDE: 'left' | 'right' = 'right';
 export const SIDEBAR_DEFAULT_LAYOUT_MODE: 'overlay' | 'push' = 'overlay';
+
+export const GROUP_HEADERS_SECTION = 'group-headers';
+export const TAB_COUNT_SECTION = 'tab-count';
+export const SORT_GROUPS_SECTION = 'sort-groups';

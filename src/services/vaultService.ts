@@ -434,7 +434,6 @@ function applyCompressionTierToVault(vault: VaultItem[], tier: CompressionTier):
 }
 
 let previousVaultState: VaultItem[] | null = null;
-let lastFullSaveTime = 0;
 
 function computeDiff(previous: VaultItem[], current: VaultItem[]): VaultDiff {
   const currentIds = new Set(current.map(i => String(i.id)));
@@ -862,7 +861,6 @@ export const vaultService = {
       await chrome.storage.local.set({ vault_backup: vault });
 
       previousVaultState = vault;
-      lastFullSaveTime = Date.now();
 
       const newQuota = await quotaService.getVaultQuota();
 

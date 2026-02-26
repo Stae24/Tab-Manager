@@ -63,24 +63,38 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
   const panelRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
+  const panelWidthRef = useRef(panelWidth);
+  const priorExpandedRef = useRef<Set<string> | null>(null);
+  const expandedSectionsRef = useRef(expandedSections);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    expandedSectionsRef.current = expandedSections;
+  }, [expandedSections]);
 
   // Auto-expand/collapse sections based on search
   useEffect(() => {
     if (searchQuery) {
+      // Save current expanded sections before expanding for search
+      if (!priorExpandedRef.current) {
+        priorExpandedRef.current = expandedSectionsRef.current;
+      }
       setExpandedSections(new Set(['theme', 'tab-density', 'favicons', 'active-indicator', 'audio-indicators', 'frozen-indicators', 'group-headers', 'tab-count', 'sort-groups', 'vault-sync', 'animations', 'drag-opacity', 'spinner', 'icons', 'button-size', 'auto-pin', 'search', 'sidebar', 'debug-mode']));
+    } else if (priorExpandedRef.current) {
+      // Restore prior expanded sections when search is cleared
+      setExpandedSections(priorExpandedRef.current);
+      priorExpandedRef.current = null;
     }
   }, [searchQuery]);
 
   const fitPanelToWindow = useCallback(() => {
     if (typeof window === 'undefined') return;
     const maxWidth = window.innerWidth - SETTINGS_PANEL_WINDOW_GAP;
-    if (panelWidth > maxWidth) {
-      setPanelWidth(maxWidth);
-    }
+    setPanelWidth(prev => Math.min(prev, maxWidth));
 
     // Check if tabs should wrap
     setShouldWrapTabs(window.innerWidth < 450);
-  }, [panelWidth]);
+  }, []);
 
   useEffect(() => {
     fitPanelToWindow();
@@ -111,12 +125,13 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
       );
 
       setPanelWidth(constrainedWidth);
+      panelWidthRef.current = constrainedWidth;
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
       isResizingRef.current = false;
-      setSettingsPanelWidth(panelWidth);
+      setSettingsPanelWidth(panelWidthRef.current);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -148,17 +163,34 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
     return category.toLowerCase().includes(searchQuery.toLowerCase());
   };
 
-  const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
-    { id: 'display', label: 'Display', icon: Palette },
-    { id: 'tabs', label: 'Tabs', icon: Layout },
-    { id: 'groups', label: 'Groups', icon: Layers },
-    { id: 'vault', label: 'Vault', icon: Cloud },
-    { id: 'general', label: 'General', icon: ZoomIn },
-    { id: 'sidebar', label: 'Sidebar', icon: Sidebar } as any,
-    { id: 'dev', label: 'Developer', icon: Terminal },
-  ].filter(tab => !searchQuery || tab.label.toLowerCase().includes(searchQuery.toLowerCase()) || filterSettings(tab.label));
+  const rawTabs: { id: TabId; label: string; icon: React.ElementType }[] = [
+    { id: 'display' as TabId, label: 'Display', icon: Palette },
+    { id: 'tabs' as TabId, label: 'Tabs', icon: Layout },
+    { id: 'groups' as TabId, label: 'Groups', icon: Layers },
+    { id: 'vault' as TabId, label: 'Vault', icon: Cloud },
+    { id: 'general' as TabId, label: 'General', icon: ZoomIn },
+    { id: 'sidebar' as TabId, label: 'Sidebar', icon: Sidebar },
+    { id: 'dev' as TabId, label: 'Developer', icon: Terminal },
+  ];
+  const tabs = rawTabs.filter(tab => filterSettings(tab.label));
 
   if (!isOpen && !isClosing) return null;
+
+  const renderTabButton = (tab: { id: TabId; label: string; icon: React.ElementType }) => (
+    <button
+      key={tab.id}
+      onClick={() => setActiveTab(tab.id)}
+      className={cn(
+        "flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold tracking-wider whitespace-nowrap",
+        activeTab === tab.id
+          ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
+          : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
+      )}
+    >
+      <tab.icon size={14} />
+      <span className="uppercase">{tab.label}</span>
+    </button>
+  );
 
   return (
     <>
@@ -177,7 +209,6 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
         onClick={(e) => e.stopPropagation()}
         className={cn(
           "fixed right-0 top-0 bg-gx-dark border-l border-gx-gray z-50 flex flex-col transition-transform duration-300 ease-out shadow-2xl",
-          !isOpen && "translate-x-full",
           isClosing && "transition-transform duration-200"
         )}
         style={{
@@ -244,39 +275,11 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
           )}>
             {!shouldWrapTabs ? (
               <div className="flex justify-center gap-1 w-full">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold tracking-wider whitespace-nowrap",
-                      activeTab === tab.id
-                        ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
-                        : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
-                    )}
-                  >
-                    <tab.icon size={14} />
-                    <span className="uppercase">{tab.label}</span>
-                  </button>
-                ))}
+                {tabs.map(renderTabButton)}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-1">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold tracking-wider whitespace-nowrap",
-                      activeTab === tab.id
-                        ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
-                        : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
-                    )}
-                  >
-                    <tab.icon size={14} />
-                    <span className="uppercase">{tab.label}</span>
-                  </button>
-                ))}
+                {tabs.map(renderTabButton)}
               </div>
             )}
           </div>
@@ -314,6 +317,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
           {activeTab === 'vault' && filterSettings('Vault') && (
             <VaultSettings
               appearanceSettings={appearanceSettings}
+              setAppearanceSettings={setAppearanceSettings}
               setVaultSyncEnabled={setVaultSyncEnabled}
               vaultQuota={vaultQuota}
               expandedSections={expandedSections}
