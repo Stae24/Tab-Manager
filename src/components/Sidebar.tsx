@@ -19,7 +19,7 @@ export const Sidebar: React.FC = () => {
   const undo = useStore(state => state.undo);
   const redo = useStore(state => state.redo);
 
-  
+
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const appearancePanelRef = useRef<HTMLDivElement>(null);
@@ -112,15 +112,15 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className="relative flex flex-col gap-4 p-4 border-b border-gx-gray bg-gx-dark">
+    <div className="relative flex flex-col gap-4 p-4 border-b border-gx-gray bg-gx-gray/50">
       {/* Logo / Title */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gx-accent to-gx-red flex items-center justify-center shadow-lg shadow-gx-accent/30">
-            <RefreshCw className="w-4 h-4 text-white" />
+            <RefreshCw className="w-4 h-4 text-gx-text" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white tracking-wide uppercase">
+            <h1 className="text-sm font-bold text-gx-text tracking-wide uppercase">
               Island Manager
             </h1>
             <p className="text-[10px] text-gray-500 font-mono">GX EDITION</p>
@@ -135,7 +135,7 @@ export const Sidebar: React.FC = () => {
             "p-2 rounded-lg transition-all border",
             showAppearancePanel
               ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan"
-              : "bg-gx-gray hover:bg-gx-accent/20 text-gray-400 hover:text-white border-white/5"
+              : "bg-gx-gray hover:bg-gx-accent/20 text-gray-400 hover:text-gx-text border-white/5"
           )}
         >
           <Settings size={18} />

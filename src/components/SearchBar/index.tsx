@@ -219,7 +219,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
           onBlur={handleBlur}
           placeholder="Search tabs... (try !audio, !frozen, /delete)"
           className={cn(
-            'flex-1 bg-transparent outline-none text-sm text-white placeholder-gray-500',
+            'flex-1 bg-transparent outline-none text-sm text-gx-text placeholder-gray-500',
             'transition-all min-w-48'
           )}
         />
@@ -229,7 +229,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
             className="p-0.5 rounded hover:bg-white/10 transition-colors"
             title="Clear search"
           >
-            <X className="w-3.5 h-3.5 text-gray-400 hover:text-white" />
+            <X className="w-3.5 h-3.5 text-gray-400 hover:text-gx-text" />
           </button>
         )}
       </div>
@@ -239,7 +239,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
           onClick={() => onScopeChange('current')}
           className={cn(
             'px-2 py-1 rounded transition-colors',
-            scope === 'current' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gray-400 hover:text-white'
+            scope === 'current' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gray-400 hover:text-gx-text'
           )}
         >
           Current
@@ -248,7 +248,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
           onClick={() => onScopeChange('all')}
           className={cn(
             'px-2 py-1 rounded transition-colors',
-            scope === 'all' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gray-400 hover:text-white'
+            scope === 'all' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gray-400 hover:text-gx-text'
           )}
         >
           All
@@ -274,7 +274,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
 
       <button
         onClick={onHelp}
-        className="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+        className="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-gx-text transition-colors"
         title="Search help"
       >
         <HelpCircle className="w-4 h-4" />
