@@ -129,7 +129,8 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
   };
 
   return (
-    !!s.theme && ['dark', 'light', 'system'].includes(s.theme) &&
+    !!s.theme && ['dark', 'light', 'system', 'dark-pro', 'ocean', 'forest', 'sunset', 'dracula', 'nord', 'monokai', 'solarized-light', 'solarized-dark', 'midnight', 'cyberpunk', 'coffee'].includes(s.theme) &&
+    !!s.themeElements && typeof s.themeElements.background === 'boolean' && typeof s.themeElements.panels === 'boolean' && typeof s.themeElements.text === 'boolean' && typeof s.themeElements.accent === 'boolean' &&
     typeof s.uiScale === 'number' &&
     typeof s.settingsScale === 'number' &&
     !!s.tabDensity && ['minified', 'compact', 'normal', 'spacious'].includes(s.tabDensity) &&
@@ -229,6 +230,12 @@ const DEFAULT_MANAGER_PAGE_HOTKEY: HotkeyBinding = {
 // Default appearance settings for reset functionality
 export const defaultAppearanceSettings: AppearanceSettings = {
   theme: 'system',
+  themeElements: {
+    background: true,
+    panels: true,
+    text: true,
+    accent: true
+  },
   uiScale: 1,
   settingsScale: 1,
   tabDensity: 'normal',
@@ -238,7 +245,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   showFrozenIndicators: true,
   showActiveIndicator: true,
   showTabCount: true,
-  accentColor: 'gx-accent',
+  accentColor: '',
   borderRadius: 'medium',
   compactGroupHeaders: false,
   buttonSize: 'medium',
