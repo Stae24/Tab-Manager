@@ -120,7 +120,7 @@ export interface VaultLoadResult {
 }
 
 // Appearance settings types
-export type ThemeMode = 'dark' | 'light' | 'system';
+export type ThemeMode = 'dark' | 'light' | 'system' | 'dark-pro' | 'ocean' | 'forest' | 'sunset' | 'dracula' | 'nord' | 'monokai' | 'solarized-light' | 'solarized-dark' | 'midnight' | 'cyberpunk' | 'coffee';
 export type AnimationIntensity = 'full' | 'subtle' | 'off';
 export type AudioIndicatorMode = 'off' | 'playing' | 'muted' | 'both';
 export type BorderRadius = 'none' | 'small' | 'medium' | 'large' | 'full';
@@ -131,11 +131,19 @@ export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | '
 export type FaviconFallback = FaviconSource | 'none';
 export type FaviconSize = '16' | '32' | '64' | '128';
 
+export interface ThemeElementsConfig {
+  background: boolean;
+  panels: boolean;
+  text: boolean;
+  accent: boolean;
+}
+
 export type LoadingSpinnerStyle = 'pulse' | 'dots' | 'bars' | 'ring';
 
 export interface AppearanceSettings {
   // v1 - Essential
   theme: ThemeMode;
+  themeElements: ThemeElementsConfig;
   uiScale: number;
   settingsScale: number;
   tabDensity: 'minified' | 'compact' | 'normal' | 'spacious';
