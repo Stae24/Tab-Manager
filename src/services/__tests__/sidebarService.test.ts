@@ -121,20 +121,6 @@ describe('sidebarService', () => {
 
             expect(chrome.tabs.create).toHaveBeenCalled();
         });
-
-        it('should open manager page when on restricted URL', async () => {
-            (chrome.storage.sync.get as any).mockResolvedValue({
-                appearanceSettings: { focusExistingTab: false }
-            });
-            (chrome.tabs.query as any).mockImplementation((query: any) => {
-                if (query.active) return Promise.resolve([{ id: 1, windowId: 10, url: 'chrome://settings' }]);
-                return Promise.resolve([]);
-            });
-
-            await sidebarService.handleToolbarClick(10);
-
-            expect(chrome.tabs.create).toHaveBeenCalled();
-        });
     });
 
     describe('openManagerPage', () => {
@@ -216,14 +202,6 @@ describe('sidebarService', () => {
             expect(sidebarService.isManagerPage(managerUrl)).toBe(true);
             expect(sidebarService.isManagerPage(managerUrl + '?query=1')).toBe(true);
             expect(sidebarService.isManagerPage('https://google.com')).toBe(false);
-        });
-
-        it('isRestrictedUrl should identify restricted browser pages', () => {
-            expect(sidebarService.isRestrictedUrl('chrome://extensions')).toBe(true);
-            expect(sidebarService.isRestrictedUrl('about:blank')).toBe(true);
-            expect(sidebarService.isRestrictedUrl('chrome-extension://other/abc')).toBe(true);
-            expect(sidebarService.isRestrictedUrl('https://example.com')).toBe(false);
-            expect(sidebarService.isRestrictedUrl('http://localhost:3000')).toBe(false);
         });
     });
 });

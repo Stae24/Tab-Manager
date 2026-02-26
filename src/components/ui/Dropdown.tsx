@@ -28,6 +28,16 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
     const buttonRef = useRef<HTMLButtonElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+    const optionsRef = useRef(options);
+    const valueRef = useRef(value);
+
+    useEffect(() => {
+        optionsRef.current = options;
+    }, [options]);
+
+    useEffect(() => {
+        valueRef.current = value;
+    }, [value]);
 
     const selectedOption = options.find(opt => opt.value === value);
 
@@ -61,6 +71,8 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (disabled) return;
+        const opts = optionsRef.current;
+        const val = valueRef.current;
 
         switch (e.key) {
             case 'Escape':
@@ -71,31 +83,31 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
                 e.preventDefault();
                 if (!isOpen) {
                     setIsOpen(true);
-                    setFocusedIndex(options.findIndex(o => o.value === value));
+                    setFocusedIndex(opts.findIndex(o => o.value === val));
                 } else {
-                    setFocusedIndex(prev => (prev + 1) % options.length);
+                    setFocusedIndex(prev => (prev + 1) % opts.length);
                 }
                 break;
             case 'ArrowUp':
                 e.preventDefault();
                 if (!isOpen) {
                     setIsOpen(true);
-                    setFocusedIndex(options.findLastIndex(o => o.value === value));
+                    setFocusedIndex(opts.findLastIndex(o => o.value === val));
                 } else {
-                    setFocusedIndex(prev => (prev - 1 + options.length) % options.length);
+                    setFocusedIndex(prev => (prev - 1 + opts.length) % opts.length);
                 }
                 break;
             case 'Enter':
             case ' ':
-                if (isOpen && focusedIndex >= 0) {
+                if (isOpen && focusedIndex >= 0 && opts[focusedIndex]) {
                     e.preventDefault();
-                    onChange(options[focusedIndex].value);
+                    onChange(opts[focusedIndex].value);
                     setIsOpen(false);
                     buttonRef.current?.focus();
                 }
                 break;
         }
-    }, [disabled, isOpen, focusedIndex, options, onChange, value]);
+    }, [disabled, isOpen, focusedIndex, onChange]);
 
     useEffect(() => {
         if (isOpen && focusedIndex >= 0 && menuRef.current) {
@@ -108,11 +120,11 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
 
     useEffect(() => {
         if (isOpen) {
-            const currentIndex = options.findIndex(o => o.value === value);
+            const currentIndex = optionsRef.current.findIndex(o => o.value === valueRef.current);
             setFocusedIndex(currentIndex >= 0 ? currentIndex : -1);
             updatePosition();
         }
-    }, [isOpen, options, value, updatePosition]);
+    }, [isOpen, updatePosition]);
 
     useEffect(() => {
         if (isOpen) {
