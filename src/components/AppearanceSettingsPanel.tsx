@@ -11,6 +11,7 @@ import {
   Cloud,
   Sidebar,
   Terminal,
+  Monitor
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
@@ -21,6 +22,7 @@ import {
   SETTINGS_PANEL_WINDOW_GAP,
 } from '../constants';
 
+import { ThemeSettings } from './ThemeSettings';
 import { DisplaySettings } from './DisplaySettings';
 import { TabSettings } from './TabSettings';
 import { GroupSettings } from './GroupSettings';
@@ -29,7 +31,7 @@ import { GeneralSettings } from './GeneralSettings';
 import { SidebarSettings } from './SidebarSettings';
 import { DevSettings } from './DevSettings';
 
-type TabId = 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced' | 'dev' | 'sidebar';
+type TabId = 'theme' | 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced' | 'dev' | 'sidebar';
 
 interface AppearanceSettingsPanelProps {
   isOpen: boolean;
@@ -44,7 +46,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
   const settingsPanelWidth = useStore((state) => state.settingsPanelWidth);
   const setSettingsPanelWidth = useStore((state) => state.setSettingsPanelWidth);
 
-  const [activeTab, setActiveTab] = useState<TabId>('display');
+  const [activeTab, setActiveTab] = useState<TabId>('theme');
   const [isResizing, setIsResizing] = useState(false);
   const [panelWidth, setPanelWidth] = useState(settingsPanelWidth || 400);
   const [searchQuery, setSearchQuery] = useState('');
@@ -153,11 +155,12 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
   };
 
   const rawTabs: { id: TabId; label: string; icon: React.ElementType }[] = [
-    { id: 'display' as TabId, label: 'Display', icon: Palette },
+    { id: 'theme' as TabId, label: 'Theme', icon: Palette },
+    { id: 'display' as TabId, label: 'Display', icon: Monitor },
     { id: 'tabs' as TabId, label: 'Tabs', icon: Layout },
     { id: 'groups' as TabId, label: 'Groups', icon: Layers },
     { id: 'vault' as TabId, label: 'Vault', icon: Cloud },
-    { id: 'general' as TabId, label: 'General', icon: ZoomIn },
+    { id: 'general' as TabId, label: 'General', icon: Settings },
     { id: 'sidebar' as TabId, label: 'Sidebar', icon: Sidebar },
     { id: 'dev' as TabId, label: 'Developer', icon: Terminal },
   ];
@@ -197,7 +200,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "fixed right-0 top-0 bg-gx-dark border-l border-gx-gray z-50 flex flex-col transition-transform duration-300 ease-out shadow-2xl",
+          "fixed right-0 top-0 bg-gx-gray/95 border-l border-gx-gray z-50 flex flex-col transition-transform duration-300 ease-out shadow-2xl",
           isClosing && "transition-transform duration-200"
         )}
         style={{
@@ -234,7 +237,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search settings..."
               className={cn(
-                "w-full pl-10 pr-10 py-2.5 bg-gx-gray/50 border border-white/5 rounded-lg text-sm text-white placeholder-gray-600 outline-none transition-all",
+                "w-full pl-10 pr-10 py-2.5 bg-gx-gray/50 border border-white/5 rounded-lg text-sm text-gx-text placeholder-gray-600 outline-none transition-all",
                 "focus:border-gx-accent/40 focus:ring-1 focus:ring-gx-accent/20"
               )}
             />
@@ -265,6 +268,15 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
         {/* Settings Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 scroll-smooth overscroll-none scrollbar-hide">
+          {activeTab === 'theme' && filterSettings('Theme') && (
+            <ThemeSettings
+              appearanceSettings={appearanceSettings}
+              setAppearanceSettings={setAppearanceSettings}
+              expandedSections={expandedSections}
+              toggleSection={toggleSection}
+            />
+          )}
+
           {activeTab === 'display' && filterSettings('Display') && (
             <DisplaySettings
               appearanceSettings={appearanceSettings}
