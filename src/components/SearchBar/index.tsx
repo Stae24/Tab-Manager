@@ -263,7 +263,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
             'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all',
             resultCount > 0
               ? 'bg-gx-accent text-white hover:bg-gx-accent/80'
-              : 'bg-gx-gray/20 text-gray-500 cursor-not-allowed'
+              : 'bg-gx-gray/20 text-gray-500'
           )}
           title={`Execute on ${resultCount} tabs`}
         >

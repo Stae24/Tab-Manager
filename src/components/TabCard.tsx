@@ -377,7 +377,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
               disabled={tabsBelowCount === 0}
               className={cn(
                 "flex items-center gap-2 px-2 py-1 text-[10px] rounded",
-                tabsBelowCount === 0 ? "text-gray-400 cursor-not-allowed" : "hover:bg-gx-red/20 text-gx-red"
+                tabsBelowCount === 0 ? "text-gray-400" : "hover:bg-gx-red/20 text-gx-red"
               )}
             >
               <ArrowDownToLine size={10} /> CLOSE TABS BELOW ({tabsBelowCount})
