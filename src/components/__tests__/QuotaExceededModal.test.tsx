@@ -193,7 +193,7 @@ describe('QuotaExceededModal', () => {
 
             const button = screen.getByText('Cancel');
             expect(button).toHaveClass('w-full p-3 rounded-lg text-center');
-            expect(button).toHaveClass('text-gray-400 hover:text-white');
+            expect(button).toHaveClass('text-gray-400 hover:text-gx-text');
         });
     });
 
