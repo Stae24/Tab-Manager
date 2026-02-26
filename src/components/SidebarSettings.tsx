@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sidebar, Box, Maximize2, Layout, PanelLeft, PanelRight } from 'lucide-react';
+import { Sidebar, Box, Maximize2, Layout, PanelLeft, PanelRight, PanelTop } from 'lucide-react';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Dropdown } from './ui/Dropdown';
 import { Slider } from './ui/Slider';
@@ -8,7 +8,12 @@ import {
     SIDEBAR_MAX_WIDTH_PCT_MIN,
     SIDEBAR_MAX_WIDTH_PCT_MAX,
     SIDEBAR_DEFAULT_WIDTH,
-    SIDEBAR_MAX_WIDTH_PCT_DEFAULT
+    SIDEBAR_MAX_WIDTH_PCT_DEFAULT,
+    PANEL_PADDING_MIN,
+    PANEL_PADDING_MAX,
+    PANEL_PADDING_STEP,
+    SIDEBAR_PANEL_PADDING_DEFAULT,
+    MANAGER_PANEL_PADDING_DEFAULT
 } from '../constants';
 import { formatHotkey } from '../utils/hotkeys';
 import type { AppearanceSettings, ToolbarClickAction, SidebarLayoutMode, SidebarDockSide } from '../types';
@@ -126,6 +131,26 @@ export const SidebarSettings: React.FC<SidebarSettingsProps> = ({
                     step={1}
                     label="Max Width"
                     displayValue={`${sidebarWidthMaxPct}%`}
+                />
+
+                <Slider
+                    value={appearanceSettings.sidebarPanelPadding ?? SIDEBAR_PANEL_PADDING_DEFAULT}
+                    onChange={(value) => setAppearanceSettings({ sidebarPanelPadding: value })}
+                    min={PANEL_PADDING_MIN}
+                    max={PANEL_PADDING_MAX}
+                    step={PANEL_PADDING_STEP}
+                    label="Sidebar Padding"
+                    displayValue={`${appearanceSettings.sidebarPanelPadding ?? SIDEBAR_PANEL_PADDING_DEFAULT}px`}
+                />
+
+                <Slider
+                    value={appearanceSettings.managerPanelPadding ?? MANAGER_PANEL_PADDING_DEFAULT}
+                    onChange={(value) => setAppearanceSettings({ managerPanelPadding: value })}
+                    min={PANEL_PADDING_MIN}
+                    max={PANEL_PADDING_MAX}
+                    step={PANEL_PADDING_STEP}
+                    label="Manager Padding"
+                    displayValue={`${appearanceSettings.managerPanelPadding ?? MANAGER_PANEL_PADDING_DEFAULT}px`}
                 />
 
                 <div className="space-y-2">

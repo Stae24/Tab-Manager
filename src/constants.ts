@@ -76,6 +76,12 @@ export const SIDEBAR_DEFAULT_WIDTH = 420;
 export const SIDEBAR_DEFAULT_DOCK_SIDE: 'left' | 'right' = 'right';
 export const SIDEBAR_DEFAULT_LAYOUT_MODE: 'overlay' | 'push' = 'overlay';
 
+export const PANEL_PADDING_MIN = 0;
+export const PANEL_PADDING_MAX = 32;
+export const PANEL_PADDING_STEP = 2;
+export const SIDEBAR_PANEL_PADDING_DEFAULT = 4;
+export const MANAGER_PANEL_PADDING_DEFAULT = 8;
+
 export const GROUP_HEADERS_SECTION = 'group-headers';
 export const TAB_COUNT_SECTION = 'tab-count';
 export const SORT_GROUPS_SECTION = 'sort-groups';

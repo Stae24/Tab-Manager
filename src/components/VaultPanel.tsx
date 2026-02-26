@@ -11,8 +11,10 @@ import { CompressionWarning } from './CompressionWarning';
 import { ScrollContainerProvider } from '../contexts/ScrollContainerContext';
 import { cn } from '../utils/cn';
 import { logger } from '../utils/logger';
+import { detectSidebarContext } from '../utils/browser';
+import { useStore } from '../store/useStore';
 import { Island as IslandType, Tab as TabType, UniversalId, VaultQuotaInfo, DashboardRow, CompressionTier } from '../types';
-import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS } from '../constants';
+import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS, SIDEBAR_PANEL_PADDING_DEFAULT, MANAGER_PANEL_PADDING_DEFAULT } from '../constants';
 
 interface VaultPanelProps {
   dividerPosition: number;
@@ -71,6 +73,18 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   const [showLocalStorageWarning, setShowLocalStorageWarning] = useState(true);
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(true);
   const [isCleaning, setIsCleaning] = useState(false);
+  const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
+
+  const sidebarPanelPadding = useStore((s) => s.appearanceSettings.sidebarPanelPadding);
+  const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
+
+  useEffect(() => {
+    detectSidebarContext().then(setIsSidebar);
+  }, []);
+
+  const horizontalPadding = isSidebar === null
+    ? SIDEBAR_PANEL_PADDING_DEFAULT
+    : (isSidebar ? (sidebarPanelPadding ?? SIDEBAR_PANEL_PADDING_DEFAULT) : (managerPanelPadding ?? MANAGER_PANEL_PADDING_DEFAULT));
 
   const handleDeleteDuplicates = async () => {
     setIsCleaning(true);
@@ -260,7 +274,8 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none"
+        className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 scroll-smooth overscroll-none"
+        style={{ paddingLeft: `${horizontalPadding}px`, paddingRight: `${horizontalPadding}px`, paddingTop: '1rem', paddingBottom: '1rem' }}
       >
         <ScrollContainerProvider containerRef={scrollRef}>
           {vaultQuota && (

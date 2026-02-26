@@ -12,7 +12,9 @@ import {
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_DEFAULT_DOCK_SIDE,
   SIDEBAR_DEFAULT_LAYOUT_MODE,
-  SIDEBAR_MAX_WIDTH_PCT_DEFAULT
+  SIDEBAR_MAX_WIDTH_PCT_DEFAULT,
+  SIDEBAR_PANEL_PADDING_DEFAULT,
+  MANAGER_PANEL_PADDING_DEFAULT
 } from '../constants';
 
 export const debounce = <T extends (...args: any[]) => any>(fn: T, ms = DEBOUNCE_DEFAULT_MS) => {
@@ -160,6 +162,8 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     (typeof s.sidebarWidthMaxPct === 'number' || s.sidebarWidthMaxPct === undefined) &&
     isHotkeyBinding(s.sidebarToggleHotkey) &&
     isHotkeyBinding(s.managerPageHotkey) &&
+    (typeof s.sidebarPanelPadding === 'number' || s.sidebarPanelPadding === undefined) &&
+    (typeof s.managerPanelPadding === 'number' || s.managerPanelPadding === undefined) &&
     (typeof s.debugMode === 'boolean' || s.debugMode === undefined)
   );
 };
@@ -259,6 +263,8 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   sidebarWidthMaxPct: SIDEBAR_MAX_WIDTH_PCT_DEFAULT,
   sidebarToggleHotkey: DEFAULT_SIDEBAR_TOGGLE_HOTKEY,
   managerPageHotkey: DEFAULT_MANAGER_PAGE_HOTKEY,
+  sidebarPanelPadding: SIDEBAR_PANEL_PADDING_DEFAULT,
+  managerPanelPadding: MANAGER_PANEL_PADDING_DEFAULT,
   debugMode: false,
 };
 
