@@ -358,7 +358,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                 className={cn(
                   "p-1.5 bg-gx-gray/80 rounded-lg border border-white/5 shadow-inner transition-all group",
                   ungroupedCount < 2
-                    ? "opacity-30 cursor-not-allowed grayscale"
+                    ? "opacity-30 grayscale"
                     : "hover:border-gx-accent/30 hover:bg-gx-accent/10"
                 )}
               >
@@ -396,7 +396,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                   "flex items-center gap-1.5 px-2 py-1 rounded border transition-all duration-300",
                   "text-[10px] font-bold uppercase tracking-wider",
                   "bg-gx-accent/20 border-gx-accent/30 text-gx-accent hover:bg-gx-accent/40",
-                  "disabled:opacity-30 disabled:cursor-not-allowed disabled:grayscale"
+                  "disabled:opacity-30 disabled:grayscale"
                 )}
                 title="Group search results"
               >

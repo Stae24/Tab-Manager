@@ -148,7 +148,7 @@ export const Sidebar: React.FC = () => {
           disabled={undoStack.length === 0}
           className={cn(
             "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-white/5",
-            undoStack.length === 0 ? "opacity-30 cursor-not-allowed" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
+            undoStack.length === 0 ? "opacity-30" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
           )}
           title={undoStack.length > 0 ? `Undo ${undoStack[undoStack.length - 1].label}` : 'Nothing to undo'}
         >
@@ -160,7 +160,7 @@ export const Sidebar: React.FC = () => {
           disabled={redoStack.length === 0}
           className={cn(
             "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-white/5",
-            redoStack.length === 0 ? "opacity-30 cursor-not-allowed" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
+            redoStack.length === 0 ? "opacity-30" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
           )}
           title={redoStack.length > 0 ? `Redo ${redoStack[0].label}` : 'Nothing to redo'}
         >
