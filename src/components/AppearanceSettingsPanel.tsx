@@ -50,7 +50,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
   const [searchQuery, setSearchQuery] = useState('');
   const [isClosing, setIsClosing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  const [shouldWrapTabs, setShouldWrapTabs] = useState(false);
+
 
   const panelRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
@@ -83,8 +83,6 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
     const maxWidth = window.innerWidth - SETTINGS_PANEL_WINDOW_GAP;
     setPanelWidth(prev => Math.min(prev, maxWidth));
 
-    // Check if tabs should wrap
-    setShouldWrapTabs(window.innerWidth < 450);
   }, []);
 
   useEffect(() => {
@@ -260,19 +258,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
         {/* Responsive Tabs Section */}
         <div className="px-5 py-3 border-b border-gx-gray bg-gx-gray/30">
-          <div className={cn(
-            "flex justify-center gap-1",
-            shouldWrapTabs ? "flex-col" : "flex-row"
-          )}>
-            {!shouldWrapTabs ? (
-              <div className="flex justify-center gap-1 w-full">
-                {tabs.map(renderTabButton)}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-1">
-                {tabs.map(renderTabButton)}
-              </div>
-            )}
+          <div className="flex flex-wrap justify-center gap-1">
+            {tabs.map(renderTabButton)}
           </div>
         </div>
 
