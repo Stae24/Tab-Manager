@@ -37,10 +37,10 @@ export const SearchHelp: React.FC<SearchHelpProps> = ({ isOpen, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gx-gray/30">
-          <h2 id="search-help-title" className="text-lg font-semibold text-white">Search Syntax</h2>
+          <h2 id="search-help-title" className="text-lg font-semibold text-gx-text">Search Syntax</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-gx-text transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
