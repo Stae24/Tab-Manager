@@ -2,18 +2,29 @@
 
 @theme {
   --color-gx-red: #ff1b1b;
-  --color-gx-dark: #0e0e0e;
-  --color-gx-accent: #7f22fe;
-  --color-gx-gray: #1c1c1c;
+  --color-gx-dark: var(--base-dark);
+  --color-gx-accent: var(--gx-accent);
+  --color-gx-gray: var(--base-gray);
+  --color-gx-text: var(--base-text);
+  --color-gx-border: var(--base-border);
   --color-gx-cyan: #00d4ff;
   --color-gx-green: #00ff88;
 }
 
 :root {
+  --base-dark: #0e0e0e;
+  --base-gray: #1c1c1c;
+  --base-text: #ffffff;
+  --base-border: #333333;
+  --gx-accent: #7f22fe;
 }
 
 body {
-  @apply bg-gx-dark text-white overflow-hidden fixed inset-0;
+  background-color: var(--base-dark);
+  color: var(--base-text);
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
   touch-action: none;
 }
 
