@@ -1,19 +1,14 @@
 import React, { useCallback } from 'react';
-import { Sun, Moon, Monitor, ZoomIn, Palette, Square } from 'lucide-react';
+import { ZoomIn, Square } from 'lucide-react';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Dropdown } from './ui/Dropdown';
 import { Slider } from './ui/Slider';
-import { ColorPalette } from './ui/ColorPalette';
 import {
     UI_SCALE_MIN,
     UI_SCALE_MAX,
     UI_SCALE_STEP
 } from '../constants';
-import type { AppearanceSettings, ThemeMode, BorderRadius } from '../types';
-
-function isThemeMode(value: unknown): value is ThemeMode {
-    return value === 'dark' || value === 'light' || value === 'system';
-}
+import type { AppearanceSettings, BorderRadius } from '../types';
 
 function isBorderRadius(value: unknown): value is BorderRadius {
     return value === 'none' || value === 'small' || value === 'medium' || value === 'large' || value === 'full';
@@ -32,27 +27,13 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({
     expandedSections,
     toggleSection
 }) => {
-    const handleToggleTheme = useCallback(() => {
-        toggleSection('theme');
-    }, [toggleSection]);
-
     const handleToggleUiScale = useCallback(() => {
         toggleSection('ui-scale');
-    }, [toggleSection]);
-
-    const handleToggleAccentColor = useCallback(() => {
-        toggleSection('accent-color');
     }, [toggleSection]);
 
     const handleToggleBorderRadius = useCallback(() => {
         toggleSection('border-radius');
     }, [toggleSection]);
-
-    const handleThemeChange = useCallback((value: unknown) => {
-        if (isThemeMode(value)) {
-            setAppearanceSettings({ theme: value });
-        }
-    }, [setAppearanceSettings]);
 
     const handleBorderRadiusChange = useCallback((value: unknown) => {
         if (isBorderRadius(value)) {
@@ -68,31 +49,8 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({
         setAppearanceSettings({ settingsScale: value });
     }, [setAppearanceSettings]);
 
-    const handleAccentColorChange = useCallback((value: string) => {
-        setAppearanceSettings({ accentColor: value });
-    }, [setAppearanceSettings]);
-
     return (
         <>
-            <CollapsibleSection
-                id="theme"
-                title="Theme Mode"
-                icon={Monitor}
-                isExpanded={expandedSections.has('theme')}
-                onToggle={handleToggleTheme}
-            >
-                <Dropdown
-                    value={appearanceSettings.theme}
-                    onChange={handleThemeChange}
-                    options={[
-                        { value: 'dark', label: 'Dark Mode', icon: Moon },
-                        { value: 'light', label: 'Light Mode', icon: Sun },
-                        { value: 'system', label: 'System Default', icon: Monitor },
-                    ]}
-                    label="Select Theme"
-                />
-            </CollapsibleSection>
-
             <CollapsibleSection
                 id="ui-scale"
                 title="UI Scale"
@@ -120,20 +78,6 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({
                         displayValue={`${Math.round(appearanceSettings.settingsScale * 100)}%`}
                     />
                 </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection
-                id="accent-color"
-                title="Accent Color"
-                icon={Palette}
-                isExpanded={expandedSections.has('accent-color')}
-                onToggle={handleToggleAccentColor}
-            >
-                <ColorPalette
-                    value={appearanceSettings.accentColor}
-                    onChange={handleAccentColorChange}
-                    label="Choose Accent Color"
-                />
             </CollapsibleSection>
 
             <CollapsibleSection
