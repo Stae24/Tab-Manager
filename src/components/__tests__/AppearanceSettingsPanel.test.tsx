@@ -9,6 +9,7 @@ vi.mock('../../store/useStore', () => ({
     useStore: vi.fn(),
     defaultAppearanceSettings: {
         theme: 'system',
+        themeElements: { background: true, panels: true, text: true, accent: true },
         uiScale: 1,
         settingsScale: 1,
         tabDensity: 'normal',
@@ -89,11 +90,8 @@ describe('AppearanceSettingsPanel', () => {
     it('should update theme setting', () => {
         render(<AppearanceSettingsPanel isOpen={true} onClose={mockOnClose} />);
 
-        // Expand Theme Mode section
-        fireEvent.click(screen.getByText(/theme mode/i));
-
-        const themeSelect = screen.getByText(/system default/i);
-        fireEvent.click(themeSelect);
+        // Expand Color Themes section
+        fireEvent.click(screen.getByText(/color themes/i));
 
         const darkModeOption = screen.getByText(/dark mode/i);
         fireEvent.click(darkModeOption);

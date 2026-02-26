@@ -234,7 +234,7 @@ describe('Sidebar', () => {
             const { container } = render(<Sidebar />);
 
             const sidebar = container.firstChild as HTMLElement;
-            expect(sidebar).toHaveClass('bg-gx-dark');
+            expect(sidebar).toHaveClass('bg-gx-gray/50');
         });
 
         it('should render with correct structure', () => {
