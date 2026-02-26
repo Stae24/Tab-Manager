@@ -63,14 +63,7 @@ async function openExtensionTab(): Promise<chrome.tabs.Tab | undefined> {
 
 chrome.action.onClicked.addListener(async (tab) => {
   try {
-    const windowId = tab.windowId;
-    const settings = await sidebarService.loadSettings();
-
-    if (settings.toolbarClickAction === 'toggle-sidebar') {
-      await sidebarService.handleToolbarClick(windowId);
-    } else {
-      await sidebarService.openManagerPage();
-    }
+    await sidebarService.handleToolbarClick(tab.windowId);
   } catch (error) {
     logger.error('Background', 'Error in action.onClicked listener:', error);
   }
@@ -80,7 +73,6 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'toggle-island-manager') {
     logger.debug('Background', 'Keyboard shortcut triggered');
     try {
-      const settings = await sidebarService.loadSettings();
       const windows = await chrome.windows.getCurrent();
       if (windows.id !== undefined) {
         await sidebarService.handleToolbarClick(windows.id);

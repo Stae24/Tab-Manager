@@ -58,41 +58,30 @@ export const sidebarService = {
     return settings.toolbarClickAction;
   },
 
-  async handleToolbarClick(windowId: number): Promise<void> {
-    const action = await this.getToolbarClickAction();
-    logger.debug('SidebarService', 'Toolbar click action:', action);
-
-    const tabs = await chrome.tabs.query({ active: true, windowId });
-    const currentTab = tabs[0];
-    const isRestricted = this.isRestrictedUrl(currentTab?.url);
-
-    if (isRestricted) {
+  async handleToolbarClick(windowId: number, action?: ToolbarClickAction): Promise<void> {
+    if (action === 'open-manager-page') {
       await this.openManagerPage();
       return;
     }
 
-    if (action === 'toggle-sidebar') {
-      const isSticky = await this.getWindowStickyState(windowId);
-      if (isSticky) {
-        // Try to close if supported, otherwise toggle via open
-        if (chrome.sidePanel && (chrome.sidePanel as any).close) {
-          try {
-            await (chrome.sidePanel as any).close({ windowId });
-            await this.setWindowStickyState(windowId, false);
-            return;
-          } catch (err) {
-            logger.warn('SidebarService', 'Failed to close sidePanel:', err);
-          }
+    await chrome.sidePanel.open({ windowId }).catch((err) => {
+      logger.error('SidebarService', 'Failed to open sidePanel:', err);
+    });
+
+    const settings = await this.loadSettings();
+    if (settings.toolbarClickAction === 'open-manager-page') {
+      if (chrome.sidePanel && (chrome.sidePanel as any).close) {
+        try {
+          await (chrome.sidePanel as any).close({ windowId });
+        } catch (err) {
+          logger.warn('SidebarService', 'Failed to close sidePanel:', err);
         }
       }
-
-      await chrome.sidePanel.open({ windowId }).catch((err) => {
-        logger.error('SidebarService', 'Failed to open sidePanel:', err);
-      });
-      await this.setWindowStickyState(windowId, true);
-    } else if (action === 'open-manager-page') {
       await this.openManagerPage();
+      return;
     }
+
+    await this.setWindowStickyState(windowId, true);
   },
 
   async openManagerPage(): Promise<void> {
@@ -121,14 +110,6 @@ export const sidebarService = {
     if (!url) return false;
     const managerUrl = chrome.runtime.getURL('index.html');
     return url === managerUrl || url.startsWith(managerUrl + '?') || url.startsWith(managerUrl + '#');
-  },
-
-  isRestrictedUrl(url: string | undefined): boolean {
-    if (!url) return true;
-    return this.isManagerPage(url) ||
-      url.startsWith('chrome://') ||
-      url.startsWith('about:') ||
-      url.startsWith('chrome-extension://');
   },
 
   async setupWindowListeners(): Promise<void> {

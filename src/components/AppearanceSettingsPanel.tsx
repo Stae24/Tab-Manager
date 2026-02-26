@@ -37,21 +37,12 @@ interface AppearanceSettingsPanelProps {
 }
 
 export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = ({ isOpen, onClose }) => {
-  const {
-    appearanceSettings,
-    setAppearanceSettings,
-    vaultQuota,
-    setVaultSyncEnabled,
-    settingsPanelWidth,
-    setSettingsPanelWidth,
-  } = useStore((state) => ({
-    appearanceSettings: state.appearanceSettings,
-    setAppearanceSettings: state.setAppearanceSettings,
-    vaultQuota: state.vaultQuota,
-    setVaultSyncEnabled: state.setVaultSyncEnabled,
-    settingsPanelWidth: state.settingsPanelWidth,
-    setSettingsPanelWidth: state.setSettingsPanelWidth,
-  }));
+  const appearanceSettings = useStore((state) => state.appearanceSettings);
+  const setAppearanceSettings = useStore((state) => state.setAppearanceSettings);
+  const vaultQuota = useStore((state) => state.vaultQuota);
+  const setVaultSyncEnabled = useStore((state) => state.setVaultSyncEnabled);
+  const settingsPanelWidth = useStore((state) => state.settingsPanelWidth);
+  const setSettingsPanelWidth = useStore((state) => state.setSettingsPanelWidth);
 
   const [activeTab, setActiveTab] = useState<TabId>('display');
   const [isResizing, setIsResizing] = useState(false);
