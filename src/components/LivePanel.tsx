@@ -8,13 +8,15 @@ import { SearchResultList } from './SearchResultList';
 import { VirtualizedLiveList } from './VirtualizedLiveList';
 import { cn } from '../utils/cn';
 import { logger } from '../utils/logger';
-import { needsCompanionTabForSingleTabGroup } from '../utils/browser';
+import { needsCompanionTabForSingleTabGroup, detectSidebarContext } from '../utils/browser';
 import { Island as IslandType, Tab as TabType, UniversalId, DashboardRow } from '../types';
 import {
   VIRTUAL_ROW_ESTIMATE_SIZE,
   VIRTUAL_ROW_OVERSCAN,
   CLEANUP_ANIMATION_DELAY_MS,
-  SEARCH_DEBOUNCE_MS
+  SEARCH_DEBOUNCE_MS,
+  SIDEBAR_PANEL_PADDING_DEFAULT,
+  MANAGER_PANEL_PADDING_DEFAULT
 } from '../constants';
 import { search, searchAndExecute, parseQuery, isSearchActive, hasCommands } from '../search';
 import { useStore } from '../store/useStore';
@@ -94,6 +96,18 @@ export const LivePanel: React.FC<LivePanelProps> = ({
 
   const syncLiveTabs = useStore((s) => s.syncLiveTabs);
   const searchDebounce = useStore((s) => s.appearanceSettings.searchDebounce);
+  const sidebarPanelPadding = useStore((s) => s.appearanceSettings.sidebarPanelPadding);
+  const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
+
+  const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    detectSidebarContext().then(setIsSidebar);
+  }, []);
+
+  const horizontalPadding = isSidebar === null
+    ? SIDEBAR_PANEL_PADDING_DEFAULT
+    : (isSidebar ? (sidebarPanelPadding ?? SIDEBAR_PANEL_PADDING_DEFAULT) : (managerPanelPadding ?? MANAGER_PANEL_PADDING_DEFAULT));
 
   const runSearch = useCallback(async (query: string) => {
     const currentGen = ++searchGenRef.current;
@@ -413,7 +427,8 @@ export const LivePanel: React.FC<LivePanelProps> = ({
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scroll-smooth overscroll-none scrollbar-hide"
+        className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 scroll-smooth overscroll-none scrollbar-hide"
+        style={{ paddingLeft: `${horizontalPadding}px`, paddingRight: `${horizontalPadding}px`, paddingTop: '1rem', paddingBottom: '1rem' }}
       >
         {searchQuery ? (
           <SearchResultList

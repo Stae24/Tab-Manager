@@ -85,3 +85,21 @@ export function needsCompanionTabForSingleTabGroup(): boolean {
   }
   return false;
 }
+
+let cachedIsSidebar: boolean | null = null;
+
+export async function detectSidebarContext(): Promise<boolean> {
+  if (cachedIsSidebar !== null) return cachedIsSidebar;
+  try {
+    const tab = await chrome.tabs.getCurrent();
+    cachedIsSidebar = tab === undefined;
+    return cachedIsSidebar;
+  } catch {
+    cachedIsSidebar = false;
+    return false;
+  }
+}
+
+export function getCachedSidebarContext(): boolean | null {
+  return cachedIsSidebar;
+}

@@ -196,6 +196,8 @@ export interface AppearanceSettings {
   sidebarWidthMaxPct?: number;
   sidebarToggleHotkey: HotkeyBinding;
   managerPageHotkey: HotkeyBinding;
+  sidebarPanelPadding?: number;
+  managerPanelPadding?: number;
 
   // Dev
   debugMode: boolean;
