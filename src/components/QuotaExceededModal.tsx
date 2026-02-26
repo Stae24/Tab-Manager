@@ -49,7 +49,7 @@ export function QuotaExceededModal({
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white mb-1">
+            <h2 className="text-lg font-semibold text-gx-text mb-1">
               Sync Storage Full
             </h2>
             <p className="text-sm text-gray-400">
@@ -75,7 +75,7 @@ export function QuotaExceededModal({
               </svg>
             </div>
             <div>
-              <div className="font-medium text-white">Switch to Local Storage</div>
+              <div className="font-medium text-gx-text">Switch to Local Storage</div>
               <div className="text-xs text-gray-400">Unlimited space, but won't sync across devices</div>
             </div>
           </button>
@@ -95,7 +95,7 @@ export function QuotaExceededModal({
               </svg>
             </div>
             <div>
-              <div className="font-medium text-white">Free Up Space</div>
+              <div className="font-medium text-gx-text">Free Up Space</div>
               <div className="text-xs text-gray-400">Remove old items from your vault</div>
             </div>
           </button>
@@ -104,7 +104,7 @@ export function QuotaExceededModal({
             onClick={() => onAction('cancel')}
             className={cn(
               'w-full p-3 rounded-lg text-center',
-              'text-gray-400 hover:text-white',
+              'text-gray-400 hover:text-gx-text',
               'hover:bg-white/5 transition-colors'
             )}
           >

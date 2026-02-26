@@ -200,12 +200,12 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
       ref={setNodeRef}
       id="vault-dropzone"
       className={cn(
-        "flex flex-col h-full overflow-hidden bg-gx-dark/60 relative transition-all duration-300",
+        "flex flex-col h-full overflow-hidden bg-gx-gray/60 relative transition-all duration-300",
         isOver && isDraggingLiveItem && "bg-gx-red/5 ring-4 ring-inset ring-gx-red/10"
       )}
       style={{ width: `${100 - dividerPosition}%` }}
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gx-gray flex-shrink-0 bg-gx-dark/80 backdrop-blur-md z-20">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
         <div className="flex items-center gap-2">
           <Save className="w-4 h-4 text-gx-red shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
           <h2 className="text-sm font-bold tracking-widest uppercase italic text-gx-red">Neural Vault</h2>
@@ -246,7 +246,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
           </span>
           <button
             onClick={() => setShowLocalStorageWarning(false)}
-            className="text-gx-red hover:text-white transition-colors p-1"
+            className="text-gx-red hover:text-gx-text transition-colors p-1"
             title="Dismiss"
           >
             <X size={14} />
@@ -264,7 +264,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
               setShowRecoveryBanner(false);
               onClearSyncRecovered?.();
             }}
-            className="text-green-400 hover:text-white transition-colors p-1"
+            className="text-green-400 hover:text-gx-text transition-colors p-1"
             title="Dismiss"
           >
             <X size={14} />
