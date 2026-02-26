@@ -95,11 +95,17 @@ export const sidebarService = {
         if (tabs[0].windowId !== undefined) {
           await chrome.windows.update(tabs[0].windowId, { focused: true });
         }
+        if (settings.autoPinTabManager && !tabs[0].pinned) {
+          await chrome.tabs.update(tabs[0].id, { pinned: true });
+        }
         return;
       }
     }
 
-    await chrome.tabs.create({ url: extensionUrl });
+    const tab = await chrome.tabs.create({ url: extensionUrl });
+    if (settings.autoPinTabManager && tab.id) {
+      await chrome.tabs.update(tab.id, { pinned: true });
+    }
   },
 
   async broadcastSidebarState(_windowId: number): Promise<void> {
