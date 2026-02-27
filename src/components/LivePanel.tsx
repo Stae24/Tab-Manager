@@ -81,7 +81,6 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
-  const [headerWidth, setHeaderWidth] = useState(0);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchPromiseRef = useRef<Promise<void> | null>(null);
@@ -108,19 +107,6 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   useEffect(() => {
     detectSidebarContext().then(setIsSidebar);
   }, []);
-
-  useEffect(() => {
-    const header = headerRef.current;
-    if (!header) return;
-    const observer = new ResizeObserver((entries) => {
-      setHeaderWidth(entries[0]?.contentRect.width ?? 0);
-    });
-    observer.observe(header);
-    return () => observer.disconnect();
-  }, []);
-
-  const iconHidden = headerWidth > 0 && headerWidth < 50;
-  const textHidden = headerWidth > 0 && headerWidth < 90;
 
   const horizontalPadding = isSidebar === null
     ? SIDEBAR_PANEL_PADDING_DEFAULT
@@ -312,16 +298,18 @@ export const LivePanel: React.FC<LivePanelProps> = ({
       style={{ width: showVault ? `${dividerPosition}%` : '100%' }}
     >
       <div ref={headerRef} className="flex flex-col border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
-        <div className="flex items-center px-4 py-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {showPanelIcon && !iconHidden && (
-              <FolderOpen className="w-4 h-4 text-gx-accent drop-shadow-[0_0_4px_rgba(127,34,254,0.6)] flex-shrink-0" />
-            )}
-            {showPanelName && !textHidden && (
-              <h2 className="text-sm font-bold tracking-widest uppercase italic truncate flex-1 min-w-0">Live</h2>
-            )}
-          </div>
-          <div className="flex items-center gap-3 flex-1 ml-4 justify-end">
+        <div className={cn("flex items-center py-3 pr-4", (showPanelIcon || showPanelName) ? "pl-4" : "!pl-0")}>
+          {(showPanelIcon || showPanelName) && (
+            <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+              {showPanelIcon && (
+                <FolderOpen className="w-4 h-4 text-gx-accent drop-shadow-[0_0_4px_rgba(127,34,254,0.6)] flex-shrink-0" />
+              )}
+              {showPanelName && (
+                <h2 className="text-sm font-bold tracking-widest uppercase italic truncate flex-1 min-w-0">Live</h2>
+              )}
+            </div>
+          )}
+          <div className={cn("flex items-center gap-3 flex-1", (showPanelIcon || showPanelName) ? "ml-4 justify-end" : "justify-start")}>
             <SearchBar
               ref={searchInputRef}
               query={searchQuery}
@@ -332,6 +320,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               onHelp={() => setShowSearchHelp(true)}
               resultCount={displayTabs.length}
               isSearching={isSearching}
+              compact={!(showPanelIcon || showPanelName)}
             />
 
             {!searchQuery && (
