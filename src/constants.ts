@@ -85,3 +85,8 @@ export const MANAGER_PANEL_PADDING_DEFAULT = 8;
 export const GROUP_HEADERS_SECTION = 'group-headers';
 export const TAB_COUNT_SECTION = 'tab-count';
 export const SORT_GROUPS_SECTION = 'sort-groups';
+export const PANEL_HEADERS_SECTION = 'panel-headers';
+
+export const PANEL_HEADER_TRUNCATE_THRESHOLD = 320;
+export const PANEL_HEADER_ICON_ONLY_THRESHOLD = 280;
+export const PANEL_HEADER_HIDDEN_THRESHOLD = 240;

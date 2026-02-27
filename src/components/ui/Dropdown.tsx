@@ -178,7 +178,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
                     }}
                     onKeyDown={handleKeyDown}
                     className={cn(
-                        "w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gx-gray border border-white/5 rounded-lg hover:border-gx-accent/30 transition-all",
+                        "w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gx-gray border border-gx-border rounded-lg hover:border-gx-accent/30 transition-all",
                         disabled && "opacity-50",
                         highlighted && "ring-2 ring-gx-accent animate-pulse"
                     )}
@@ -195,7 +195,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
                             ref={(el) => { dropdownRef.current = el; menuRef.current = el; }}
                             role="listbox"
                             aria-activedescendant={focusedIndex >= 0 ? `${id}-option-${options[focusedIndex]?.value}` : undefined}
-                            className="fixed z-[9999] bg-gx-dark border border-gx-accent/20 rounded-lg shadow-xl"
+                            className="fixed z-[9999] bg-gx-gray border border-gx-accent/20 rounded-lg shadow-xl"
                             style={{
                                 top: position.top,
                                 left: position.left,

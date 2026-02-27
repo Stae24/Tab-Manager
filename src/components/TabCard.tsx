@@ -170,7 +170,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
           `group relative flex items-center gap-2 transition-all cursor-grab active:cursor-grabbing touch-none`,
           getBorderRadiusClass(appearanceSettings.borderRadius),
           densityClasses[appearanceSettings.tabDensity],
-          'bg-gx-gray border border-white/5',
+          'bg-gx-gray border border-gx-border',
           tab.active && 'bg-gx-accent/10 border-gx-accent/40 shadow-[0_0_15px_rgba(127,34,254,0.15)]',
           tab.discarded && 'opacity-60 grayscale-[0.3]',
           isOverlay && 'shadow-2xl scale-105 border-gx-accent opacity-100 ring-2 ring-gx-accent/50 z-[9999] bg-gx-gray/90',
@@ -259,7 +259,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
                   onSave();
                 }}
                 className={cn(
-                  "rounded-lg hover:bg-gx-cyan/20 text-gray-500 hover:text-gx-cyan transition-all group/save",
+                  "rounded-lg hover:bg-gx-cyan/20 text-gx-muted hover:text-gx-cyan transition-all group/save",
                   buttonPadding[appearanceSettings.buttonSize]
                 )}
                 title="Save to Vault"
@@ -274,7 +274,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
                   onRestore();
                 }}
                 className={cn(
-                  "rounded-lg hover:bg-gx-green/20 text-gray-500 hover:text-gx-green transition-all group/restore",
+                  "rounded-lg hover:bg-gx-green/20 text-gx-muted hover:text-gx-green transition-all group/restore",
                   buttonPadding[appearanceSettings.buttonSize]
                 )}
                 title="Open in Window"
@@ -292,7 +292,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
                 }
               }}
               className={cn(
-                "rounded-lg hover:bg-gx-red/20 text-gray-500 hover:text-gx-red transition-all group/close",
+                "rounded-lg hover:bg-gx-red/20 text-gx-muted hover:text-gx-red transition-all group/close",
                 buttonPadding[appearanceSettings.buttonSize]
               )}
               title={isVault ? "Delete from Vault" : "Close Tab"}
@@ -396,7 +396,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
               disabled={tabsBelowCount === 0}
               className={cn(
                 "flex items-center gap-2 px-2 py-1 text-[10px] rounded",
-                tabsBelowCount === 0 ? "text-gray-400" : "hover:bg-gx-red/20 text-gx-red"
+                tabsBelowCount === 0 ? "text-gx-muted" : "hover:bg-gx-red/20 text-gx-red"
               )}
             >
               <ArrowDownToLine size={10} /> CLOSE TABS BELOW ({tabsBelowCount})
@@ -418,7 +418,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
             disabled={tabsBelowCount === 0}
             className={cn(
               "flex items-center gap-2 px-2 py-1 text-[10px] rounded",
-              tabsBelowCount === 0 ? "text-gray-400 cursor-not-allowed" : "hover:bg-gx-red/20 text-gx-red"
+              tabsBelowCount === 0 ? "text-gx-muted cursor-not-allowed" : "hover:bg-gx-red/20 text-gx-red"
             )}
           >
             <ArrowDownToLine size={10} /> DELETE TABS BELOW ({tabsBelowCount})

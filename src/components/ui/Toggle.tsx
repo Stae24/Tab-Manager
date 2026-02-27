@@ -30,7 +30,7 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, descri
                 "flex items-center gap-3 w-full p-3 rounded-lg transition-all border",
                 checked
                     ? "bg-gx-accent/10 border-gx-accent/30"
-                    : "bg-gx-gray border-white/5 hover:border-gx-accent/20",
+                    : "bg-gx-gray border-gx-border hover:border-gx-accent/20",
                 highlighted && "ring-2 ring-gx-accent animate-pulse"
             )}
         >
@@ -42,7 +42,7 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, descri
             >
                 <div className={cn(
                     "w-4 h-4 rounded-full shadow-lg transform transition-transform duration-300",
-                    checked ? "bg-white shadow-gx-accent/50 translate-x-5" : "bg-gray-400 translate-x-0"
+                    checked ? "bg-gx-text shadow-gx-accent/50 translate-x-5" : "bg-gx-muted translate-x-0"
                 )} />
             </div>
             {(label || description) && (
@@ -50,13 +50,13 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, descri
                     {label && (
                         <span className={cn(
                             "text-xs font-bold block",
-                            checked ? "text-gx-accent" : "text-gray-300"
+                            checked ? "text-gx-accent" : "text-gx-text"
                         )}>
                             {label}
                         </span>
                     )}
                     {description && (
-                        <span className="text-[10px] text-gray-500 block mt-0.5">
+                        <span className="text-[10px] text-gx-muted block mt-0.5">
                             {description}
                         </span>
                     )}

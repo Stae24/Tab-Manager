@@ -25,7 +25,7 @@ export const Slider: React.FC<SliderProps> = ({ value, onChange, min, max, step,
     return (
         <div ref={containerRef} className="space-y-2">
             <div className="flex items-center justify-between">
-                <label id={`${id}-label`} className="text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</label>
+                <label id={`${id}-label`} className="text-xs font-bold text-gx-muted uppercase tracking-wider">{label}</label>
                 {displayValue && (
                     <span className="text-xs font-mono text-gx-accent bg-gx-accent/10 px-2 py-0.5 rounded">
                         {displayValue}
@@ -51,7 +51,7 @@ export const Slider: React.FC<SliderProps> = ({ value, onChange, min, max, step,
                 />
                 {/* Visible thumb */}
                 <div
-                    className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg border border-white/20 z-20 pointer-events-none transition-all duration-150"
+                    className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-gx-text rounded-full shadow-lg border border-gx-border z-20 pointer-events-none transition-all duration-150"
                     style={{ left: `calc(${percentage}% - 8px)` }}
                 />
             </div>

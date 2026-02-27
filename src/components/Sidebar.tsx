@@ -123,7 +123,7 @@ export const Sidebar: React.FC = () => {
             <h1 className="text-sm font-bold text-gx-text tracking-wide uppercase">
               Island Manager
             </h1>
-            <p className="text-[10px] text-gray-500 font-mono">GX EDITION</p>
+            <p className="text-[10px] text-gx-muted font-mono">GX EDITION</p>
           </div>
         </div>
         <button
@@ -135,7 +135,7 @@ export const Sidebar: React.FC = () => {
             "p-2 rounded-lg transition-all border",
             showAppearancePanel
               ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan"
-              : "bg-gx-gray hover:bg-gx-accent/20 text-gray-400 hover:text-gx-text border-white/5"
+              : "bg-gx-gray hover:bg-gx-accent/20 text-gx-muted hover:text-gx-text border-gx-border"
           )}
         >
           <Settings size={18} />
@@ -147,7 +147,7 @@ export const Sidebar: React.FC = () => {
           onClick={undo}
           disabled={undoStack.length === 0}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-white/5",
+            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-gx-border",
             undoStack.length === 0 ? "opacity-30" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
           )}
           title={undoStack.length > 0 ? `Undo ${undoStack[undoStack.length - 1].label}` : 'Nothing to undo'}
@@ -159,7 +159,7 @@ export const Sidebar: React.FC = () => {
           onClick={redo}
           disabled={redoStack.length === 0}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-white/5",
+            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-gx-border",
             redoStack.length === 0 ? "opacity-30" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
           )}
           title={redoStack.length > 0 ? `Redo ${redoStack[0].label}` : 'Nothing to redo'}
@@ -173,7 +173,7 @@ export const Sidebar: React.FC = () => {
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray hover:bg-gx-gray/80 transition-all border border-white/5 hover:border-gx-accent/30"
+          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray hover:bg-gx-gray/80 transition-all border border-gx-border hover:border-gx-accent/30"
         >
           {isDarkMode ? <Moon size={14} className="text-gx-accent" /> : <Sun size={14} className="text-yellow-500" />}
           <span className="text-[10px] font-bold uppercase">Theme</span>
@@ -185,11 +185,11 @@ export const Sidebar: React.FC = () => {
           className={cn(
             "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-all border",
             showVault
-              ? "bg-gx-gray border-white/5 hover:bg-gx-gray/80 hover:border-gx-accent/30"
-              : "bg-gx-red/10 border-gx-red/20 text-gray-500 hover:bg-gx-red/20 hover:border-gx-red/30"
+              ? "bg-gx-gray border-gx-border hover:bg-gx-gray/80 hover:border-gx-accent/30"
+              : "bg-gx-red/10 border-gx-red/20 text-gx-muted hover:bg-gx-red/20 hover:border-gx-red/30"
           )}
         >
-          <Save size={14} className={showVault ? "text-gx-red" : "text-gray-500"} />
+          <Save size={14} className={showVault ? "text-gx-red" : "text-gx-muted"} />
           <span className="text-[10px] font-bold uppercase">
             Vault {showVault ? 'ON' : 'OFF'}
           </span>
@@ -202,7 +202,7 @@ export const Sidebar: React.FC = () => {
               e.stopPropagation();
               setShowExportDropdown(!showExportDropdown);
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray hover:bg-gx-gray/80 transition-all border border-white/5 hover:border-gx-accent/30"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray hover:bg-gx-gray/80 transition-all border border-gx-border hover:border-gx-accent/30"
           >
             <Download size={14} className="text-gx-red" />
             <span className="text-[10px] font-bold uppercase">Export</span>
@@ -218,7 +218,7 @@ export const Sidebar: React.FC = () => {
                   e.stopPropagation();
                   handleExport('json');
                 }}
-                className="px-3 py-2 text-[10px] hover:bg-gx-accent/20 text-left text-gray-400 hover:text-gray-200 transition-all"
+                className="px-3 py-2 text-[10px] hover:bg-gx-accent/20 text-left text-gx-muted hover:text-gx-text transition-all"
               >
                 JSON
               </button>
@@ -227,7 +227,7 @@ export const Sidebar: React.FC = () => {
                   e.stopPropagation();
                   handleExport('csv');
                 }}
-                className="px-3 py-2 text-[10px] hover:bg-gx-accent/20 text-left border-t border-white/5 text-gray-400 hover:text-gray-200 transition-all"
+                className="px-3 py-2 text-[10px] hover:bg-gx-accent/20 text-left border-t border-gx-border text-gx-muted hover:text-gx-text transition-all"
               >
                 CSV
               </button>
@@ -236,7 +236,7 @@ export const Sidebar: React.FC = () => {
                   e.stopPropagation();
                   handleExport('md');
                 }}
-                className="px-3 py-2 text-[10px] hover:bg-gx-accent/20 text-left border-t border-white/5 text-gray-400 hover:text-gray-200 transition-all"
+                className="px-3 py-2 text-[10px] hover:bg-gx-accent/20 text-left border-t border-gx-border text-gx-muted hover:text-gx-text transition-all"
               >
                 Markdown
               </button>

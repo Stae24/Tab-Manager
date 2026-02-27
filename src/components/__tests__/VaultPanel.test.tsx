@@ -81,7 +81,7 @@ describe('VaultPanel Component', () => {
 
   it('renders Neural Vault header', () => {
     render(<VaultPanel {...defaultProps} />);
-    expect(screen.getByText('Neural Vault')).toBeInTheDocument();
+    expect(screen.getByText('Vault')).toBeInTheDocument();
   });
 
   it('shows empty state when vault is empty', () => {
@@ -263,7 +263,7 @@ describe('VaultPanel Component', () => {
       render(<VaultPanel {...defaultProps} vault={[]} />);
 
       // The empty state should have the Neural Vault header visible
-      expect(screen.getByText('Neural Vault')).toBeInTheDocument();
+      expect(screen.getByText('Vault')).toBeInTheDocument();
     });
   });
 
@@ -335,7 +335,7 @@ describe('VaultPanel Component', () => {
       );
 
       // Panel should render even when dragging
-      expect(screen.getByText('Neural Vault')).toBeInTheDocument();
+      expect(screen.getByText('Vault')).toBeInTheDocument();
     });
 
     it('calls restoreFromVault when dropping item', async () => {

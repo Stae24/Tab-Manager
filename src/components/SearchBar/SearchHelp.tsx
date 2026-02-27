@@ -33,14 +33,14 @@ export const SearchHelp: React.FC<SearchHelpProps> = ({ isOpen, onClose }) => {
       onClick={onClose}
     >
       <div
-        className="bg-[#1a1a1a] border border-gx-gray/30 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl"
+        className="bg-gx-gray border border-gx-border rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gx-gray/30">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gx-border">
           <h2 id="search-help-title" className="text-lg font-semibold text-gx-text">Search Syntax</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-gx-text transition-colors"
+            className="p-1 rounded hover:bg-gx-hover text-gx-muted hover:text-gx-text transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -163,10 +163,10 @@ export const SearchHelp: React.FC<SearchHelpProps> = ({ isOpen, onClose }) => {
           </section>
         </div>
 
-        <div className="px-4 py-3 border-t border-gx-gray/30 flex justify-end">
+        <div className="px-4 py-3 border-t border-gx-border flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gx-accent hover:bg-gx-accent/80 text-white rounded-lg transition-colors text-sm font-medium"
+            className="px-4 py-2 bg-gx-accent hover:bg-gx-accent/80 text-gx-text rounded-lg transition-colors text-sm font-medium"
           >
             Got it
           </button>

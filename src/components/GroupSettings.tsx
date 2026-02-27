@@ -1,12 +1,13 @@
 import React, { useCallback } from 'react';
-import { Layers, Hash, ArrowDownUp } from 'lucide-react';
+import { Layers, Hash, ArrowDownUp, LayoutPanelTop } from 'lucide-react';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Toggle } from './ui/Toggle';
 import type { AppearanceSettings } from '../types';
 import {
     GROUP_HEADERS_SECTION,
     TAB_COUNT_SECTION,
-    SORT_GROUPS_SECTION
+    SORT_GROUPS_SECTION,
+    PANEL_HEADERS_SECTION
 } from '../constants';
 import type { SettingSection } from './AppearanceSettingsPanel';
 
@@ -39,6 +40,16 @@ export const SETTING_SECTIONS: SettingSection[] = [
             { id: 'sort-vault-groups', label: 'Sort Vault Groups by Tab Count', description: 'Sort Neural Vault groups from most to least tabs', keywords: ['sort', 'vault', 'groups', 'count'] },
         ],
     },
+    {
+        id: PANEL_HEADERS_SECTION,
+        title: 'Panel Headers',
+        category: 'groups',
+        icon: LayoutPanelTop,
+        controls: [
+            { id: 'show-panel-name', label: 'Show Panel Name', description: 'Display "Live" and "Vault" text in panel headers', keywords: ['panel', 'name', 'text', 'header'] },
+            { id: 'show-panel-icon', label: 'Show Panel Icon', description: 'Display folder and save icons in panel headers', keywords: ['panel', 'icon', 'header'] },
+        ],
+    },
 ];
 
 interface GroupSettingsProps {
@@ -68,6 +79,10 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({
         toggleSection(SORT_GROUPS_SECTION);
     }, [toggleSection]);
 
+    const handleTogglePanelHeaders = useCallback(() => {
+        toggleSection(PANEL_HEADERS_SECTION);
+    }, [toggleSection]);
+
     const handleCompactGroupHeadersChange = useCallback((checked: boolean) => {
         setAppearanceSettings({ compactGroupHeaders: checked });
     }, [setAppearanceSettings]);
@@ -82,6 +97,14 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({
 
     const handleSortVaultGroupsByCountChange = useCallback((checked: boolean) => {
         setAppearanceSettings({ sortVaultGroupsByCount: checked });
+    }, [setAppearanceSettings]);
+
+    const handleShowPanelNameChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ showPanelName: checked });
+    }, [setAppearanceSettings]);
+
+    const handleShowPanelIconChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ showPanelIcon: checked });
     }, [setAppearanceSettings]);
 
     return (
@@ -138,6 +161,29 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({
                     label="Sort Vault Groups by Tab Count"
                     description="When enabled, Neural Vault groups are sorted from most to least tabs"
                     highlighted={highlightedControl?.sectionId === SORT_GROUPS_SECTION && highlightedControl?.controlId === 'sort-vault-groups'}
+                />
+            </CollapsibleSection>
+
+            <CollapsibleSection
+                id={PANEL_HEADERS_SECTION}
+                title="Panel Headers"
+                icon={LayoutPanelTop}
+                isExpanded={expandedSections.has(PANEL_HEADERS_SECTION)}
+                onToggle={handleTogglePanelHeaders}
+            >
+                <Toggle
+                    checked={appearanceSettings.showPanelName}
+                    onChange={handleShowPanelNameChange}
+                    label="Show Panel Name"
+                    description='Display "Live" and "Vault" text in panel headers'
+                    highlighted={highlightedControl?.sectionId === PANEL_HEADERS_SECTION && highlightedControl?.controlId === 'show-panel-name'}
+                />
+                <Toggle
+                    checked={appearanceSettings.showPanelIcon}
+                    onChange={handleShowPanelIconChange}
+                    label="Show Panel Icon"
+                    description="Display folder and save icons in panel headers"
+                    highlighted={highlightedControl?.sectionId === PANEL_HEADERS_SECTION && highlightedControl?.controlId === 'show-panel-icon'}
                 />
             </CollapsibleSection>
         </div>

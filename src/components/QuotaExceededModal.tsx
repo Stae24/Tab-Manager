@@ -52,7 +52,7 @@ export function QuotaExceededModal({
             <h2 className="text-lg font-semibold text-gx-text mb-1">
               Sync Storage Full
             </h2>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gx-muted">
               Your vault has exceeded the sync storage quota. 
               Using {formatBytes(bytesUsed)}, need {formatBytes(Math.abs(bytesAvailable))} more.
             </p>
@@ -64,7 +64,7 @@ export function QuotaExceededModal({
             onClick={() => onAction('switch-local')}
             className={cn(
               'w-full flex items-center gap-3 p-4 rounded-lg text-left',
-              'bg-gx-dark/50 border border-white/10',
+              'bg-gx-gray/50 border border-gx-border',
               'hover:border-gx-accent/50 hover:bg-gx-accent/10',
               'transition-colors group'
             )}
@@ -76,7 +76,7 @@ export function QuotaExceededModal({
             </div>
             <div>
               <div className="font-medium text-gx-text">Switch to Local Storage</div>
-              <div className="text-xs text-gray-400">Unlimited space, but won't sync across devices</div>
+              <div className="text-xs text-gx-muted">Unlimited space, but won't sync across devices</div>
             </div>
           </button>
 
@@ -84,7 +84,7 @@ export function QuotaExceededModal({
             onClick={() => onAction('free-space')}
             className={cn(
               'w-full flex items-center gap-3 p-4 rounded-lg text-left',
-              'bg-gx-dark/50 border border-white/10',
+              'bg-gx-gray/50 border border-gx-border',
               'hover:border-yellow-500/50 hover:bg-yellow-500/10',
               'transition-colors group'
             )}
@@ -96,7 +96,7 @@ export function QuotaExceededModal({
             </div>
             <div>
               <div className="font-medium text-gx-text">Free Up Space</div>
-              <div className="text-xs text-gray-400">Remove old items from your vault</div>
+              <div className="text-xs text-gx-muted">Remove old items from your vault</div>
             </div>
           </button>
 
@@ -104,8 +104,8 @@ export function QuotaExceededModal({
             onClick={() => onAction('cancel')}
             className={cn(
               'w-full p-3 rounded-lg text-center',
-              'text-gray-400 hover:text-gx-text',
-              'hover:bg-white/5 transition-colors'
+              'text-gx-muted hover:text-gx-text',
+              'hover:bg-gx-hover transition-colors'
             )}
           >
             Cancel

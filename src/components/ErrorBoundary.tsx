@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <p className="text-sm font-medium text-gray-300 leading-relaxed">
                   The neural link has encountered an unhandled exception. The current workspace state might be unstable.
                 </p>
-                <div className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-[11px] text-gx-red/80 overflow-auto max-h-40 scrollbar-hide">
+                <div className="p-4 bg-gx-dark/40 rounded-xl border border-gx-border font-mono text-[11px] text-gx-red/80 overflow-auto max-h-40 scrollbar-hide">
                   <div className="flex items-center gap-2 mb-2 text-gx-red/40 uppercase font-black tracking-widest text-[9px]">
                     <span className="w-1.5 h-1.5 rounded-full bg-gx-red animate-pulse" />
                     Error Log
@@ -81,10 +81,10 @@ export class ErrorBoundary extends Component<Props, State> {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={this.handleReset}
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group"
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-gx-hover hover:bg-gx-hover/80 border border-gx-border rounded-xl transition-all group"
                 >
-                  <RefreshCw className="w-4 h-4 text-gray-400 group-hover:text-gx-text transition-transform group-active:rotate-180 duration-500" />
-                  <span className="text-xs font-black uppercase tracking-widest text-gray-400 group-hover:text-gx-text">Retry Sync</span>
+                  <RefreshCw className="w-4 h-4 text-gx-muted group-hover:text-gx-text transition-transform group-active:rotate-180 duration-500" />
+                  <span className="text-xs font-black uppercase tracking-widest text-gx-muted group-hover:text-gx-text">Retry Sync</span>
                 </button>
                 <button
                   onClick={this.handleReload}
