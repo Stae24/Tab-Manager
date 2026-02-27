@@ -209,7 +209,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
             />
             <button
               onClick={(e) => { e.stopPropagation(); handleRename(); }}
-              className={cn("shrink-0", buttonPadding[appearanceSettings.buttonSize])}
+              className={cn("shrink-0 rounded hover:bg-white/10", buttonPadding[appearanceSettings.buttonSize])}
               title="Confirm"
             >
               <Check size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gx-green" />
