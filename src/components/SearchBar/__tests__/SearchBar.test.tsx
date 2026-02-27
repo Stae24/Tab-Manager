@@ -125,15 +125,30 @@ describe('SearchBar', () => {
       expect(screen.getByPlaceholderText(/Search tabs/)).toBeInTheDocument();
     });
 
-    it('shows scope toggle buttons', () => {
+    it('shows scope toggle buttons when focused', () => {
       render(<SearchBar {...mockProps} />);
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
       expect(screen.getByText('Current')).toBeInTheDocument();
       expect(screen.getByText('All')).toBeInTheDocument();
     });
 
-    it('shows help button', () => {
+    it('does not show scope toggle buttons when not focused', () => {
       render(<SearchBar {...mockProps} />);
+      expect(screen.queryByText('Current')).not.toBeInTheDocument();
+      expect(screen.queryByText('All')).not.toBeInTheDocument();
+    });
+
+    it('shows help button when focused', () => {
+      render(<SearchBar {...mockProps} />);
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
       expect(screen.getByTitle('Search help')).toBeInTheDocument();
+    });
+
+    it('does not show help button when not focused', () => {
+      render(<SearchBar {...mockProps} />);
+      expect(screen.queryByTitle('Search help')).not.toBeInTheDocument();
     });
 
     it('does not show clear button when query is empty', () => {
@@ -151,32 +166,47 @@ describe('SearchBar', () => {
       expect(screen.queryByTitle(/Execute on/)).not.toBeInTheDocument();
     });
 
-    it('shows execute button when commands present', () => {
+    it('shows execute button when commands present and focused', () => {
       render(<SearchBar {...mockProps} query="/delete" resultCount={5} />);
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
       expect(screen.getByTitle(/Execute on 5 tabs/)).toBeInTheDocument();
     });
 
-    it('execute button shows result count', () => {
+    it('does not show execute button when not focused even with commands', () => {
       render(<SearchBar {...mockProps} query="/delete" resultCount={5} />);
+      expect(screen.queryByTitle(/Execute on/)).not.toBeInTheDocument();
+    });
+
+    it('execute button shows result count when focused', () => {
+      render(<SearchBar {...mockProps} query="/delete" resultCount={5} />);
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
       expect(screen.getByText('5')).toBeInTheDocument();
     });
 
     it('execute button is disabled when resultCount is 0', () => {
       render(<SearchBar {...mockProps} query="/delete" resultCount={0} />);
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
       const button = screen.getByTitle(/Execute on 0 tabs/);
       expect(button).toBeDisabled();
     });
 
-    it('highlights current scope button', () => {
+    it('highlights current scope button when focused', () => {
       render(<SearchBar {...mockProps} scope="current" />);
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
       const currentBtn = screen.getByText('Current');
       const allBtn = screen.getByText('All');
       expect(currentBtn).toHaveClass('bg-gx-accent/20');
       expect(allBtn).not.toHaveClass('bg-gx-accent/20');
     });
 
-    it('highlights all scope button', () => {
+    it('highlights all scope button when focused', () => {
       render(<SearchBar {...mockProps} scope="all" />);
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
       const currentBtn = screen.getByText('Current');
       const allBtn = screen.getByText('All');
       expect(allBtn).toHaveClass('bg-gx-accent/20');
@@ -209,6 +239,9 @@ describe('SearchBar', () => {
       const onScopeChange = vi.fn();
       render(<SearchBar {...mockProps} scope="current" onScopeChange={onScopeChange} />);
       
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
+      
       fireEvent.click(screen.getByText('All'));
       expect(onScopeChange).toHaveBeenCalledWith('all');
       
@@ -220,6 +253,9 @@ describe('SearchBar', () => {
       const onHelp = vi.fn();
       render(<SearchBar {...mockProps} onHelp={onHelp} />);
       
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
+      
       fireEvent.click(screen.getByTitle('Search help'));
       expect(onHelp).toHaveBeenCalled();
     });
@@ -228,12 +264,19 @@ describe('SearchBar', () => {
       const onExecute = vi.fn();
       render(<SearchBar {...mockProps} query="/delete" resultCount={5} onExecute={onExecute} />);
       
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
+      
       fireEvent.click(screen.getByTitle(/Execute on 5 tabs/));
       expect(onExecute).toHaveBeenCalled();
     });
 
     it('execute button is disabled when isSearching', () => {
       render(<SearchBar {...mockProps} query="/delete" resultCount={5} isSearching={true} />);
+      
+      const input = screen.getByPlaceholderText(/Search tabs/);
+      fireEvent.focus(input);
+      
       const button = screen.getByTitle(/Execute on 5 tabs/);
       expect(button).toBeDisabled();
     });
