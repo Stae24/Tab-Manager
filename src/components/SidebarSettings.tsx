@@ -17,6 +17,11 @@ import {
 } from '../constants';
 import { formatHotkey } from '../utils/hotkeys';
 import type { AppearanceSettings, ToolbarClickAction, SidebarLayoutMode, SidebarDockSide } from '../types';
+import type { SettingSection } from './AppearanceSettingsPanel';
+
+export const SETTING_SECTIONS: SettingSection[] = [
+    { id: 'sidebar', title: 'Custom Sidebar', category: 'sidebar', icon: Sidebar },
+];
 
 interface SidebarSettingsProps {
     appearanceSettings: AppearanceSettings;

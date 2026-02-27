@@ -6,6 +6,13 @@ import { ColorPalette } from './ui/ColorPalette';
 import { Toggle } from './ui/Toggle';
 import { cn } from '../utils/cn';
 import type { AppearanceSettings, ThemeMode } from '../types';
+import type { SettingSection } from './AppearanceSettingsPanel';
+
+export const SETTING_SECTIONS: SettingSection[] = [
+    { id: 'theme-list', title: 'Color Themes', category: 'theme', icon: Monitor },
+    { id: 'accent-color', title: 'Accent Color', category: 'theme', icon: Palette },
+    { id: 'theme-elements', title: 'Themed Elements', category: 'theme', icon: Palette },
+];
 
 interface ThemeSettingsProps {
     appearanceSettings: AppearanceSettings;

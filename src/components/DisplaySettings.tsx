@@ -9,6 +9,12 @@ import {
     UI_SCALE_STEP
 } from '../constants';
 import type { AppearanceSettings, BorderRadius } from '../types';
+import type { SettingSection } from './AppearanceSettingsPanel';
+
+export const SETTING_SECTIONS: SettingSection[] = [
+    { id: 'ui-scale', title: 'UI Scale', category: 'display', icon: ZoomIn },
+    { id: 'border-radius', title: 'Border Radius', category: 'display', icon: Square },
+];
 
 function isBorderRadius(value: unknown): value is BorderRadius {
     return value === 'none' || value === 'small' || value === 'medium' || value === 'large' || value === 'full';

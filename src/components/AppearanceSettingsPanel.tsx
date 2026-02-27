@@ -22,14 +22,32 @@ import {
   SETTINGS_PANEL_WINDOW_GAP,
 } from '../constants';
 
-import { ThemeSettings } from './ThemeSettings';
-import { DisplaySettings } from './DisplaySettings';
-import { TabSettings } from './TabSettings';
-import { GroupSettings } from './GroupSettings';
-import { VaultSettings } from './VaultSettings';
-import { GeneralSettings } from './GeneralSettings';
-import { SidebarSettings } from './SidebarSettings';
-import { DevSettings } from './DevSettings';
+import { ThemeSettings, SETTING_SECTIONS as THEME_SECTIONS } from './ThemeSettings';
+import { DisplaySettings, SETTING_SECTIONS as DISPLAY_SECTIONS } from './DisplaySettings';
+import { TabSettings, SETTING_SECTIONS as TAB_SECTIONS } from './TabSettings';
+import { GroupSettings, SETTING_SECTIONS as GROUP_SECTIONS } from './GroupSettings';
+import { VaultSettings, SETTING_SECTIONS as VAULT_SECTIONS } from './VaultSettings';
+import { GeneralSettings, SETTING_SECTIONS as GENERAL_SECTIONS } from './GeneralSettings';
+import { SidebarSettings, SETTING_SECTIONS as SIDEBAR_SECTIONS } from './SidebarSettings';
+import { DevSettings, SETTING_SECTIONS as DEV_SECTIONS } from './DevSettings';
+
+export interface SettingSection {
+    id: string;
+    title: string;
+    category: string;
+    icon: React.ElementType;
+}
+
+export const ALL_SETTING_SECTIONS: SettingSection[] = [
+    ...THEME_SECTIONS,
+    ...DISPLAY_SECTIONS,
+    ...TAB_SECTIONS,
+    ...GROUP_SECTIONS,
+    ...VAULT_SECTIONS,
+    ...GENERAL_SECTIONS,
+    ...SIDEBAR_SECTIONS,
+    ...DEV_SECTIONS,
+];
 
 type TabId = 'theme' | 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced' | 'dev' | 'sidebar';
 
@@ -154,6 +172,12 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
     return category.toLowerCase().includes(searchQuery.toLowerCase());
   };
 
+  const searchMatchesSection = (section: SettingSection): boolean => {
+    if (!searchQuery) return false;
+    const query = searchQuery.toLowerCase();
+    return section.title.toLowerCase().includes(query) || section.category.toLowerCase().includes(query);
+  };
+
   const rawTabs: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: 'theme' as TabId, label: 'Theme', icon: Palette },
     { id: 'display' as TabId, label: 'Display', icon: Monitor },
@@ -164,6 +188,15 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
     { id: 'sidebar' as TabId, label: 'Sidebar', icon: Sidebar },
     { id: 'dev' as TabId, label: 'Developer', icon: Terminal },
   ];
+
+  const matchingSections = searchQuery
+    ? ALL_SETTING_SECTIONS.filter(searchMatchesSection)
+    : [];
+
+  const matchingCategories = searchQuery
+    ? rawTabs.filter(tab => tab.label.toLowerCase().includes(searchQuery.toLowerCase())).map(tab => tab.id)
+    : [];
+
   const tabs = rawTabs.filter(tab => filterSettings(tab.label));
 
   if (!isOpen && !isClosing) return null;
@@ -260,86 +293,164 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
         </div>
 
         {/* Responsive Tabs Section */}
-        <div className="px-5 py-3 border-b border-gx-gray bg-gx-gray/30">
-          <div className="flex flex-wrap justify-center gap-1">
-            {tabs.map(renderTabButton)}
+        {!searchQuery && (
+          <div className="px-5 py-3 border-b border-gx-gray bg-gx-gray/30">
+            <div className="flex flex-wrap justify-center gap-1">
+              {tabs.map(renderTabButton)}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Settings Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 scroll-smooth overscroll-none scrollbar-hide">
-          {activeTab === 'theme' && filterSettings('Theme') && (
-            <ThemeSettings
-              appearanceSettings={appearanceSettings}
-              setAppearanceSettings={setAppearanceSettings}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-            />
-          )}
+          {searchQuery ? (
+            <>
+              {matchingSections.length > 0 || matchingCategories.length > 0 ? (
+                <div className="space-y-2">
+                  {matchingCategories.length > 0 && (
+                    <>
+                      <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">
+                        Categories
+                      </div>
+                      {matchingCategories.map((cat) => {
+                        const tab = rawTabs.find(t => t.id === cat);
+                        if (!tab) return null;
+                        return (
+                          <button
+                            key={cat}
+                            onClick={() => {
+                              setSearchQuery('');
+                              setActiveTab(cat);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
+                          >
+                            <tab.icon size={16} className="text-gx-accent" />
+                            <span className="text-sm font-bold text-gray-200">{tab.label}</span>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                  {matchingSections.length > 0 && (
+                    <>
+                      <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 mt-4">
+                        Settings ({matchingSections.length})
+                      </div>
+                      {matchingSections.map((section) => {
+                        const categoryToTab: Record<string, TabId> = {
+                          theme: 'theme',
+                          display: 'display',
+                          tabs: 'tabs',
+                          groups: 'groups',
+                          vault: 'vault',
+                          general: 'general',
+                          sidebar: 'sidebar',
+                          dev: 'dev',
+                        };
+                        return (
+                          <button
+                            key={section.id}
+                            onClick={() => {
+                              setSearchQuery('');
+                              setActiveTab(categoryToTab[section.category] || 'theme');
+                              setExpandedSections((prev) => new Set([...prev, section.id]));
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
+                          >
+                            <section.icon size={16} className="text-gx-accent" />
+                            <div className="flex-1">
+                              <span className="text-sm font-bold text-gray-200 block">{section.title}</span>
+                              <span className="text-[10px] text-gray-500 uppercase">{section.category}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Search size={32} className="mx-auto text-gray-600 mb-2" />
+                  <p className="text-sm text-gray-500">No settings found for "{searchQuery}"</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {activeTab === 'theme' && filterSettings('Theme') && (
+                <ThemeSettings
+                  appearanceSettings={appearanceSettings}
+                  setAppearanceSettings={setAppearanceSettings}
+                  expandedSections={expandedSections}
+                  toggleSection={toggleSection}
+                />
+              )}
 
-          {activeTab === 'display' && filterSettings('Display') && (
-            <DisplaySettings
-              appearanceSettings={appearanceSettings}
-              setAppearanceSettings={setAppearanceSettings}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-            />
-          )}
+              {activeTab === 'display' && filterSettings('Display') && (
+                <DisplaySettings
+                  appearanceSettings={appearanceSettings}
+                  setAppearanceSettings={setAppearanceSettings}
+                  expandedSections={expandedSections}
+                  toggleSection={toggleSection}
+                />
+              )}
 
-          {activeTab === 'tabs' && filterSettings('Tabs') && (
-            <TabSettings
-              appearanceSettings={appearanceSettings}
-              setAppearanceSettings={setAppearanceSettings}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-            />
-          )}
+              {activeTab === 'tabs' && filterSettings('Tabs') && (
+                <TabSettings
+                  appearanceSettings={appearanceSettings}
+                  setAppearanceSettings={setAppearanceSettings}
+                  expandedSections={expandedSections}
+                  toggleSection={toggleSection}
+                />
+              )}
 
-          {activeTab === 'groups' && filterSettings('Groups') && (
-            <GroupSettings
-              appearanceSettings={appearanceSettings}
-              setAppearanceSettings={setAppearanceSettings}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-            />
-          )}
+              {activeTab === 'groups' && filterSettings('Groups') && (
+                <GroupSettings
+                  appearanceSettings={appearanceSettings}
+                  setAppearanceSettings={setAppearanceSettings}
+                  expandedSections={expandedSections}
+                  toggleSection={toggleSection}
+                />
+              )}
 
-          {activeTab === 'vault' && filterSettings('Vault') && (
-            <VaultSettings
-              appearanceSettings={appearanceSettings}
-              setAppearanceSettings={setAppearanceSettings}
-              setVaultSyncEnabled={setVaultSyncEnabled}
-              vaultQuota={vaultQuota}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-            />
-          )}
+              {activeTab === 'vault' && filterSettings('Vault') && (
+                <VaultSettings
+                  appearanceSettings={appearanceSettings}
+                  setAppearanceSettings={setAppearanceSettings}
+                  setVaultSyncEnabled={setVaultSyncEnabled}
+                  vaultQuota={vaultQuota}
+                  expandedSections={expandedSections}
+                  toggleSection={toggleSection}
+                />
+              )}
 
-          {activeTab === 'general' && filterSettings('General') && (
-            <GeneralSettings
-              appearanceSettings={appearanceSettings}
-              setAppearanceSettings={setAppearanceSettings}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-            />
-          )}
+              {activeTab === 'general' && filterSettings('General') && (
+                <GeneralSettings
+                  appearanceSettings={appearanceSettings}
+                  setAppearanceSettings={setAppearanceSettings}
+                  expandedSections={expandedSections}
+                  toggleSection={toggleSection}
+                />
+              )}
 
-          {activeTab === 'sidebar' && filterSettings('Sidebar') && (
-            <SidebarSettings
-              appearanceSettings={appearanceSettings}
-              setAppearanceSettings={setAppearanceSettings}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-            />
-          )}
+              {activeTab === 'sidebar' && filterSettings('Sidebar') && (
+                <SidebarSettings
+                  appearanceSettings={appearanceSettings}
+                  setAppearanceSettings={setAppearanceSettings}
+                  expandedSections={expandedSections}
+                  toggleSection={toggleSection}
+                />
+              )}
 
-          {activeTab === 'dev' && filterSettings('Dev') && (
-            <DevSettings
-              appearanceSettings={appearanceSettings}
-              setAppearanceSettings={setAppearanceSettings}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-            />
+              {activeTab === 'dev' && filterSettings('Dev') && (
+                <DevSettings
+                  appearanceSettings={appearanceSettings}
+                  setAppearanceSettings={setAppearanceSettings}
+                  expandedSections={expandedSections}
+                  toggleSection={toggleSection}
+                />
+              )}
+            </>
           )}
         </div>
 

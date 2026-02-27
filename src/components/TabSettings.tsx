@@ -23,6 +23,15 @@ import type {
     FaviconSize,
     AudioIndicatorMode
 } from '../types';
+import type { SettingSection } from './AppearanceSettingsPanel';
+
+export const SETTING_SECTIONS: SettingSection[] = [
+    { id: 'tab-density', title: 'Tab Density', category: 'tabs', icon: Layout },
+    { id: 'favicons', title: 'Favicons', category: 'tabs', icon: Sparkles },
+    { id: 'active-indicator', title: 'Active Tab Indicator', category: 'tabs', icon: CheckCircle2 },
+    { id: 'audio-indicators', title: 'Audio Indicators', category: 'tabs', icon: Volume2 },
+    { id: 'frozen-indicators', title: 'Frozen Indicators', category: 'tabs', icon: Snowflake },
+];
 
 type TabDensity = AppearanceSettings['tabDensity'];
 
