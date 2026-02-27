@@ -13,7 +13,8 @@ const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = M
       const msg = error instanceof Error ? error.message : String(error);
       const isRetryable = msg.includes('Tab cannot be modified') ||
         msg.includes('dragging') ||
-        msg.includes('moving');
+        msg.includes('moving') ||
+        msg.includes('tabs cannot be edited right now');
 
       if (isRetryable && attempt < maxAttempts) {
         const delay = TAB_ACTION_RETRY_DELAY_BASE * Math.pow(2, attempt - 1);
