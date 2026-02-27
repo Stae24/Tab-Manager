@@ -175,7 +175,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
         <button
           onClick={handleToggleCollapse}
           className={cn(
-            supportsGroupCollapse !== false && "hover:bg-white/10",
+            supportsGroupCollapse !== false && "hover:bg-gx-hover",
             "rounded pointer-events-auto relative z-10",
             buttonPadding[appearanceSettings.buttonSize]
           )}
@@ -203,13 +203,13 @@ export const Island: React.FC<IslandProps> = React.memo(({
               }}
               autoFocus
               placeholder="Untitled Group"
-              className="flex-1 min-w-0 text-sm font-bold bg-black/50 text-white border-none outline-none rounded px-1 relative z-20"
+              className="flex-1 min-w-0 text-sm font-bold bg-gx-dark/50 text-gx-text border-none outline-none rounded px-1 relative z-20"
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
             />
             <button
               onClick={(e) => { e.stopPropagation(); handleRename(); }}
-              className={cn("shrink-0 rounded hover:bg-white/10", buttonPadding[appearanceSettings.buttonSize])}
+              className={cn("shrink-0 rounded hover:bg-gx-hover", buttonPadding[appearanceSettings.buttonSize])}
               title="Confirm"
             >
               <Check size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gx-green" />
@@ -230,7 +230,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
           >
             {island.title || "Untitled Group"}
             {appearanceSettings.showTabCount && (island.tabs?.length || 0) > 0 && (
-              <span className="text-[10px] font-black text-white/30 ml-2 tracking-tighter">
+              <span className="text-[10px] font-black text-gx-text/30 ml-2 tracking-tighter">
                 {island.tabs?.length}
               </span>
             )}
@@ -250,7 +250,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
               title="Ungroup All"
               className={buttonPadding[appearanceSettings.buttonSize]}
             >
-              <LogOut size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-gx-text" />
+              <LogOut size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gx-muted hover:text-gx-text" />
             </button>
           )}
           {!isVault && onNonDestructiveSave && (
@@ -259,7 +259,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
               title="Save to Vault (Keep Live)"
               className={buttonPadding[appearanceSettings.buttonSize]}
             >
-              <Save size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-gx-cyan" />
+              <Save size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gx-muted hover:text-gx-cyan" />
             </button>
           )}
           {isVault && onRestore && (
@@ -268,7 +268,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
               title="Open in Current Window"
               className={buttonPadding[appearanceSettings.buttonSize]}
             >
-              <ExternalLink size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-gx-green" />
+              <ExternalLink size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gx-muted hover:text-gx-green" />
             </button>
           )}
           {onDelete && (
@@ -277,7 +277,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
               title={isVault ? "Delete from Vault" : "Delete"}
               className={buttonPadding[appearanceSettings.buttonSize]}
             >
-              <Trash2 size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gray-400 hover:text-gx-red" />
+              <Trash2 size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gx-muted hover:text-gx-red" />
             </button>
           )}
         </div>
@@ -352,7 +352,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
       {!island.collapsed && !isOverlay && (
         <div
           className={cn(
-            `p-2 bg-gx-dark/30 border-x-2 border-b-2 border-transparent shadow-inner min-h-[${VIRTUAL_ROW_ESTIMATE_SIZE}px]`,
+            `p-2 bg-gx-gray/30 border-x-2 border-b-2 border-transparent shadow-inner min-h-[${VIRTUAL_ROW_ESTIMATE_SIZE}px]`,
             getBottomBorderRadiusClass(appearanceSettings.borderRadius)
           )}
           style={{ borderColor: `${borderColor}33`, borderBottomColor: borderColor }}
@@ -380,7 +380,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
       {isOverlay && !island.collapsed && (
         <div
           className={cn(
-            "p-2 bg-gx-dark/30 border-x-2 border-b-2 border-transparent",
+            "p-2 bg-gx-gray/30 border-x-2 border-b-2 border-transparent",
             getBottomBorderRadiusClass(appearanceSettings.borderRadius)
           )}
           style={{ borderColor: `${borderColor}33` }}

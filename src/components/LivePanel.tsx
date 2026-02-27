@@ -16,7 +16,10 @@ import {
   CLEANUP_ANIMATION_DELAY_MS,
   SEARCH_DEBOUNCE_MS,
   SIDEBAR_PANEL_PADDING_DEFAULT,
-  MANAGER_PANEL_PADDING_DEFAULT
+  MANAGER_PANEL_PADDING_DEFAULT,
+  PANEL_HEADER_TRUNCATE_THRESHOLD,
+  PANEL_HEADER_ICON_ONLY_THRESHOLD,
+  PANEL_HEADER_HIDDEN_THRESHOLD
 } from '../constants';
 import { search, searchAndExecute, parseQuery, isSearchActive, hasCommands } from '../search';
 import { useStore } from '../store/useStore';
@@ -79,7 +82,9 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const [isCleaning, setIsCleaning] = useState(false);
   const [showSearchHelp, setShowSearchHelp] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [panelWidth, setPanelWidth] = useState(Infinity);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchPromiseRef = useRef<Promise<void> | null>(null);
@@ -98,6 +103,8 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const searchDebounce = useStore((s) => s.appearanceSettings.searchDebounce);
   const sidebarPanelPadding = useStore((s) => s.appearanceSettings.sidebarPanelPadding);
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
+  const showPanelName = useStore((s) => s.appearanceSettings.showPanelName);
+  const showPanelIcon = useStore((s) => s.appearanceSettings.showPanelIcon);
 
   const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
 
@@ -105,9 +112,27 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     detectSidebarContext().then(setIsSidebar);
   }, []);
 
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setPanelWidth(entry.contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(header);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   const horizontalPadding = isSidebar === null
     ? SIDEBAR_PANEL_PADDING_DEFAULT
     : (isSidebar ? (sidebarPanelPadding ?? SIDEBAR_PANEL_PADDING_DEFAULT) : (managerPanelPadding ?? MANAGER_PANEL_PADDING_DEFAULT));
+
+  const shouldShowName = showPanelName && panelWidth > PANEL_HEADER_TRUNCATE_THRESHOLD;
+  const shouldTruncateName = showPanelName && panelWidth > PANEL_HEADER_ICON_ONLY_THRESHOLD && panelWidth <= PANEL_HEADER_TRUNCATE_THRESHOLD;
+  const shouldShowIcon = showPanelIcon && panelWidth > PANEL_HEADER_HIDDEN_THRESHOLD;
 
   const runSearch = useCallback(async (query: string) => {
     const currentGen = ++searchGenRef.current;
@@ -294,11 +319,21 @@ export const LivePanel: React.FC<LivePanelProps> = ({
       )}
       style={{ width: showVault ? `${dividerPosition}%` : '100%' }}
     >
-      <div className="flex flex-col border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
+      <div ref={headerRef} className="flex flex-col border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
         <div className="flex items-center px-4 py-3">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-gx-accent drop-shadow-[0_0_4px_rgba(127,34,254,0.6)]" />
-            <h2 className="text-sm font-bold tracking-widest uppercase italic">Live</h2>
+          <div className={cn(
+            "flex items-center gap-2",
+            shouldTruncateName && "min-w-0"
+          )}>
+            {shouldShowIcon && (
+              <FolderOpen className="w-4 h-4 text-gx-accent drop-shadow-[0_0_4px_rgba(127,34,254,0.6)] flex-shrink-0" />
+            )}
+            {(shouldShowName || shouldTruncateName) && (
+              <h2 className={cn(
+                "text-sm font-bold tracking-widest uppercase italic",
+                shouldTruncateName && "truncate"
+              )}>Live</h2>
+            )}
           </div>
           <div className="flex items-center gap-3 flex-1 ml-4 justify-end">
             <SearchBar
@@ -314,7 +349,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             />
 
             {!searchQuery && (
-              <div className="flex items-center bg-gx-gray/80 rounded-lg p-0.5 border border-white/5 shadow-inner">
+              <div className="flex items-center bg-gx-gray/80 rounded-lg p-0.5 border border-gx-border shadow-inner">
                 <button
                   onClick={() => handleToggleAll(true)}
                   title="Collapse All"
@@ -322,7 +357,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                 >
                   <ChevronUp size={14} className="group-hover:scale-110 transition-transform" />
                 </button>
-                <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
+                <div className="w-[1px] h-3 bg-gx-border mx-0.5" />
                 <button
                   onClick={() => handleToggleAll(false)}
                   title="Expand All"
@@ -337,9 +372,9 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               <button
                 onClick={sortGroupsToTop}
                 title="Sort Groups to Top"
-                className="p-1.5 bg-gx-gray/80 rounded-lg border border-white/5 hover:border-gx-accent/30 hover:bg-gx-accent/10 transition-all group shadow-inner"
+                className="p-1.5 bg-gx-gray/80 rounded-lg border border-gx-border hover:border-gx-accent/30 hover:bg-gx-accent/10 transition-all group shadow-inner"
               >
-                <LayoutGrid className="w-3.5 h-3.5 text-gray-400 group-hover:text-gx-accent transition-colors" />
+                <LayoutGrid className="w-3.5 h-3.5 text-gx-muted group-hover:text-gx-accent transition-colors" />
               </button>
             )}
 
@@ -348,7 +383,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                 onClick={handleDeleteDuplicates}
                 title="Delete Duplicates"
                 className={cn(
-                  "p-1.5 bg-gx-gray/80 rounded-lg border border-white/5 shadow-inner",
+                  "p-1.5 bg-gx-gray/80 rounded-lg border border-gx-border shadow-inner",
                   "transition-all group relative overflow-hidden",
                   isCleaning && "animate-pulse-glow",
                   !isCleaning && "hover:bg-gx-red/20 hover:border-gx-red/30"
@@ -356,7 +391,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               >
                 <CopyX size={14} className={cn(
                   "transition-transform",
-                  isCleaning ? "text-gx-red" : "text-gray-400 group-hover:text-gx-red"
+                  isCleaning ? "text-gx-red" : "text-gx-muted group-hover:text-gx-red"
                 )} />
                 {isCleaning && (
                   <div className="absolute inset-0 bg-gradient-to-r from-gx-red/10 via-gx-red/20 to-gx-red/10 animate-pulse" />
@@ -370,7 +405,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                 disabled={ungroupedCount < 2}
                 title={ungroupedCount < 2 ? "Not enough ungrouped tabs to group" : `Group ${ungroupedCount} ungrouped tabs`}
                 className={cn(
-                  "p-1.5 bg-gx-gray/80 rounded-lg border border-white/5 shadow-inner transition-all group",
+                  "p-1.5 bg-gx-gray/80 rounded-lg border border-gx-border shadow-inner transition-all group",
                   ungroupedCount < 2
                     ? "opacity-30 grayscale"
                     : "hover:border-gx-accent/30 hover:bg-gx-accent/10"
@@ -378,12 +413,12 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               >
                 <Group size={14} className={cn(
                   "transition-colors",
-                  ungroupedCount < 2 ? "text-gray-600" : "text-gray-400 group-hover:text-gx-accent"
+                  ungroupedCount < 2 ? "text-gx-subtle" : "text-gx-muted group-hover:text-gx-accent"
                 )} />
               </button>
             )}
 
-            <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">
+            <span className="text-[10px] text-gx-muted font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-gx-border">
               {searchQuery ? displayTabs.length : (islands || []).reduce((acc, i) => acc + (i && 'tabs' in i && i.tabs ? i.tabs.length : 1), 0)}
             </span>
           </div>
@@ -398,7 +433,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-[10px] text-gray-500 font-medium">
+              <span className="text-[10px] text-gx-muted font-medium">
                 {displayTabs.length} {displayTabs.length === 1 ? 'tab' : 'tabs'} found
               </span>
               <button
@@ -417,7 +452,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                 <Group size={10} />
                 Group Results
               </button>
-              <span className="text-[10px] text-gray-600 font-black tracking-tighter bg-gx-gray/50 px-1.5 py-0.5 rounded border border-white/5">
+              <span className="text-[10px] text-gx-subtle font-black tracking-tighter bg-gx-gray/50 px-1.5 py-0.5 rounded border border-gx-border">
                 Press ESC to clear
               </span>
             </div>

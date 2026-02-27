@@ -1,15 +1,47 @@
-export const THEME_DEFINITIONS: Record<string, { bg: string; panel: string; text: string; border: string; primary: string }> = {
+export interface ThemeDefinition {
+    bg: string;
+    panel: string;
+    text: string;
+    border: string;
+    primary: string;
+    muted?: string;
+    subtle?: string;
+    hover?: string;
+    scrollbar?: string;
+}
+
+export const THEME_DEFINITIONS: Record<string, ThemeDefinition> = {
     system: { bg: '#0e0e0e', panel: '#1c1c1c', text: '#ffffff', border: '#333333', primary: '#7f22fe' },
     dark: { bg: '#0e0e0e', panel: '#1c1c1c', text: '#ffffff', border: '#333333', primary: '#7f22fe' },
     'dark-pro': { bg: '#000000', panel: '#111111', text: '#ffffff', border: '#222222', primary: '#7f22fe' },
-    light: { bg: '#f8fafc', panel: '#ffffff', text: '#0f172a', border: '#e2e8f0', primary: '#ef4444' },
+    light: { 
+        bg: '#f8fafc', 
+        panel: '#ffffff', 
+        text: '#0f172a', 
+        border: '#e2e8f0', 
+        primary: '#ef4444',
+        muted: '#64748b',
+        subtle: '#94a3b8',
+        hover: 'rgba(0,0,0,0.04)',
+        scrollbar: '#d1d5db'
+    },
     ocean: { bg: '#0f172a', panel: '#1e293b', text: '#f8fafc', border: '#334155', primary: '#38bdf8' },
     forest: { bg: '#142e1f', panel: '#1f452f', text: '#f1f8f4', border: '#2d6343', primary: '#4ade80' },
     sunset: { bg: '#2a1b28', panel: '#402434', text: '#f9e3d8', border: '#563346', primary: '#fb923c' },
     dracula: { bg: '#282a36', panel: '#44475a', text: '#f8f8f2', border: '#6272a4', primary: '#ff79c6' },
     nord: { bg: '#2e3440', panel: '#3b4252', text: '#eceff4', border: '#4c566a', primary: '#88c0d0' },
     monokai: { bg: '#272822', panel: '#3e3d32', text: '#f8f8f2', border: '#49483e', primary: '#a6e22e' },
-    'solarized-light': { bg: '#fdf6e3', panel: '#eee8d5', text: '#586e75', border: '#93a1a1', primary: '#b58900' },
+    'solarized-light': { 
+        bg: '#fdf6e3', 
+        panel: '#eee8d5', 
+        text: '#657b83', 
+        border: '#93a1a1', 
+        primary: '#b58900',
+        muted: '#839496',
+        subtle: '#93a1a1',
+        hover: 'rgba(0,0,0,0.04)',
+        scrollbar: '#c9c9c9'
+    },
     'solarized-dark': { bg: '#002b36', panel: '#073642', text: '#839496', border: '#586e75', primary: '#2aa198' },
     midnight: { bg: '#020617', panel: '#0f172a', text: '#f8fafc', border: '#1e293b', primary: '#6366f1' },
     cyberpunk: { bg: '#120024', panel: '#240046', text: '#00ffff', border: '#5a189a', primary: '#f00' },

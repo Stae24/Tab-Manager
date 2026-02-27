@@ -156,6 +156,8 @@ export interface AppearanceSettings {
   showFrozenIndicators: boolean;
   showActiveIndicator: boolean;
   showTabCount: boolean;
+  showPanelName: boolean;
+  showPanelIcon: boolean;
 
   // v1.2 - Polish
   accentColor: string;

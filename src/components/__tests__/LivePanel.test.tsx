@@ -61,6 +61,8 @@ vi.mock('../../store/useStore', () => ({
       // use vi.useFakeTimers() + vi.runAllTimersAsync() or a waitFor with duration > 100ms.
       appearanceSettings: {
         searchDebounce: 100,
+        showPanelName: true,
+        showPanelIcon: true,
       },
     };
     return selector ? selector(state) : state;
@@ -120,7 +122,7 @@ describe('LivePanel Component', () => {
 
   it('renders Live Workspace header', () => {
     render(<LivePanel {...defaultProps} />);
-    expect(screen.getByText('Live Workspace')).toBeInTheDocument();
+    expect(screen.getByText('Live')).toBeInTheDocument();
   });
 
   it('shows search input', () => {
@@ -288,14 +290,14 @@ describe('LivePanel Component', () => {
 
       // Check that the panel still renders correctly
       // Use the header text to verify component rendered
-      expect(screen.getByText('Live Workspace')).toBeInTheDocument();
+      expect(screen.getByText('Live')).toBeInTheDocument();
     });
 
     it('shows Live Workspace header when empty', () => {
       render(<LivePanel {...defaultProps} islands={[]} />);
 
       // The component should show the header
-      expect(screen.getByText('Live Workspace')).toBeInTheDocument();
+      expect(screen.getByText('Live')).toBeInTheDocument();
     });
   });
 
@@ -352,7 +354,7 @@ describe('LivePanel Component', () => {
       render(<LivePanel {...defaultProps} islands={manyIslands} />);
 
       // Should render the Live Workspace header with many items
-      expect(screen.getByText('Live Workspace')).toBeInTheDocument();
+      expect(screen.getByText('Live')).toBeInTheDocument();
     });
   });
 

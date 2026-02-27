@@ -14,7 +14,7 @@ import { logger } from '../utils/logger';
 import { detectSidebarContext } from '../utils/browser';
 import { useStore } from '../store/useStore';
 import { Island as IslandType, Tab as TabType, UniversalId, VaultQuotaInfo, DashboardRow, CompressionTier } from '../types';
-import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS, SIDEBAR_PANEL_PADDING_DEFAULT, MANAGER_PANEL_PADDING_DEFAULT } from '../constants';
+import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS, SIDEBAR_PANEL_PADDING_DEFAULT, MANAGER_PANEL_PADDING_DEFAULT, PANEL_HEADER_TRUNCATE_THRESHOLD, PANEL_HEADER_ICON_ONLY_THRESHOLD, PANEL_HEADER_HIDDEN_THRESHOLD } from '../constants';
 
 interface VaultPanelProps {
   dividerPosition: number;
@@ -70,21 +70,43 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const [showLocalStorageWarning, setShowLocalStorageWarning] = useState(true);
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(true);
   const [isCleaning, setIsCleaning] = useState(false);
   const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
+  const [panelWidth, setPanelWidth] = useState(Infinity);
 
   const sidebarPanelPadding = useStore((s) => s.appearanceSettings.sidebarPanelPadding);
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
+  const showPanelName = useStore((s) => s.appearanceSettings.showPanelName);
+  const showPanelIcon = useStore((s) => s.appearanceSettings.showPanelIcon);
 
   useEffect(() => {
     detectSidebarContext().then(setIsSidebar);
   }, []);
 
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setPanelWidth(entry.contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(header);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   const horizontalPadding = isSidebar === null
     ? SIDEBAR_PANEL_PADDING_DEFAULT
     : (isSidebar ? (sidebarPanelPadding ?? SIDEBAR_PANEL_PADDING_DEFAULT) : (managerPanelPadding ?? MANAGER_PANEL_PADDING_DEFAULT));
+
+  const shouldShowName = showPanelName && panelWidth > PANEL_HEADER_TRUNCATE_THRESHOLD;
+  const shouldTruncateName = showPanelName && panelWidth > PANEL_HEADER_ICON_ONLY_THRESHOLD && panelWidth <= PANEL_HEADER_TRUNCATE_THRESHOLD;
+  const shouldShowIcon = showPanelIcon && panelWidth > PANEL_HEADER_HIDDEN_THRESHOLD;
 
   const handleDeleteDuplicates = async () => {
     setIsCleaning(true);
@@ -186,7 +208,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   const renderEmptyState = () => {
     if ((vault || []).length !== 0) return null;
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-600 opacity-20 group">
+      <div className="flex flex-col items-center justify-center h-full text-gx-subtle opacity-20 group">
         <Save size={64} className="group-hover:scale-110 transition-transform duration-500" />
         <p className="text-[10px] font-black mt-6 italic uppercase tracking-[0.3em] text-center leading-loose">
           Initiate data transfer<br />to secure items
@@ -205,10 +227,20 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
       )}
       style={{ width: `${100 - dividerPosition}%` }}
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
-        <div className="flex items-center gap-2">
-          <Save className="w-4 h-4 text-gx-red drop-shadow-[0_0_4px_rgba(239,68,68,0.6)]" />
-          <h2 className="text-sm font-bold tracking-widest uppercase italic text-gx-red">Vault</h2>
+      <div ref={headerRef} className="flex items-center justify-between px-4 py-3 border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
+        <div className={cn(
+          "flex items-center gap-2",
+          shouldTruncateName && "min-w-0"
+        )}>
+          {shouldShowIcon && (
+            <Save className="w-4 h-4 text-gx-red drop-shadow-[0_0_4px_rgba(239,68,68,0.6)] flex-shrink-0" />
+          )}
+          {(shouldShowName || shouldTruncateName) && (
+            <h2 className={cn(
+              "text-sm font-bold tracking-widest uppercase italic text-gx-red",
+              shouldTruncateName && "truncate"
+            )}>Vault</h2>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -235,7 +267,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
           <button onClick={createVaultGroup} title="Add Group" className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all">
             <Plus className="w-4 h-4" />
           </button>
-          <span className="text-[10px] text-gray-500 font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-white/5">{vaultTabCount ?? 0} TABS</span>
+          <span className="text-[10px] text-gx-muted font-black tracking-tighter bg-gx-gray/50 px-2 py-0.5 rounded border border-gx-border">{vaultTabCount ?? 0} TABS</span>
         </div>
       </div>
 

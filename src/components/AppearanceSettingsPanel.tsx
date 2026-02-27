@@ -260,7 +260,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
         "flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold tracking-wider whitespace-nowrap",
         activeTab === tab.id
           ? "bg-gx-accent/10 text-gx-accent border border-gx-accent/30"
-          : "text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent"
+          : "text-gx-muted hover:text-gx-text hover:bg-gx-hover border border-transparent"
       )}
     >
       <tab.icon size={14} />
@@ -307,13 +307,13 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gx-gray bg-gx-gray/50">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gx-accent to-gx-red flex items-center justify-center shadow-lg shadow-gx-accent/30 flex-shrink-0">
-            <Settings className="w-5 h-5 text-white" />
+            <Settings className="w-5 h-5 text-gx-text" />
           </div>
 
           <div className="flex-1 relative group">
             <Search className={cn(
               "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors",
-              searchQuery ? "text-gx-accent" : "text-gray-500 group-focus-within:text-gx-accent"
+              searchQuery ? "text-gx-accent" : "text-gx-muted group-focus-within:text-gx-accent"
             )} />
             <input
               type="text"
@@ -321,7 +321,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search settings..."
               className={cn(
-                "w-full pl-10 pr-10 py-2.5 bg-gx-gray/50 border border-white/5 rounded-lg text-sm text-gx-text placeholder-gray-600 outline-none transition-all",
+                "w-full pl-10 pr-10 py-2.5 bg-gx-gray/50 border border-gx-border rounded-lg text-sm text-gx-text placeholder-gx-subtle outline-none transition-all",
                 "focus:border-gx-accent/40 focus:ring-1 focus:ring-gx-accent/20"
               )}
             />
@@ -330,14 +330,14 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gx-red/20 rounded transition-all"
               >
-                <X size={12} className="text-gray-500 hover:text-gx-red" />
+                <X size={12} className="text-gx-muted hover:text-gx-red" />
               </button>
             )}
           </div>
 
           <button
             onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-gx-red/20 text-gray-400 hover:text-gx-red transition-all flex-shrink-0"
+            className="p-2 rounded-lg hover:bg-gx-red/20 text-gx-muted hover:text-gx-red transition-all flex-shrink-0"
           >
             <X size={18} />
           </button>
@@ -360,7 +360,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                 <div className="space-y-2">
                   {matchingCategories.length > 0 && (
                     <>
-                      <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">
+                      <div className="text-xs text-gx-muted font-bold uppercase tracking-wider mb-2">
                         Categories
                       </div>
                       {matchingCategories.map((cat) => {
@@ -373,10 +373,10 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                               setSearchQuery('');
                               setActiveTab(cat);
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gx-border bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
                           >
                             <tab.icon size={16} className="text-gx-accent" />
-                            <span className="text-sm font-bold text-gray-200">{tab.label}</span>
+                            <span className="text-sm font-bold text-gx-text">{tab.label}</span>
                           </button>
                         );
                       })}
@@ -384,7 +384,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   )}
                   {matchingControls.length > 0 && (
                     <>
-                      <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 mt-4">
+                      <div className="text-xs text-gx-muted font-bold uppercase tracking-wider mb-2 mt-4">
                         Controls ({matchingControls.length})
                       </div>
                       {matchingControls.map((control) => {
@@ -408,12 +408,12 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                               setExpandedSections((prev) => new Set([...prev, control.sectionId]));
                               setHighlightedControl({ sectionId: control.sectionId, controlId: control.id });
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gx-border bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
                           >
                             <control.icon size={16} className="text-gx-accent" />
                             <div className="flex-1">
-                              <span className="text-sm font-bold text-gray-200 block">{control.label}</span>
-                              <span className="text-[10px] text-gray-500">{control.sectionTitle}</span>
+                              <span className="text-sm font-bold text-gx-text block">{control.label}</span>
+                              <span className="text-[10px] text-gx-muted">{control.sectionTitle}</span>
                             </div>
                           </button>
                         );
@@ -422,7 +422,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   )}
                   {matchingSections.length > 0 && (
                     <>
-                      <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 mt-4">
+                      <div className="text-xs text-gx-muted font-bold uppercase tracking-wider mb-2 mt-4">
                         Sections ({matchingSections.length})
                       </div>
                       {matchingSections.map((section) => {
@@ -444,12 +444,12 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                               setActiveTab(categoryToTab[section.category] || 'theme');
                               setExpandedSections((prev) => new Set([...prev, section.id]));
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gx-border bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
                           >
                             <section.icon size={16} className="text-gx-accent" />
                             <div className="flex-1">
-                              <span className="text-sm font-bold text-gray-200 block">{section.title}</span>
-                              <span className="text-[10px] text-gray-500 uppercase">{section.category}</span>
+                              <span className="text-sm font-bold text-gx-text block">{section.title}</span>
+                              <span className="text-[10px] text-gx-muted uppercase">{section.category}</span>
                             </div>
                           </button>
                         );
@@ -459,8 +459,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <Search size={32} className="mx-auto text-gray-600 mb-2" />
-                  <p className="text-sm text-gray-500">No settings found for "{searchQuery}"</p>
+                  <Search size={32} className="mx-auto text-gx-subtle mb-2" />
+                  <p className="text-sm text-gx-muted">No settings found for "{searchQuery}"</p>
                 </div>
               )}
             </>

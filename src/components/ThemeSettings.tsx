@@ -123,7 +123,7 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({
                                     "flex flex-col items-start p-3 rounded-xl border-2 transition-all hover:scale-[1.02]",
                                     isSelected
                                         ? "border-gx-accent bg-gx-accent/10 shadow-lg shadow-gx-accent/20"
-                                        : "border-white/5 bg-gx-gray/30 hover:bg-gx-gray/50 hover:border-white/10"
+                                        : "border-gx-border bg-gx-gray/30 hover:bg-gx-gray/50 hover:border-gx-border"
                                 )}
                             >
                                 <div
@@ -152,7 +152,7 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({
                                 </div>
 
                                 <div className="flex items-center gap-1.5 w-full">
-                                    {themeOption.icon && <themeOption.icon size={12} className="text-gray-400" />}
+                                    {themeOption.icon && <themeOption.icon size={12} className="text-gx-muted" />}
                                     <span className={cn(
                                         "text-xs font-semibold truncate",
                                         isSelected ? "text-gx-accent" : "text-gx-text"

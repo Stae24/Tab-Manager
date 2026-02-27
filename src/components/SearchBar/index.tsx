@@ -205,7 +205,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
         )}
       >
         <Search
-          className={cn('w-4 h-4 transition-colors', query ? 'text-gx-accent' : 'text-gray-500')}
+          className={cn('w-4 h-4 transition-colors', query ? 'text-gx-accent' : 'text-gx-muted')}
         />
         <input
           ref={inputRef}
@@ -219,17 +219,17 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
           onBlur={handleBlur}
           placeholder="Search tabs... (try !audio, !frozen, /delete)"
           className={cn(
-            'flex-1 bg-transparent outline-none text-sm text-gx-text placeholder-gray-500',
+            'flex-1 bg-transparent outline-none text-sm text-gx-text placeholder-gx-muted',
             'transition-all min-w-48'
           )}
         />
         {query && (
           <button
             onClick={handleClear}
-            className="p-0.5 rounded hover:bg-white/10 transition-colors"
+            className="p-0.5 rounded hover:bg-gx-hover transition-colors"
             title="Clear search"
           >
-            <X className="w-3.5 h-3.5 text-gray-400 hover:text-gx-text" />
+            <X className="w-3.5 h-3.5 text-gx-muted hover:text-gx-text" />
           </button>
         )}
       </div>
@@ -239,7 +239,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
           onClick={() => onScopeChange('current')}
           className={cn(
             'px-2 py-1 rounded transition-colors',
-            scope === 'current' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gray-400 hover:text-gx-text'
+            scope === 'current' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gx-muted hover:text-gx-text'
           )}
         >
           Current
@@ -248,7 +248,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
           onClick={() => onScopeChange('all')}
           className={cn(
             'px-2 py-1 rounded transition-colors',
-            scope === 'all' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gray-400 hover:text-gx-text'
+            scope === 'all' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gx-muted hover:text-gx-text'
           )}
         >
           All
@@ -262,8 +262,8 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
           className={cn(
             'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all',
             resultCount > 0
-              ? 'bg-gx-accent text-white hover:bg-gx-accent/80'
-              : 'bg-gx-gray/20 text-gray-500'
+              ? 'bg-gx-accent text-gx-text hover:bg-gx-accent/80'
+              : 'bg-gx-gray/20 text-gx-muted'
           )}
           title={`Execute on ${resultCount} tabs`}
         >
@@ -274,14 +274,14 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
 
       <button
         onClick={onHelp}
-        className="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-gx-text transition-colors"
+        className="p-1.5 rounded hover:bg-gx-hover text-gx-muted hover:text-gx-text transition-colors"
         title="Search help"
       >
         <HelpCircle className="w-4 h-4" />
       </button>
 
       {showAutocomplete && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-20 mt-1 bg-[#1a1a1a] border border-gx-gray/30 rounded-lg shadow-lg z-50 overflow-hidden">
+        <div className="absolute top-full left-0 right-20 mt-1 bg-gx-gray border border-gx-border rounded-lg shadow-lg z-50 overflow-hidden">
           {suggestions.map((s, i) => (
             <button
               key={`${s.type}-${s.value}`}
@@ -302,14 +302,14 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
               }}
               className={cn(
                 'w-full px-3 py-2 flex items-center justify-between text-left text-sm transition-colors',
-                i === selectedIndex ? 'bg-gx-accent/20' : 'hover:bg-white/5'
+                i === selectedIndex ? 'bg-gx-accent/20' : 'hover:bg-gx-hover'
               )}
             >
               <div className="flex items-center gap-2">
                 <span className="font-mono text-gx-accent">{s.display}</span>
-                {s.short && <span className="text-gray-500 text-xs">(!{s.short})</span>}
+                {s.short && <span className="text-gx-muted text-xs">(!{s.short})</span>}
               </div>
-              <span className="text-gray-400 text-xs truncate max-w-[200px]">{s.description}</span>
+              <span className="text-gx-muted text-xs truncate max-w-[200px]">{s.description}</span>
             </button>
           ))}
         </div>

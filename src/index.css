@@ -9,6 +9,10 @@
   --color-gx-border: var(--base-border);
   --color-gx-cyan: #00d4ff;
   --color-gx-green: #00ff88;
+  --color-gx-muted: var(--base-muted);
+  --color-gx-subtle: var(--base-subtle);
+  --color-gx-hover: var(--base-hover);
+  --color-gx-scrollbar: var(--base-scrollbar);
 }
 
 :root {
@@ -16,6 +20,10 @@
   --base-gray: #1c1c1c;
   --base-text: #ffffff;
   --base-border: #333333;
+  --base-muted: #a1a1aa;
+  --base-subtle: #71717a;
+  --base-hover: rgba(255,255,255,0.1);
+  --base-scrollbar: #333333;
   --gx-accent: #7f22fe;
 }
 
@@ -28,22 +36,14 @@ body {
   touch-action: none;
 }
 
-/* Prevent any horizontal overflow at the root */
 #root {
   @apply h-screen w-screen overflow-hidden;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #333 transparent;
+  scrollbar-color: var(--base-scrollbar) transparent;
   -webkit-user-drag: none;
-}
-
-
-/* Custom scrollbar styling */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #333 transparent;
 }
 
 *::-webkit-scrollbar {
@@ -56,15 +56,15 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #333;
+  background: var(--base-scrollbar);
   border-radius: 3px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: #444;
+  background: var(--base-scrollbar);
+  filter: brightness(1.2);
 }
 
-/* Glow animations */
 @keyframes pulse-glow {
   0%, 100% {
     opacity: 0.3;
@@ -78,7 +78,6 @@ body {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-/* Slow spin animation for loading states */
 @keyframes spin-slow {
   from {
     transform: rotate(0deg);
@@ -92,7 +91,6 @@ body {
   animation: spin-slow 3s linear infinite;
 }
 
-/* Gradient text utility */
 .gradient-text {
   background: linear-gradient(to right, #7f22fe, #ef4444);
   -webkit-background-clip: text;
@@ -100,7 +98,6 @@ body {
   background-clip: text;
 }
 
-/* Search mode transition */
 .search-mode-enter {
   animation: fadeIn 0.2s ease-out;
 }

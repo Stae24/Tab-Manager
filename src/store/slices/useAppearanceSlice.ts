@@ -12,27 +12,23 @@ export interface AppearanceSlice {
   toggleTheme: () => void;
 }
 
-const DEFAULT_THEMES = ['dark', 'system', 'light', 'solarized-light', 'solarized-dark'];
+const LIGHT_THEMES = ['light', 'solarized-light'];
+
+const resolveTheme = (theme: ThemeMode): string => {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return theme;
+};
 
 const applyThemeVariables = (theme: ThemeMode, elements: AppearanceSettings['themeElements']) => {
   const root = document.documentElement;
 
-  const isCustomTheme = !DEFAULT_THEMES.includes(theme);
-
-  if (!isCustomTheme) {
-    root.style.removeProperty('--base-dark');
-    root.style.removeProperty('--base-gray');
-    root.style.removeProperty('--base-text');
-    root.style.removeProperty('--base-border');
-    root.style.removeProperty('--gx-accent');
-    return;
-  }
-
-  const baseThemeStr = theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
-  const isDarkBase = !['light', 'solarized-light'].includes(baseThemeStr);
+  const resolvedTheme = resolveTheme(theme);
+  const isDarkBase = !LIGHT_THEMES.includes(resolvedTheme);
 
   const fallbackTheme = THEME_DEFINITIONS[isDarkBase ? 'dark' : 'light'];
-  const activeTheme = THEME_DEFINITIONS[theme] || THEME_DEFINITIONS.system;
+  const activeTheme = THEME_DEFINITIONS[resolvedTheme] || THEME_DEFINITIONS.dark;
 
   const safeElements = elements || { background: true, panels: true, text: true, accent: true };
 
@@ -40,6 +36,10 @@ const applyThemeVariables = (theme: ThemeMode, elements: AppearanceSettings['the
   root.style.setProperty('--base-gray', safeElements.panels ? activeTheme.panel : fallbackTheme.panel);
   root.style.setProperty('--base-text', safeElements.text ? activeTheme.text : fallbackTheme.text);
   root.style.setProperty('--base-border', safeElements.panels ? activeTheme.border : fallbackTheme.border);
+  root.style.setProperty('--base-muted', activeTheme.muted || (isDarkBase ? '#a1a1aa' : '#71717a'));
+  root.style.setProperty('--base-subtle', activeTheme.subtle || (isDarkBase ? '#71717a' : '#a1a1aa'));
+  root.style.setProperty('--base-hover', activeTheme.hover || (isDarkBase ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'));
+  root.style.setProperty('--base-scrollbar', activeTheme.scrollbar || (isDarkBase ? '#333333' : '#d4d4d8'));
 };
 
 export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], AppearanceSlice> = (set, get) => ({
@@ -77,7 +77,8 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
     }
 
     if (newSettings.accentColor !== undefined || newSettings.themeElements !== undefined || newSettings.theme !== undefined) {
-      const isCustomTheme = !DEFAULT_THEMES.includes(updated.theme);
+      const resolvedTheme = resolveTheme(updated.theme);
+      const isLightTheme = LIGHT_THEMES.includes(resolvedTheme);
       
       let finalAccent = updated.accentColor;
       if (finalAccent === 'gx-accent') {
@@ -87,11 +88,11 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
 
       const hasCustomAccent = !!finalAccent;
       const shouldThemeAccent = updated.themeElements?.accent ?? true;
-      const themeColors = THEME_DEFINITIONS[updated.theme] || THEME_DEFINITIONS.system;
+      const themeColors = THEME_DEFINITIONS[resolvedTheme] || THEME_DEFINITIONS.dark;
 
       if (hasCustomAccent) {
         document.documentElement.style.setProperty('--gx-accent', finalAccent);
-      } else if (isCustomTheme && shouldThemeAccent) {
+      } else if (shouldThemeAccent) {
         document.documentElement.style.setProperty('--gx-accent', themeColors.primary);
       } else {
         document.documentElement.style.removeProperty('--gx-accent');

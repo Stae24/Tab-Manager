@@ -246,6 +246,8 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   showFrozenIndicators: true,
   showActiveIndicator: true,
   showTabCount: true,
+  showPanelName: true,
+  showPanelIcon: true,
   accentColor: '',
   borderRadius: 'medium',
   compactGroupHeaders: false,
