@@ -27,6 +27,20 @@
   --gx-accent: #7f22fe;
 }
 
+@media (prefers-color-scheme: light) {
+  :root {
+    --base-dark: #f8fafc;
+    --base-gray: #ffffff;
+    --base-text: #0f172a;
+    --base-border: #e2e8f0;
+    --base-muted: #64748b;
+    --base-subtle: #94a3b8;
+    --base-hover: rgba(0,0,0,0.04);
+    --base-scrollbar: #d1d5db;
+    --gx-accent: #ef4444;
+  }
+}
+
 body {
   background-color: var(--base-dark);
   color: var(--base-text);
