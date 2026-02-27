@@ -15,6 +15,7 @@ interface SearchBarProps {
   resultCount?: number;
   isSearching?: boolean;
   className?: string;
+  compact?: boolean;
 }
 
 const buildAutocompleteSuggestions = (input: string, cursorPos: number): AutocompleteSuggestion[] => {
@@ -77,6 +78,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
     resultCount = 0,
     isSearching = false,
     className,
+    compact = false,
   },
   forwardedRef
 ) => {
@@ -86,6 +88,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [parsedQuery, setParsedQuery] = useState<ParsedQuery | null>(null);
   const [cursorPos, setCursorPos] = useState<number>(0);
+  const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -177,6 +180,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
   }, []);
 
   const handleFocus = useCallback(() => {
+    setIsActive(true);
     if (suggestions.length > 0) {
       setShowAutocomplete(true);
     }
@@ -186,7 +190,10 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
     if (blurTimeoutRef.current) {
       clearTimeout(blurTimeoutRef.current);
     }
-    blurTimeoutRef.current = setTimeout(() => setShowAutocomplete(false), 150);
+    blurTimeoutRef.current = setTimeout(() => {
+      setShowAutocomplete(false);
+      setIsActive(false);
+    }, 150);
   }, []);
 
   const handleClear = useCallback(() => {
@@ -198,7 +205,8 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
     <div className={cn('relative flex items-center gap-2 w-full flex-1', className)}>
       <div
         className={cn(
-          'flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all',
+          'flex-1 flex items-center gap-2 py-1.5 rounded-lg border transition-all',
+          compact ? 'px-0' : 'px-3',
           query
             ? 'border-gx-accent/30 ring-1 ring-gx-accent/10 shadow-[0_0_12px_rgba(127,34,254,0.15)]'
             : 'border-gx-gray/30 hover:border-gx-accent/20'
@@ -234,28 +242,30 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
         )}
       </div>
 
-      <div className="flex items-center gap-1 text-xs">
-        <button
-          onClick={() => onScopeChange('current')}
-          className={cn(
-            'px-2 py-1 rounded transition-colors',
-            scope === 'current' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gx-muted hover:text-gx-text'
-          )}
-        >
-          Current
-        </button>
-        <button
-          onClick={() => onScopeChange('all')}
-          className={cn(
-            'px-2 py-1 rounded transition-colors',
-            scope === 'all' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gx-muted hover:text-gx-text'
-          )}
-        >
-          All
-        </button>
-      </div>
+      {isActive && (
+        <div className="flex items-center gap-1 text-xs">
+          <button
+            onClick={() => onScopeChange('current')}
+            className={cn(
+              'px-2 py-1 rounded transition-colors',
+              scope === 'current' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gx-muted hover:text-gx-text'
+            )}
+          >
+            Current
+          </button>
+          <button
+            onClick={() => onScopeChange('all')}
+            className={cn(
+              'px-2 py-1 rounded transition-colors',
+              scope === 'all' ? 'bg-gx-accent/20 text-gx-accent' : 'text-gx-muted hover:text-gx-text'
+            )}
+          >
+            All
+          </button>
+        </div>
+      )}
 
-      {hasCommands && (
+      {isActive && hasCommands && (
         <button
           onClick={onExecute}
           disabled={isSearching || resultCount === 0}
@@ -272,13 +282,15 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
         </button>
       )}
 
-      <button
-        onClick={onHelp}
-        className="p-1.5 rounded hover:bg-gx-hover text-gx-muted hover:text-gx-text transition-colors"
-        title="Search help"
-      >
-        <HelpCircle className="w-4 h-4" />
-      </button>
+      {isActive && (
+        <button
+          onClick={onHelp}
+          className="p-1.5 rounded hover:bg-gx-hover text-gx-muted hover:text-gx-text transition-colors"
+          title="Search help"
+        >
+          <HelpCircle className="w-4 h-4" />
+        </button>
+      )}
 
       {showAutocomplete && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-20 mt-1 bg-gx-gray border border-gx-border rounded-lg shadow-lg z-50 overflow-hidden">
