@@ -5,6 +5,11 @@ import { Toggle } from './ui/Toggle';
 import { cn } from '../utils/cn';
 import type { AppearanceSettings, VaultStorageResult, VaultQuotaInfo, QuotaWarningLevel } from '../types';
 import { CHROME_SYNC_QUOTA_BYTES } from '../constants';
+import type { SettingSection } from './AppearanceSettingsPanel';
+
+export const SETTING_SECTIONS: SettingSection[] = [
+    { id: 'vault-sync', title: 'Cloud Sync', category: 'vault', icon: Cloud },
+];
 
 function warningColor(warningLevel: QuotaWarningLevel, kind: 'text' | 'bg'): string {
     if (warningLevel === 'critical') {

@@ -3,6 +3,11 @@ import { Terminal } from 'lucide-react';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Toggle } from './ui/Toggle';
 import type { AppearanceSettings } from '../types';
+import type { SettingSection } from './AppearanceSettingsPanel';
+
+export const SETTING_SECTIONS: SettingSection[] = [
+    { id: 'debug-mode', title: 'Debug Mode', category: 'dev', icon: Terminal },
+];
 
 interface DevSettingsProps {
     appearanceSettings: AppearanceSettings;

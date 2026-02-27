@@ -15,6 +15,17 @@ import {
 } from '../constants';
 import { logger } from '../utils/logger';
 import type { AppearanceSettings, AnimationIntensity, IconPack, ButtonSize, LoadingSpinnerStyle } from '../types';
+import type { SettingSection } from './AppearanceSettingsPanel';
+
+export const SETTING_SECTIONS: SettingSection[] = [
+    { id: 'animations', title: 'Animations', category: 'general', icon: Sparkles },
+    { id: 'drag-opacity', title: 'Drag Opacity', category: 'general', icon: MousePointer },
+    { id: 'spinner', title: 'Loading Spinner', category: 'general', icon: MoreHorizontal },
+    { id: 'icons', title: 'Icon Pack', category: 'general', icon: Type },
+    { id: 'button-size', title: 'Button Size', category: 'general', icon: SlidersHorizontal },
+    { id: 'auto-pin', title: 'Tab Manager Pin', category: 'general', icon: Pin },
+    { id: 'search', title: 'Search', category: 'general', icon: SearchIcon },
+];
 
 interface GeneralSettingsProps {
     appearanceSettings: AppearanceSettings;

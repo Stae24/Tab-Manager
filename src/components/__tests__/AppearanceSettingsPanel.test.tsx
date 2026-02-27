@@ -105,7 +105,7 @@ describe('AppearanceSettingsPanel', () => {
         const searchInput = screen.getByPlaceholderText(/search settings/i);
         fireEvent.change(searchInput, { target: { value: 'Tabs' } });
 
-        fireEvent.click(screen.getByText(/tabs/i));
+        fireEvent.click(screen.getByText(/^Tabs$/));
 
         expect(screen.getByText(/tab density/i)).toBeDefined();
 

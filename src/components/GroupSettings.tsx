@@ -8,6 +8,13 @@ import {
     TAB_COUNT_SECTION,
     SORT_GROUPS_SECTION
 } from '../constants';
+import type { SettingSection } from './AppearanceSettingsPanel';
+
+export const SETTING_SECTIONS: SettingSection[] = [
+    { id: GROUP_HEADERS_SECTION, title: 'Group Headers', category: 'groups', icon: Layers },
+    { id: TAB_COUNT_SECTION, title: 'Tab Count', category: 'groups', icon: Hash },
+    { id: SORT_GROUPS_SECTION, title: 'Sort Groups', category: 'groups', icon: ArrowDownUp },
+];
 
 interface GroupSettingsProps {
     appearanceSettings: AppearanceSettings;
