@@ -88,23 +88,41 @@ export const sidebarService = {
     const settings = await this.loadSettings();
     const extensionUrl = chrome.runtime.getURL('index.html');
 
+    logger.debug('SidebarService', 'openManagerPage called with settings:', {
+      autoPinTabManager: settings.autoPinTabManager,
+      focusExistingTab: settings.focusExistingTab
+    });
+
     if (settings.focusExistingTab) {
       const tabs = await chrome.tabs.query({ url: extensionUrl });
       if (tabs.length > 0 && tabs[0].id !== undefined) {
+        logger.debug('SidebarService', 'Focusing existing manager tab:', tabs[0].id);
         await chrome.tabs.update(tabs[0].id, { active: true });
         if (tabs[0].windowId !== undefined) {
           await chrome.windows.update(tabs[0].windowId, { focused: true });
         }
         if (settings.autoPinTabManager && !tabs[0].pinned) {
+          logger.debug('SidebarService', 'Pinning existing manager tab:', tabs[0].id);
           await chrome.tabs.update(tabs[0].id, { pinned: true });
         }
         return;
       }
     }
 
+    logger.debug('SidebarService', 'Creating new manager tab');
     const tab = await chrome.tabs.create({ url: extensionUrl });
-    if (settings.autoPinTabManager && tab.id) {
-      await chrome.tabs.update(tab.id, { pinned: true });
+    logger.debug('SidebarService', 'New tab created:', { id: tab.id, pinned: tab.pinned });
+
+    if (settings.autoPinTabManager && typeof tab.id === 'number') {
+      logger.debug('SidebarService', 'Pinning new manager tab:', tab.id);
+      try {
+        await chrome.tabs.update(tab.id, { pinned: true });
+        logger.debug('SidebarService', 'Successfully pinned tab:', tab.id);
+      } catch (error) {
+        logger.error('SidebarService', 'Failed to pin tab:', error);
+      }
+    } else {
+      logger.debug('SidebarService', 'Skipping pin:', { autoPin: settings.autoPinTabManager, tabId: tab.id, idType: typeof tab.id });
     }
   },
 

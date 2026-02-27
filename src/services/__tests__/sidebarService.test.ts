@@ -143,6 +143,30 @@ describe('sidebarService', () => {
             expect(chrome.tabs.update).toHaveBeenCalledWith(101, { active: true });
             expect(chrome.windows.update).toHaveBeenCalledWith(2, { focused: true });
         });
+
+        it('should pin existing tab when autoPinTabManager is true and tab is not pinned', async () => {
+            (chrome.storage.sync.get as any).mockResolvedValue({
+                appearanceSettings: { focusExistingTab: true, autoPinTabManager: true }
+            });
+            (chrome.tabs.query as any).mockResolvedValue([{ id: 101, windowId: 2, url: 'index.html', pinned: false }]);
+
+            await sidebarService.openManagerPage();
+
+            expect(chrome.tabs.update).toHaveBeenCalledWith(101, { active: true });
+            expect(chrome.tabs.update).toHaveBeenCalledWith(101, { pinned: true });
+        });
+
+        it('should not pin existing tab when autoPinTabManager is true but tab is already pinned', async () => {
+            (chrome.storage.sync.get as any).mockResolvedValue({
+                appearanceSettings: { focusExistingTab: true, autoPinTabManager: true }
+            });
+            (chrome.tabs.query as any).mockResolvedValue([{ id: 101, windowId: 2, url: 'index.html', pinned: true }]);
+
+            await sidebarService.openManagerPage();
+
+            expect(chrome.tabs.update).toHaveBeenCalledWith(101, { active: true });
+            expect(chrome.tabs.update).toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('Context Menus', () => {
@@ -162,6 +186,32 @@ describe('sidebarService', () => {
             expect(chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({
                 appearanceSettings: expect.objectContaining({ toolbarClickAction: 'toggle-sidebar' })
             }));
+        });
+
+        it('should handle context menu click: open-manager-page and pin tab when autoPinTabManager is true', async () => {
+            (chrome.storage.sync.get as any).mockResolvedValue({
+                appearanceSettings: { autoPinTabManager: true, focusExistingTab: false }
+            });
+            (chrome.tabs.query as any).mockResolvedValue([]);
+            (chrome.tabs.create as any).mockResolvedValue({ id: 123, url: 'index.html', pinned: false });
+
+            await sidebarService.handleContextMenuClick({ menuItemId: 'open-manager-page' }, { windowId: 10 } as any);
+
+            expect(chrome.tabs.create).toHaveBeenCalledWith({ url: expect.stringContaining('index.html') });
+            expect(chrome.tabs.update).toHaveBeenCalledWith(123, { pinned: true });
+        });
+
+        it('should handle context menu click: open-manager-page without pinning when autoPinTabManager is false', async () => {
+            (chrome.storage.sync.get as any).mockResolvedValue({
+                appearanceSettings: { autoPinTabManager: false, focusExistingTab: false }
+            });
+            (chrome.tabs.query as any).mockResolvedValue([]);
+            (chrome.tabs.create as any).mockResolvedValue({ id: 123, url: 'index.html', pinned: false });
+
+            await sidebarService.handleContextMenuClick({ menuItemId: 'open-manager-page' }, { windowId: 10 } as any);
+
+            expect(chrome.tabs.create).toHaveBeenCalledWith({ url: expect.stringContaining('index.html') });
+            expect(chrome.tabs.update).not.toHaveBeenCalled();
         });
     });
 
