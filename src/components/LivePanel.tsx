@@ -16,10 +16,7 @@ import {
   CLEANUP_ANIMATION_DELAY_MS,
   SEARCH_DEBOUNCE_MS,
   SIDEBAR_PANEL_PADDING_DEFAULT,
-  MANAGER_PANEL_PADDING_DEFAULT,
-  PANEL_HEADER_TRUNCATE_THRESHOLD,
-  PANEL_HEADER_ICON_ONLY_THRESHOLD,
-  PANEL_HEADER_HIDDEN_THRESHOLD
+  MANAGER_PANEL_PADDING_DEFAULT
 } from '../constants';
 import { search, searchAndExecute, parseQuery, isSearchActive, hasCommands } from '../search';
 import { useStore } from '../store/useStore';
@@ -82,7 +79,6 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const [isCleaning, setIsCleaning] = useState(false);
   const [showSearchHelp, setShowSearchHelp] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [panelWidth, setPanelWidth] = useState(Infinity);
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,27 +108,9 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     detectSidebarContext().then(setIsSidebar);
   }, []);
 
-  useEffect(() => {
-    const header = headerRef.current;
-    if (!header) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setPanelWidth(entry.contentRect.width);
-      }
-    });
-
-    resizeObserver.observe(header);
-    return () => resizeObserver.disconnect();
-  }, []);
-
   const horizontalPadding = isSidebar === null
     ? SIDEBAR_PANEL_PADDING_DEFAULT
     : (isSidebar ? (sidebarPanelPadding ?? SIDEBAR_PANEL_PADDING_DEFAULT) : (managerPanelPadding ?? MANAGER_PANEL_PADDING_DEFAULT));
-
-  const shouldShowName = showPanelName && panelWidth > PANEL_HEADER_TRUNCATE_THRESHOLD;
-  const shouldTruncateName = showPanelName && panelWidth > PANEL_HEADER_ICON_ONLY_THRESHOLD && panelWidth <= PANEL_HEADER_TRUNCATE_THRESHOLD;
-  const shouldShowIcon = showPanelIcon && panelWidth > PANEL_HEADER_HIDDEN_THRESHOLD;
 
   const runSearch = useCallback(async (query: string) => {
     const currentGen = ++searchGenRef.current;
@@ -319,21 +297,19 @@ export const LivePanel: React.FC<LivePanelProps> = ({
       )}
       style={{ width: showVault ? `${dividerPosition}%` : '100%' }}
     >
-      <div ref={headerRef} className="flex flex-col border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
+      <div ref={headerRef} className="flex flex-col border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20 @container/panel-header">
         <div className="flex items-center px-4 py-3">
           <div className={cn(
-            "flex items-center gap-2",
-            shouldTruncateName && "min-w-0"
+            "flex items-center gap-2 min-w-0",
+            !showPanelIcon && "hidden"
           )}>
-            {shouldShowIcon && (
-              <FolderOpen className="w-4 h-4 text-gx-accent drop-shadow-[0_0_4px_rgba(127,34,254,0.6)] flex-shrink-0" />
-            )}
-            {(shouldShowName || shouldTruncateName) && (
-              <h2 className={cn(
-                "text-sm font-bold tracking-widest uppercase italic",
-                shouldTruncateName && "truncate"
-              )}>Live</h2>
-            )}
+            <FolderOpen className="w-4 h-4 text-gx-accent drop-shadow-[0_0_4px_rgba(127,34,254,0.6)] flex-shrink-0 @max-60/panel-header:hidden" />
+          </div>
+          <div className={cn(
+            "flex items-center gap-2 min-w-0",
+            !showPanelName && "hidden"
+          )}>
+            <h2 className="text-sm font-bold tracking-widest uppercase italic truncate @max-80/panel-header:hidden">Live</h2>
           </div>
           <div className="flex items-center gap-3 flex-1 ml-4 justify-end">
             <SearchBar
