@@ -18,6 +18,15 @@ It will output nothing if there are no failing tests.
 Never run the full test command unless you have to.
 If tests fail, fix the code and re-run until passing.
 Then run `npm run build` to ensure the code compiles.
+Commit all of the changes when you are done.
+
+## UI
+
+- Use shadcn/ui components
+- Use lucide-react icons
+- Use tailwindcss for styling
+- Use clsx for conditional classes
+- Use cn for merging classes
 
 ## TypeScript
 
