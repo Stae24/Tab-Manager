@@ -20,7 +20,23 @@ import type { AppearanceSettings, ToolbarClickAction, SidebarLayoutMode, Sidebar
 import type { SettingSection } from './AppearanceSettingsPanel';
 
 export const SETTING_SECTIONS: SettingSection[] = [
-    { id: 'sidebar', title: 'Custom Sidebar', category: 'sidebar', icon: Sidebar },
+    {
+        id: 'sidebar',
+        title: 'Custom Sidebar',
+        category: 'sidebar',
+        icon: Sidebar,
+        controls: [
+            { id: 'toolbar-click', label: 'Toolbar Click Action', keywords: ['toolbar', 'click', 'sidebar', 'manager', 'page'] },
+            { id: 'layout-mode', label: 'Layout Mode', keywords: ['layout', 'mode', 'overlay', 'push'] },
+            { id: 'dock-side', label: 'Dock Side', keywords: ['dock', 'side', 'left', 'right'] },
+            { id: 'sidebar-width', label: 'Sidebar Width', keywords: ['sidebar', 'width'] },
+            { id: 'max-width', label: 'Max Width', keywords: ['max', 'width', 'percentage'] },
+            { id: 'sidebar-padding', label: 'Sidebar Padding', keywords: ['sidebar', 'padding'] },
+            { id: 'manager-padding', label: 'Manager Padding', keywords: ['manager', 'padding'] },
+            { id: 'sidebar-toggle-hotkey', label: 'Sidebar Toggle Hotkey', keywords: ['sidebar', 'toggle', 'hotkey', 'keyboard'] },
+            { id: 'manager-page-hotkey', label: 'Manager Page Hotkey', keywords: ['manager', 'page', 'hotkey', 'keyboard'] },
+        ],
+    },
 ];
 
 interface SidebarSettingsProps {
@@ -28,13 +44,15 @@ interface SidebarSettingsProps {
     setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
     expandedSections: Set<string>;
     toggleSection: (id: string) => void;
+    highlightedControl?: { sectionId: string; controlId: string } | null;
 }
 
 export const SidebarSettings: React.FC<SidebarSettingsProps> = ({
     appearanceSettings,
     setAppearanceSettings,
     expandedSections,
-    toggleSection
+    toggleSection,
+    highlightedControl
 }) => {
     const sidebarWidthMaxPct = appearanceSettings.sidebarWidthMaxPct ?? SIDEBAR_MAX_WIDTH_PCT_DEFAULT;
     const [sidebarMaxPx, setSidebarMaxPx] = useState(() =>

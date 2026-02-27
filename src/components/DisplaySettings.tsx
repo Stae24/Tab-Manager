@@ -12,8 +12,25 @@ import type { AppearanceSettings, BorderRadius } from '../types';
 import type { SettingSection } from './AppearanceSettingsPanel';
 
 export const SETTING_SECTIONS: SettingSection[] = [
-    { id: 'ui-scale', title: 'UI Scale', category: 'display', icon: ZoomIn },
-    { id: 'border-radius', title: 'Border Radius', category: 'display', icon: Square },
+    {
+        id: 'ui-scale',
+        title: 'UI Scale',
+        category: 'display',
+        icon: ZoomIn,
+        controls: [
+            { id: 'interface-scale', label: 'Interface Scale', keywords: ['scale', 'zoom', 'interface', 'ui'] },
+            { id: 'settings-scale', label: 'Settings Panel Scale', keywords: ['settings', 'panel', 'scale'] },
+        ],
+    },
+    {
+        id: 'border-radius',
+        title: 'Border Radius',
+        category: 'display',
+        icon: Square,
+        controls: [
+            { id: 'corner-style', label: 'Corner Style', keywords: ['corner', 'radius', 'border', 'square', 'pill', 'rounded'] },
+        ],
+    },
 ];
 
 function isBorderRadius(value: unknown): value is BorderRadius {
@@ -25,13 +42,15 @@ interface DisplaySettingsProps {
     setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
     expandedSections: Set<string>;
     toggleSection: (id: string) => void;
+    highlightedControl?: { sectionId: string; controlId: string } | null;
 }
 
 export const DisplaySettings: React.FC<DisplaySettingsProps> = ({
     appearanceSettings,
     setAppearanceSettings,
     expandedSections,
-    toggleSection
+    toggleSection,
+    highlightedControl
 }) => {
     const handleToggleUiScale = useCallback(() => {
         toggleSection('ui-scale');

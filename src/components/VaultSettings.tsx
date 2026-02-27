@@ -8,7 +8,16 @@ import { CHROME_SYNC_QUOTA_BYTES } from '../constants';
 import type { SettingSection } from './AppearanceSettingsPanel';
 
 export const SETTING_SECTIONS: SettingSection[] = [
-    { id: 'vault-sync', title: 'Cloud Sync', category: 'vault', icon: Cloud },
+    {
+        id: 'vault-sync',
+        title: 'Cloud Sync',
+        category: 'vault',
+        icon: Cloud,
+        controls: [
+            { id: 'vault-sync-toggle', label: 'Sync Vault Across Devices', description: 'Vault syncs via Chrome/Opera account', keywords: ['sync', 'cloud', 'vault', 'chrome', 'storage'] },
+            { id: 'vault-storage', label: 'Storage Used', keywords: ['storage', 'quota', 'used', 'limit'] },
+        ],
+    },
 ];
 
 function warningColor(warningLevel: QuotaWarningLevel, kind: 'text' | 'bg'): string {
@@ -28,6 +37,7 @@ interface VaultSettingsProps {
     vaultQuota: VaultQuotaInfo | null;
     expandedSections: Set<string>;
     toggleSection: (id: string) => void;
+    highlightedControl?: { sectionId: string; controlId: string } | null;
 }
 
 export const VaultSettings: React.FC<VaultSettingsProps> = ({
@@ -36,8 +46,11 @@ export const VaultSettings: React.FC<VaultSettingsProps> = ({
     setVaultSyncEnabled,
     vaultQuota,
     expandedSections,
-    toggleSection
+    toggleSection,
+    highlightedControl
 }) => {
+    const syncToggleHighlighted = highlightedControl?.sectionId === 'vault-sync' && highlightedControl?.controlId === 'vault-sync-toggle';
+    const storageHighlighted = highlightedControl?.sectionId === 'vault-sync' && highlightedControl?.controlId === 'vault-storage';
     const syncLimitKB = vaultQuota ? Math.round(vaultQuota.total / 1024) : Math.round(CHROME_SYNC_QUOTA_BYTES / 1024);
 
     return (
@@ -49,27 +62,32 @@ export const VaultSettings: React.FC<VaultSettingsProps> = ({
             onToggle={() => toggleSection('vault-sync')}
         >
             <div className="space-y-4">
-                <Toggle
-                    checked={appearanceSettings.vaultSyncEnabled}
-                    onChange={async (checked) => {
-                        const previousValue = appearanceSettings.vaultSyncEnabled;
-                        try {
-                            await setVaultSyncEnabled(checked);
-                        } catch (error) {
-                            console.error('Failed to toggle vault sync:', error);
-                            setAppearanceSettings({ vaultSyncEnabled: previousValue });
+                <div id="vault-sync-toggle" className={cn(syncToggleHighlighted && "animate-pulse rounded-lg ring-2 ring-gx-accent -m-1 p-1")}>
+                    <Toggle
+                        checked={appearanceSettings.vaultSyncEnabled}
+                        onChange={async (checked) => {
+                            const previousValue = appearanceSettings.vaultSyncEnabled;
+                            try {
+                                await setVaultSyncEnabled(checked);
+                            } catch (error) {
+                                console.error('Failed to toggle vault sync:', error);
+                                setAppearanceSettings({ vaultSyncEnabled: previousValue });
+                            }
+                        }}
+                        label="Sync Vault Across Devices"
+                        description={
+                            appearanceSettings.vaultSyncEnabled
+                                ? `Vault syncs via Chrome/Opera account (${syncLimitKB}KB limit)`
+                                : "Vault stored locally only (unlimited space)"
                         }
-                    }}
-                    label="Sync Vault Across Devices"
-                    description={
-                        appearanceSettings.vaultSyncEnabled
-                            ? `Vault syncs via Chrome/Opera account (${syncLimitKB}KB limit)`
-                            : "Vault stored locally only (unlimited space)"
-                    }
-                />
+                    />
+                </div>
 
                 {vaultQuota && (
-                    <div className="bg-gx-gray/50 rounded-lg p-3 space-y-2">
+                    <div id="vault-storage" className={cn(
+                        storageHighlighted && "animate-pulse rounded-lg ring-2 ring-gx-accent -m-1 p-1",
+                        "bg-gx-gray/50 rounded-lg p-3 space-y-2"
+                    )}>
                         <div className="flex items-center justify-between text-xs">
                             <span className="text-gray-400 flex items-center gap-2">
                                 {appearanceSettings.vaultSyncEnabled ? (

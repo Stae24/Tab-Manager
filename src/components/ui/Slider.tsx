@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React, { useId, useEffect, useRef } from 'react';
 
 interface SliderProps {
     value: number;
@@ -8,14 +8,22 @@ interface SliderProps {
     step: number;
     label: string;
     displayValue?: string;
+    highlighted?: boolean;
 }
 
-export const Slider: React.FC<SliderProps> = ({ value, onChange, min, max, step, label, displayValue }) => {
+export const Slider: React.FC<SliderProps> = ({ value, onChange, min, max, step, label, displayValue, highlighted = false }) => {
     const id = useId();
+    const containerRef = useRef<HTMLDivElement>(null);
     const percentage = max === min ? 0 : Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 
+    useEffect(() => {
+        if (highlighted && containerRef.current) {
+            containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [highlighted]);
+
     return (
-        <div className="space-y-2">
+        <div ref={containerRef} className="space-y-2">
             <div className="flex items-center justify-between">
                 <label id={`${id}-label`} className="text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</label>
                 {displayValue && (
@@ -24,7 +32,7 @@ export const Slider: React.FC<SliderProps> = ({ value, onChange, min, max, step,
                     </span>
                 )}
             </div>
-            <div className="relative h-3 bg-gx-gray/50 rounded-full">
+            <div className={`relative h-3 bg-gx-gray/50 rounded-full ${highlighted ? 'ring-2 ring-gx-accent animate-pulse' : ''}`}>
                 <div className="absolute inset-0 rounded-full overflow-hidden">
                     <div
                         className="absolute h-full bg-gradient-to-r from-gx-accent to-gx-red transition-all duration-150"

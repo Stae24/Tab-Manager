@@ -18,13 +18,71 @@ import type { AppearanceSettings, AnimationIntensity, IconPack, ButtonSize, Load
 import type { SettingSection } from './AppearanceSettingsPanel';
 
 export const SETTING_SECTIONS: SettingSection[] = [
-    { id: 'animations', title: 'Animations', category: 'general', icon: Sparkles },
-    { id: 'drag-opacity', title: 'Drag Opacity', category: 'general', icon: MousePointer },
-    { id: 'spinner', title: 'Loading Spinner', category: 'general', icon: MoreHorizontal },
-    { id: 'icons', title: 'Icon Pack', category: 'general', icon: Type },
-    { id: 'button-size', title: 'Button Size', category: 'general', icon: SlidersHorizontal },
-    { id: 'auto-pin', title: 'Tab Manager Pin', category: 'general', icon: Pin },
-    { id: 'search', title: 'Search', category: 'general', icon: SearchIcon },
+    {
+        id: 'animations',
+        title: 'Animations',
+        category: 'general',
+        icon: Sparkles,
+        controls: [
+            { id: 'animation-style', label: 'Animation Style', keywords: ['animation', 'full', 'subtle', 'off', 'effects'] },
+        ],
+    },
+    {
+        id: 'drag-opacity',
+        title: 'Drag Opacity',
+        category: 'general',
+        icon: MousePointer,
+        controls: [
+            { id: 'dragged-opacity', label: 'Dragged Item Opacity', keywords: ['drag', 'opacity', 'dragged'] },
+        ],
+    },
+    {
+        id: 'spinner',
+        title: 'Loading Spinner',
+        category: 'general',
+        icon: MoreHorizontal,
+        controls: [
+            { id: 'spinner-animation', label: 'Spinner Animation', keywords: ['spinner', 'loading', 'pulse', 'dots', 'bars', 'ring'] },
+        ],
+    },
+    {
+        id: 'icons',
+        title: 'Icon Pack',
+        category: 'general',
+        icon: Type,
+        controls: [
+            { id: 'icon-style', label: 'Icon Style', keywords: ['icon', 'pack', 'gx', 'gaming', 'standard', 'minimal'] },
+        ],
+    },
+    {
+        id: 'button-size',
+        title: 'Button Size',
+        category: 'general',
+        icon: SlidersHorizontal,
+        controls: [
+            { id: 'ui-action-size', label: 'UI Action Size', keywords: ['button', 'size', 'small', 'medium', 'large'] },
+        ],
+    },
+    {
+        id: 'auto-pin',
+        title: 'Tab Manager Pin',
+        category: 'general',
+        icon: Pin,
+        controls: [
+            { id: 'auto-pin-tab-manager', label: 'Auto-Pin Tab Manager', description: 'Automatically pin the Tab Manager page when opened via extension icon', keywords: ['auto', 'pin', 'tab', 'manager'] },
+            { id: 'focus-existing-tab', label: 'Focus Existing Tab', description: 'If Tab Manager is already open, switch to it instead of creating a new tab', keywords: ['focus', 'existing', 'tab'] },
+            { id: 'configure-shortcut', label: 'Configure Shortcut', keywords: ['shortcut', 'keyboard', 'hotkey'] },
+        ],
+    },
+    {
+        id: 'search',
+        title: 'Search',
+        category: 'general',
+        icon: SearchIcon,
+        controls: [
+            { id: 'search-debounce', label: 'Search Debounce', keywords: ['search', 'debounce', 'delay'] },
+        ],
+    },
 ];
 
 interface GeneralSettingsProps {
@@ -32,13 +90,15 @@ interface GeneralSettingsProps {
     setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
     expandedSections: Set<string>;
     toggleSection: (id: string) => void;
+    highlightedControl?: { sectionId: string; controlId: string } | null;
 }
 
 export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
     appearanceSettings,
     setAppearanceSettings,
     expandedSections,
-    toggleSection
+    toggleSection,
+    highlightedControl
 }) => {
     const [shortcutCopied, setShortcutCopied] = useState(false);
     const shortcutTimeoutRef = useRef<number | undefined>(undefined);
