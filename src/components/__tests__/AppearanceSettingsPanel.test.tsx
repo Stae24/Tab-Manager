@@ -9,7 +9,7 @@ vi.mock('../../store/useStore', () => ({
     useStore: vi.fn(),
     defaultAppearanceSettings: {
         theme: 'system',
-        themeElements: { background: true, panels: true, text: true, accent: true },
+        themeElements: { background: true, panels: true, text: true, accent: 'theme' },
         uiScale: 1,
         settingsScale: 1,
         tabDensity: 'normal',
