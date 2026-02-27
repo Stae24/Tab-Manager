@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, ChevronRight, Trash2, Save, LogOut, ExternalLink, Edit3, X, Snowflake, Copy } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2, Save, LogOut, ExternalLink, Edit3, X, Snowflake, Copy, Check } from 'lucide-react';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TabCard } from './TabCard';
@@ -187,25 +187,34 @@ export const Island: React.FC<IslandProps> = React.memo(({
           )}
         </button>
         {isEditing ? (
-          <input
-            type="text"
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onBlur={handleRename}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRename();
-              if (e.key === 'Escape') {
-                setEditTitle(island.title);
-                setIsEditing(false);
-                setIsRenaming(false);
-              }
-            }}
-            autoFocus
-            placeholder="Untitled Group"
-            className="flex-1 text-sm font-bold bg-black/50 text-white border-none outline-none rounded px-1 relative z-20"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          />
+          <>
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onBlur={handleRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRename();
+                if (e.key === 'Escape') {
+                  setEditTitle(island.title);
+                  setIsEditing(false);
+                  setIsRenaming(false);
+                }
+              }}
+              autoFocus
+              placeholder="Untitled Group"
+              className="flex-1 min-w-0 text-sm font-bold bg-black/50 text-white border-none outline-none rounded px-1 relative z-20"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); handleRename(); }}
+              className={cn("shrink-0", buttonPadding[appearanceSettings.buttonSize])}
+              title="Confirm"
+            >
+              <Check size={buttonIconSize[appearanceSettings.buttonSize]} className="text-gx-green" />
+            </button>
+          </>
         ) : (
           <span
             className="flex-1 text-sm font-bold truncate relative z-10 cursor-text"
@@ -227,7 +236,10 @@ export const Island: React.FC<IslandProps> = React.memo(({
             )}
           </span>
         )}
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto relative z-10">
+        <div className={cn(
+          "flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto relative z-10",
+          isEditing && "hidden"
+        )}>
           {!isVault && !isOverlay && (
             <button
               onClick={(e) => {
