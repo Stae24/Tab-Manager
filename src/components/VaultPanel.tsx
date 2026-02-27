@@ -207,8 +207,8 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
         <div className="flex items-center gap-2">
-          <Save className="w-4 h-4 text-gx-red shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-          <h2 className="text-sm font-bold tracking-widest uppercase italic text-gx-red">Neural Vault</h2>
+          <Save className="w-4 h-4 text-gx-red drop-shadow-[0_0_4px_rgba(239,68,68,0.6)]" />
+          <h2 className="text-sm font-bold tracking-widest uppercase italic text-gx-red">Vault</h2>
         </div>
         <div className="flex items-center gap-2">
           <button
