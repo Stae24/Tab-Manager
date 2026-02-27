@@ -10,7 +10,8 @@ import {
     Volume2,
     Volume1,
     VolumeX,
-    Snowflake
+    Snowflake,
+    GripVertical
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { CollapsibleSection } from './ui/CollapsibleSection';
@@ -21,7 +22,8 @@ import type {
     FaviconSource,
     FaviconFallback,
     FaviconSize,
-    AudioIndicatorMode
+    AudioIndicatorMode,
+    TabElementOrder
 } from '../types';
 import type { SettingSection } from './AppearanceSettingsPanel';
 
@@ -72,6 +74,15 @@ export const SETTING_SECTIONS: SettingSection[] = [
         icon: Snowflake,
         controls: [
             { id: 'show-frozen', label: 'Show Frozen Status', description: 'Show snowflake icon for discarded (sleeping) tabs', keywords: ['frozen', 'snowflake', 'discarded', 'sleeping', 'indicator'] },
+        ],
+    },
+    {
+        id: 'tab-layout',
+        title: 'Tab Layout',
+        category: 'tabs',
+        icon: GripVertical,
+        controls: [
+            { id: 'element-order', label: 'Element Order', keywords: ['element', 'order', 'layout', 'favicon', 'indicator', 'position'] },
         ],
     },
 ];
@@ -243,6 +254,24 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
                     onChange={(checked) => setAppearanceSettings({ showFrozenIndicators: checked })}
                     label="Show Frozen Status"
                     description="Show snowflake icon for discarded (sleeping) tabs"
+                />
+            </CollapsibleSection>
+
+            <CollapsibleSection
+                id="tab-layout"
+                title="Tab Layout"
+                icon={GripVertical}
+                isExpanded={expandedSections.has('tab-layout')}
+                onToggle={() => toggleSection('tab-layout')}
+            >
+                <Dropdown
+                    value={appearanceSettings.tabElementOrder}
+                    onChange={(value) => setAppearanceSettings({ tabElementOrder: value as TabElementOrder })}
+                    options={[
+                        { value: 'indicators-first', label: 'Indicators → Favicon → Title' },
+                        { value: 'favicon-first', label: 'Favicon → Title → Indicators' },
+                    ]}
+                    label="Element Order"
                 />
             </CollapsibleSection>
         </>

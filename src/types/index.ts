@@ -130,6 +130,7 @@ export type MenuPosition = 'left' | 'center' | 'right';
 export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | 'icon-horse';
 export type FaviconFallback = FaviconSource | 'none';
 export type FaviconSize = '16' | '32' | '64' | '128';
+export type TabElementOrder = 'favicon-first' | 'indicators-first';
 
 export interface ThemeElementsConfig {
   background: boolean;
@@ -178,6 +179,8 @@ export interface AppearanceSettings {
 
   sortGroupsByCount: boolean;
   sortVaultGroupsByCount: boolean;
+
+  tabElementOrder: TabElementOrder;
 
   // v2.2 - Behavior
   autoPinTabManager: boolean;
