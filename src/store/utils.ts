@@ -1,5 +1,5 @@
 import { UniqueIdentifier } from '@dnd-kit/core';
-import { Island, Tab, VaultItem, AppearanceSettings, LiveItem, HotkeyBinding } from '../types/index';
+import { Island, Tab, VaultItem, AppearanceSettings, LiveItem, HotkeyBinding, AccentMode } from '../types/index';
 import { logger } from '../utils/logger';
 import {
   DEBOUNCE_DEFAULT_MS,
@@ -130,7 +130,7 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
 
   return (
     !!s.theme && ['dark', 'light', 'system', 'dark-pro', 'ocean', 'forest', 'sunset', 'dracula', 'nord', 'monokai', 'solarized-light', 'solarized-dark', 'midnight', 'cyberpunk', 'coffee'].includes(s.theme) &&
-    !!s.themeElements && typeof s.themeElements.background === 'boolean' && typeof s.themeElements.panels === 'boolean' && typeof s.themeElements.text === 'boolean' && typeof s.themeElements.accent === 'boolean' &&
+    !!s.themeElements && typeof s.themeElements.background === 'boolean' && typeof s.themeElements.panels === 'boolean' && typeof s.themeElements.text === 'boolean' && (s.themeElements.accent === 'custom' || s.themeElements.accent === 'theme' || s.themeElements.accent === 'none') &&
     typeof s.uiScale === 'number' &&
     typeof s.settingsScale === 'number' &&
     !!s.tabDensity && ['minified', 'compact', 'normal', 'spacious'].includes(s.tabDensity) &&
@@ -174,6 +174,24 @@ export const mergeAppearanceSettings = (settings: unknown): AppearanceSettings =
   if (isAppearanceSettings(settings)) {
     return { ...defaultAppearanceSettings, ...settings };
   }
+  
+  if (settings && typeof settings === 'object') {
+    const s = settings as Partial<AppearanceSettings>;
+    if (s.themeElements && typeof s.themeElements.accent === 'boolean') {
+      const migratedAccent: AccentMode = s.themeElements.accent
+        ? (s.accentColor ? 'custom' : 'theme')
+        : 'none';
+      return {
+        ...defaultAppearanceSettings,
+        ...s,
+        themeElements: {
+          ...s.themeElements,
+          accent: migratedAccent
+        }
+      };
+    }
+  }
+  
   return defaultAppearanceSettings;
 };
 
@@ -235,7 +253,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
     background: true,
     panels: true,
     text: true,
-    accent: true
+    accent: 'theme' as const
   },
   uiScale: 1,
   settingsScale: 1,

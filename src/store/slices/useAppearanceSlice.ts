@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import { AppearanceSettings, ThemeMode } from '../../types/index';
+import { AppearanceSettings, ThemeMode, AccentMode } from '../../types/index';
 import { settingsService } from '../../services/settingsService';
 import { defaultAppearanceSettings } from '../utils';
 import { logger, setDebugMode } from '../../utils/logger';
@@ -30,7 +30,7 @@ const applyThemeVariables = (theme: ThemeMode, elements: AppearanceSettings['the
   const fallbackTheme = THEME_DEFINITIONS[isDarkBase ? 'dark' : 'light'];
   const activeTheme = THEME_DEFINITIONS[resolvedTheme] || THEME_DEFINITIONS.dark;
 
-  const safeElements = elements || { background: true, panels: true, text: true, accent: true };
+  const safeElements = elements || { background: true, panels: true, text: true, accent: 'theme' as AccentMode };
 
   root.style.setProperty('--base-dark', safeElements.background ? activeTheme.bg : fallbackTheme.bg);
   root.style.setProperty('--base-gray', safeElements.panels ? activeTheme.panel : fallbackTheme.panel);
@@ -78,21 +78,12 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
 
     if (newSettings.accentColor !== undefined || newSettings.themeElements !== undefined || newSettings.theme !== undefined) {
       const resolvedTheme = resolveTheme(updated.theme);
-      const isLightTheme = LIGHT_THEMES.includes(resolvedTheme);
-      
-      let finalAccent = updated.accentColor;
-      if (finalAccent === 'gx-accent') {
-        finalAccent = '';
-        updated.accentColor = finalAccent;
-      }
-
-      const hasCustomAccent = !!finalAccent;
-      const shouldThemeAccent = updated.themeElements?.accent ?? true;
+      const accentMode = updated.themeElements?.accent ?? 'theme';
       const themeColors = THEME_DEFINITIONS[resolvedTheme] || THEME_DEFINITIONS.dark;
 
-      if (hasCustomAccent) {
-        document.documentElement.style.setProperty('--gx-accent', finalAccent);
-      } else if (shouldThemeAccent) {
+      if (accentMode === 'custom' && updated.accentColor) {
+        document.documentElement.style.setProperty('--gx-accent', updated.accentColor);
+      } else if (accentMode === 'theme') {
         document.documentElement.style.setProperty('--gx-accent', themeColors.primary);
       } else {
         document.documentElement.style.removeProperty('--gx-accent');
