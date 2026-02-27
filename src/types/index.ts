@@ -132,17 +132,17 @@ export type FaviconFallback = FaviconSource | 'none';
 export type FaviconSize = '16' | '32' | '64' | '128';
 export type TabElementOrder = 'favicon-first' | 'indicators-first';
 
+export type LoadingSpinnerStyle = 'pulse' | 'dots' | 'bars' | 'ring';
+export type AccentMode = 'custom' | 'theme' | 'none';
+
 export interface ThemeElementsConfig {
   background: boolean;
   panels: boolean;
   text: boolean;
-  accent: boolean;
+  accent: AccentMode;
 }
 
-export type LoadingSpinnerStyle = 'pulse' | 'dots' | 'bars' | 'ring';
-
 export interface AppearanceSettings {
-  // v1 - Essential
   theme: ThemeMode;
   themeElements: ThemeElementsConfig;
   uiScale: number;
@@ -150,7 +150,6 @@ export interface AppearanceSettings {
   tabDensity: 'minified' | 'compact' | 'normal' | 'spacious';
   animationIntensity: AnimationIntensity;
 
-  // v1.1 - High Value
   showFavicons: boolean;
   showAudioIndicators: AudioIndicatorMode;
   showFrozenIndicators: boolean;
@@ -159,20 +158,17 @@ export interface AppearanceSettings {
   showPanelName: boolean;
   showPanelIcon: boolean;
 
-  // v1.2 - Polish
   accentColor: string;
   borderRadius: BorderRadius;
   compactGroupHeaders: boolean;
   buttonSize: ButtonSize;
   iconPack: IconPack;
 
-  // v2 - Nice to Have
   customFontFamily?: string;
   dragOpacity: number;
   loadingSpinnerStyle: 'pulse' | 'dots' | 'bars' | 'ring';
   menuPosition: MenuPosition;
 
-  // v2.1 - Storage
   vaultSyncEnabled: boolean;
 
   faviconSource: FaviconSource;
@@ -184,34 +180,20 @@ export interface AppearanceSettings {
 
   tabElementOrder: TabElementOrder;
 
-  // v2.2 - Behavior
   autoPinTabManager: boolean;
   focusExistingTab?: boolean;
 
-  /**
-   * Debounce delay for search input in milliseconds.
-   * Must be a finite non-negative number (>= 0) and preferably an integer.
-   * NaN, Infinity, and negative values are invalid.
-   */
   searchDebounce?: number;
 
-  // v3 - Custom Sidebar
   toolbarClickAction: ToolbarClickAction;
   sidebarLayoutMode: SidebarLayoutMode;
   sidebarDockSide: SidebarDockSide;
   sidebarWidthPx: number;
-  /**
-   * Maximum sidebar width as a percentage of viewport width (0-100).
-   * When both sidebarWidthMaxPct and sidebarWidthPx are set, the effective
-   * max width is the lesser of the two constraints; sidebarWidthPx takes
-   * precedence if it results in a smaller width.
-   */
   sidebarWidthMaxPct?: number;
   sidebarToggleHotkey: HotkeyBinding;
   managerPageHotkey: HotkeyBinding;
   sidebarPanelPadding?: number;
   managerPanelPadding?: number;
 
-  // Dev
   debugMode: boolean;
 }
