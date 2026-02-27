@@ -500,7 +500,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div
       id="dashboard-container"
-      className={cn('flex flex-col select-none overflow-hidden fixed top-0 left-0 z-0 bg-[#050505] text-white', isDarkMode ? 'dark' : 'light')}
+      className={cn('flex flex-col select-none overflow-hidden fixed top-0 left-0 z-0 bg-gx-dark text-white', isDarkMode ? 'dark' : 'light')}
       style={{
         transform: `scale(${appearanceSettings.uiScale})`,
         transformOrigin: 'top left',
