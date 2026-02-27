@@ -154,6 +154,7 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     !!s.faviconSize && ['16', '32', '64', '128'].includes(s.faviconSize) &&
     typeof s.sortGroupsByCount === 'boolean' &&
     typeof s.sortVaultGroupsByCount === 'boolean' &&
+    !!s.tabElementOrder && ['favicon-first', 'indicators-first'].includes(s.tabElementOrder) &&
     typeof s.autoPinTabManager === 'boolean' &&
     (typeof s.focusExistingTab === 'boolean' || s.focusExistingTab === undefined) &&
     !!s.toolbarClickAction && ['toggle-sidebar', 'open-manager-page'].includes(s.toolbarClickAction) &&
@@ -260,6 +261,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   faviconSize: '32',
   sortGroupsByCount: true,
   sortVaultGroupsByCount: true,
+  tabElementOrder: 'indicators-first',
   autoPinTabManager: true,
   focusExistingTab: true,
   searchDebounce: SEARCH_DEBOUNCE_MS,

@@ -209,6 +209,21 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
           </>
         )}
 
+        {appearanceSettings.tabElementOrder === 'indicators-first' && (
+          <>
+            {tab.discarded && appearanceSettings.showFrozenIndicators && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
+            {appearanceSettings.showAudioIndicators !== 'off' && (
+              <>
+                {tab.muted && (appearanceSettings.showAudioIndicators === 'muted' || appearanceSettings.showAudioIndicators === 'both') ? (
+                  <VolumeX size={14} className="text-orange-400 relative z-10 mr-1" />
+                ) : tab.audible && (appearanceSettings.showAudioIndicators === 'playing' || appearanceSettings.showAudioIndicators === 'both') ? (
+                  <Speaker size={14} className="text-green-400 relative z-10 mr-1 animate-pulse" />
+                ) : null}
+              </>
+            )}
+          </>
+        )}
+
         {appearanceSettings.showFavicons && (
           <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center relative z-10">
             {hasStartedLoading ? (
@@ -219,14 +234,18 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
           </div>
         )}
         <span className="flex-1 text-xs font-medium truncate pointer-events-none relative z-10">{tab.title}</span>
-        {tab.discarded && appearanceSettings.showFrozenIndicators && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
-        {appearanceSettings.showAudioIndicators !== 'off' && (
+        {appearanceSettings.tabElementOrder === 'favicon-first' && (
           <>
-            {tab.muted && (appearanceSettings.showAudioIndicators === 'muted' || appearanceSettings.showAudioIndicators === 'both') ? (
-              <VolumeX size={14} className="text-orange-400 relative z-10 mr-1" />
-            ) : tab.audible && (appearanceSettings.showAudioIndicators === 'playing' || appearanceSettings.showAudioIndicators === 'both') ? (
-              <Speaker size={14} className="text-green-400 relative z-10 mr-1 animate-pulse" />
-            ) : null}
+            {tab.discarded && appearanceSettings.showFrozenIndicators && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
+            {appearanceSettings.showAudioIndicators !== 'off' && (
+              <>
+                {tab.muted && (appearanceSettings.showAudioIndicators === 'muted' || appearanceSettings.showAudioIndicators === 'both') ? (
+                  <VolumeX size={14} className="text-orange-400 relative z-10 mr-1" />
+                ) : tab.audible && (appearanceSettings.showAudioIndicators === 'playing' || appearanceSettings.showAudioIndicators === 'both') ? (
+                  <Speaker size={14} className="text-green-400 relative z-10 mr-1 animate-pulse" />
+                ) : null}
+              </>
+            )}
           </>
         )}
 
