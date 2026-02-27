@@ -11,9 +11,34 @@ import {
 import type { SettingSection } from './AppearanceSettingsPanel';
 
 export const SETTING_SECTIONS: SettingSection[] = [
-    { id: GROUP_HEADERS_SECTION, title: 'Group Headers', category: 'groups', icon: Layers },
-    { id: TAB_COUNT_SECTION, title: 'Tab Count', category: 'groups', icon: Hash },
-    { id: SORT_GROUPS_SECTION, title: 'Sort Groups', category: 'groups', icon: ArrowDownUp },
+    {
+        id: GROUP_HEADERS_SECTION,
+        title: 'Group Headers',
+        category: 'groups',
+        icon: Layers,
+        controls: [
+            { id: 'compact-headers', label: 'Compact Headers', description: 'Use smaller headers for tab groups to save space', keywords: ['compact', 'small', 'headers'] },
+        ],
+    },
+    {
+        id: TAB_COUNT_SECTION,
+        title: 'Tab Count',
+        category: 'groups',
+        icon: Hash,
+        controls: [
+            { id: 'show-tab-count', label: 'Show Tab Count', description: 'Display the number of tabs in each group header', keywords: ['count', 'number', 'tabs'] },
+        ],
+    },
+    {
+        id: SORT_GROUPS_SECTION,
+        title: 'Sort Groups',
+        category: 'groups',
+        icon: ArrowDownUp,
+        controls: [
+            { id: 'sort-live-groups', label: 'Sort Live Groups by Tab Count', description: 'Sort Live Workspace groups from most to least tabs', keywords: ['sort', 'live', 'groups', 'count'] },
+            { id: 'sort-vault-groups', label: 'Sort Vault Groups by Tab Count', description: 'Sort Neural Vault groups from most to least tabs', keywords: ['sort', 'vault', 'groups', 'count'] },
+        ],
+    },
 ];
 
 interface GroupSettingsProps {
@@ -21,13 +46,15 @@ interface GroupSettingsProps {
     setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
     expandedSections: Set<string>;
     toggleSection: (id: string) => void;
+    highlightedControl?: { sectionId: string; controlId: string } | null;
 }
 
 export const GroupSettings: React.FC<GroupSettingsProps> = ({
     appearanceSettings,
     setAppearanceSettings,
     expandedSections,
-    toggleSection
+    toggleSection,
+    highlightedControl
 }) => {
     const handleToggleGroupHeaders = useCallback(() => {
         toggleSection(GROUP_HEADERS_SECTION);
@@ -71,6 +98,7 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({
                     onChange={handleCompactGroupHeadersChange}
                     label="Compact Headers"
                     description="Use smaller headers for tab groups to save space"
+                    highlighted={highlightedControl?.sectionId === GROUP_HEADERS_SECTION && highlightedControl?.controlId === 'compact-headers'}
                 />
             </CollapsibleSection>
 
@@ -86,6 +114,7 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({
                     onChange={handleShowTabCountChange}
                     label="Show Tab Count"
                     description="Display the number of tabs in each group header"
+                    highlighted={highlightedControl?.sectionId === TAB_COUNT_SECTION && highlightedControl?.controlId === 'show-tab-count'}
                 />
             </CollapsibleSection>
 
@@ -101,12 +130,14 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({
                     onChange={handleSortGroupsByCountChange}
                     label="Sort Live Groups by Tab Count"
                     description="When enabled, Live Workspace groups are sorted from most to least tabs"
+                    highlighted={highlightedControl?.sectionId === SORT_GROUPS_SECTION && highlightedControl?.controlId === 'sort-live-groups'}
                 />
                 <Toggle
                     checked={appearanceSettings.sortVaultGroupsByCount}
                     onChange={handleSortVaultGroupsByCountChange}
                     label="Sort Vault Groups by Tab Count"
                     description="When enabled, Neural Vault groups are sorted from most to least tabs"
+                    highlighted={highlightedControl?.sectionId === SORT_GROUPS_SECTION && highlightedControl?.controlId === 'sort-vault-groups'}
                 />
             </CollapsibleSection>
         </div>

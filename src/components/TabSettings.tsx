@@ -26,11 +26,54 @@ import type {
 import type { SettingSection } from './AppearanceSettingsPanel';
 
 export const SETTING_SECTIONS: SettingSection[] = [
-    { id: 'tab-density', title: 'Tab Density', category: 'tabs', icon: Layout },
-    { id: 'favicons', title: 'Favicons', category: 'tabs', icon: Sparkles },
-    { id: 'active-indicator', title: 'Active Tab Indicator', category: 'tabs', icon: CheckCircle2 },
-    { id: 'audio-indicators', title: 'Audio Indicators', category: 'tabs', icon: Volume2 },
-    { id: 'frozen-indicators', title: 'Frozen Indicators', category: 'tabs', icon: Snowflake },
+    {
+        id: 'tab-density',
+        title: 'Tab Density',
+        category: 'tabs',
+        icon: Layout,
+        controls: [
+            { id: 'tab-density-options', label: 'Tab Density', keywords: ['tab', 'density', 'minified', 'compact', 'normal', 'spacious'] },
+        ],
+    },
+    {
+        id: 'favicons',
+        title: 'Favicons',
+        category: 'tabs',
+        icon: Sparkles,
+        controls: [
+            { id: 'show-favicons', label: 'Show Tab Favicons', description: 'Display website icons next to tab titles', keywords: ['favicon', 'icon', 'show', 'display', 'website'] },
+            { id: 'favicon-source', label: 'Primary Source', keywords: ['favicon', 'source', 'google', 'duckduckgo', 'icon horse', 'chrome'] },
+            { id: 'favicon-size', label: 'Icon Size', keywords: ['favicon', 'size', 'icon', '16', '32', '64', '128'] },
+            { id: 'favicon-fallback', label: 'Fallback Source', keywords: ['favicon', 'fallback', 'source', 'none', 'disabled'] },
+        ],
+    },
+    {
+        id: 'active-indicator',
+        title: 'Active Tab Indicator',
+        category: 'tabs',
+        icon: CheckCircle2,
+        controls: [
+            { id: 'show-active-glow', label: 'Show Active Glow', description: 'Highlight the currently active tab with a glow effect', keywords: ['active', 'glow', 'indicator', 'highlight'] },
+        ],
+    },
+    {
+        id: 'audio-indicators',
+        title: 'Audio Indicators',
+        category: 'tabs',
+        icon: Volume2,
+        controls: [
+            { id: 'audio-display', label: 'Display Logic', keywords: ['audio', 'sound', 'indicator', 'playing', 'muted', 'hidden'] },
+        ],
+    },
+    {
+        id: 'frozen-indicators',
+        title: 'Frozen Indicators',
+        category: 'tabs',
+        icon: Snowflake,
+        controls: [
+            { id: 'show-frozen', label: 'Show Frozen Status', description: 'Show snowflake icon for discarded (sleeping) tabs', keywords: ['frozen', 'snowflake', 'discarded', 'sleeping', 'indicator'] },
+        ],
+    },
 ];
 
 type TabDensity = AppearanceSettings['tabDensity'];
@@ -40,13 +83,15 @@ interface TabSettingsProps {
     setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
     expandedSections: Set<string>;
     toggleSection: (id: string) => void;
+    highlightedControl?: { sectionId: string; controlId: string } | null;
 }
 
 export const TabSettings: React.FC<TabSettingsProps> = ({
     appearanceSettings,
     setAppearanceSettings,
     expandedSections,
-    toggleSection
+    toggleSection,
+    highlightedControl
 }) => {
     return (
         <>

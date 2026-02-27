@@ -31,11 +31,19 @@ import { GeneralSettings, SETTING_SECTIONS as GENERAL_SECTIONS } from './General
 import { SidebarSettings, SETTING_SECTIONS as SIDEBAR_SECTIONS } from './SidebarSettings';
 import { DevSettings, SETTING_SECTIONS as DEV_SECTIONS } from './DevSettings';
 
+export interface SettingControl {
+    id: string;
+    label: string;
+    description?: string;
+    keywords?: string[];
+}
+
 export interface SettingSection {
     id: string;
     title: string;
     category: string;
     icon: React.ElementType;
+    controls?: SettingControl[];
 }
 
 export const ALL_SETTING_SECTIONS: SettingSection[] = [
@@ -70,6 +78,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
   const [searchQuery, setSearchQuery] = useState('');
   const [isClosing, setIsClosing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [highlightedControl, setHighlightedControl] = useState<{ sectionId: string; controlId: string } | null>(null);
+  const highlightTimeoutRef = useRef<number | undefined>(undefined);
 
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -82,6 +92,23 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
   useEffect(() => {
     expandedSectionsRef.current = expandedSections;
   }, [expandedSections]);
+
+  // Clear highlight after 3 seconds
+  useEffect(() => {
+    if (highlightedControl) {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+      highlightTimeoutRef.current = window.setTimeout(() => {
+        setHighlightedControl(null);
+      }, 3000);
+    }
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, [highlightedControl]);
 
   // Auto-expand/collapse sections based on search
   useEffect(() => {
@@ -172,10 +199,27 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
     return category.toLowerCase().includes(searchQuery.toLowerCase());
   };
 
+  const searchMatchesControl = (section: SettingSection): SettingControl[] => {
+    if (!searchQuery || !section.controls) return [];
+    const query = searchQuery.toLowerCase();
+    return section.controls.filter(control => {
+      if (control.label.toLowerCase().includes(query)) return true;
+      if (control.description?.toLowerCase().includes(query)) return true;
+      if (control.keywords?.some(kw => kw.toLowerCase().includes(query))) return true;
+      return false;
+    });
+  };
+
   const searchMatchesSection = (section: SettingSection): boolean => {
     if (!searchQuery) return false;
     const query = searchQuery.toLowerCase();
-    return section.title.toLowerCase().includes(query) || section.category.toLowerCase().includes(query);
+    if (section.title.toLowerCase().includes(query) || section.category.toLowerCase().includes(query)) return true;
+    const matchingControls = searchMatchesControl(section);
+    return matchingControls.length > 0;
+  };
+
+  const getMatchingControls = (section: SettingSection) => {
+    return searchMatchesControl(section);
   };
 
   const rawTabs: { id: TabId; label: string; icon: React.ElementType }[] = [
@@ -191,6 +235,13 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
   const matchingSections = searchQuery
     ? ALL_SETTING_SECTIONS.filter(searchMatchesSection)
+    : [];
+
+  const matchingControls: (SettingControl & { sectionId: string; sectionTitle: string; category: string; icon: React.ElementType })[] = searchQuery
+    ? ALL_SETTING_SECTIONS.flatMap(section => {
+        const matched = searchMatchesControl(section);
+        return matched.map(control => ({ ...control, sectionId: section.id, sectionTitle: section.title, category: section.category, icon: section.icon }));
+      })
     : [];
 
   const matchingCategories = searchQuery
@@ -305,7 +356,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
         <div className="flex-1 overflow-y-auto p-5 space-y-4 scroll-smooth overscroll-none scrollbar-hide">
           {searchQuery ? (
             <>
-              {matchingSections.length > 0 || matchingCategories.length > 0 ? (
+              {matchingSections.length > 0 || matchingCategories.length > 0 || matchingControls.length > 0 ? (
                 <div className="space-y-2">
                   {matchingCategories.length > 0 && (
                     <>
@@ -331,10 +382,48 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                       })}
                     </>
                   )}
+                  {matchingControls.length > 0 && (
+                    <>
+                      <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 mt-4">
+                        Controls ({matchingControls.length})
+                      </div>
+                      {matchingControls.map((control) => {
+                        const categoryToTab: Record<string, TabId> = {
+                          theme: 'theme',
+                          display: 'display',
+                          tabs: 'tabs',
+                          groups: 'groups',
+                          vault: 'vault',
+                          general: 'general',
+                          sidebar: 'sidebar',
+                          dev: 'dev',
+                        };
+                        return (
+                          <button
+                            key={`${control.sectionId}-${control.id}`}
+                            onClick={() => {
+                              const tabId = categoryToTab[control.category] || 'theme';
+                              setSearchQuery('');
+                              setActiveTab(tabId);
+                              setExpandedSections((prev) => new Set([...prev, control.sectionId]));
+                              setHighlightedControl({ sectionId: control.sectionId, controlId: control.id });
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
+                          >
+                            <control.icon size={16} className="text-gx-accent" />
+                            <div className="flex-1">
+                              <span className="text-sm font-bold text-gray-200 block">{control.label}</span>
+                              <span className="text-[10px] text-gray-500">{control.sectionTitle}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
                   {matchingSections.length > 0 && (
                     <>
                       <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 mt-4">
-                        Settings ({matchingSections.length})
+                        Sections ({matchingSections.length})
                       </div>
                       {matchingSections.map((section) => {
                         const categoryToTab: Record<string, TabId> = {
@@ -383,6 +472,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
                   toggleSection={toggleSection}
+                  highlightedControl={highlightedControl}
                 />
               )}
 
@@ -392,6 +482,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
                   toggleSection={toggleSection}
+                  highlightedControl={highlightedControl}
                 />
               )}
 
@@ -401,6 +492,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
                   toggleSection={toggleSection}
+                  highlightedControl={highlightedControl}
                 />
               )}
 
@@ -410,6 +502,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
                   toggleSection={toggleSection}
+                  highlightedControl={highlightedControl}
                 />
               )}
 
@@ -421,6 +514,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   vaultQuota={vaultQuota}
                   expandedSections={expandedSections}
                   toggleSection={toggleSection}
+                  highlightedControl={highlightedControl}
                 />
               )}
 
@@ -430,6 +524,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
                   toggleSection={toggleSection}
+                  highlightedControl={highlightedControl}
                 />
               )}
 
@@ -439,6 +534,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
                   toggleSection={toggleSection}
+                  highlightedControl={highlightedControl}
                 />
               )}
 
@@ -448,6 +544,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
                   toggleSection={toggleSection}
+                  highlightedControl={highlightedControl}
                 />
               )}
             </>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { cn } from '../../utils/cn';
 
 interface ToggleProps {
@@ -6,11 +6,21 @@ interface ToggleProps {
     onChange: (checked: boolean) => void;
     label?: string;
     description?: string;
+    highlighted?: boolean;
 }
 
-export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, description }) => {
+export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, description, highlighted }) => {
+    const ref = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (highlighted && ref.current) {
+            ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [highlighted]);
+
     return (
         <button
+            ref={ref}
             type="button"
             role="switch"
             aria-checked={checked}
@@ -20,7 +30,8 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, descri
                 "flex items-center gap-3 w-full p-3 rounded-lg transition-all border",
                 checked
                     ? "bg-gx-accent/10 border-gx-accent/30"
-                    : "bg-gx-gray border-white/5 hover:border-gx-accent/20"
+                    : "bg-gx-gray border-white/5 hover:border-gx-accent/20",
+                highlighted && "ring-2 ring-gx-accent animate-pulse"
             )}
         >
             <div

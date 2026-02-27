@@ -9,17 +9,37 @@ import type { AppearanceSettings, ThemeMode } from '../types';
 import type { SettingSection } from './AppearanceSettingsPanel';
 
 export const SETTING_SECTIONS: SettingSection[] = [
-    { id: 'theme-list', title: 'Color Themes', category: 'theme', icon: Monitor },
-    { id: 'accent-color', title: 'Accent Color', category: 'theme', icon: Palette },
-    { id: 'theme-elements', title: 'Themed Elements', category: 'theme', icon: Palette },
+    {
+        id: 'theme-list',
+        title: 'Color Themes',
+        category: 'theme',
+        icon: Monitor,
+        controls: [
+            { id: 'theme-select', label: 'Color Themes', keywords: ['theme', 'color', 'dark', 'light', 'system', 'ocean', 'forest', 'sunset', 'dracula', 'nord', 'monokai', 'solarized', 'midnight', 'cyberpunk', 'coffee'] },
+        ],
+    },
+    {
+        id: 'accent-color',
+        title: 'Accent Color',
+        category: 'theme',
+        icon: Palette,
+        controls: [
+            { id: 'choose-accent', label: 'Choose Accent Color', keywords: ['accent', 'color', 'primary', 'button', 'highlight'] },
+        ],
+    },
+    {
+        id: 'theme-elements',
+        title: 'Themed Elements',
+        category: 'theme',
+        icon: Palette,
+        controls: [
+            { id: 'theme-backgrounds', label: 'Backgrounds', description: 'Main app background color', keywords: ['background', 'theme', 'color'] },
+            { id: 'theme-panels', label: 'Panels & Sidebars', description: 'Islands, settings panels, and context menus', keywords: ['panel', 'sidebar', 'island', 'theme'] },
+            { id: 'theme-text', label: 'Text & Borders', description: 'Typography and outline colors', keywords: ['text', 'border', 'typography', 'theme'] },
+            { id: 'theme-accent', label: 'Accent Colors', description: 'Theme defines primary button colors if no custom accent is set', keywords: ['accent', 'button', 'color', 'theme'] },
+        ],
+    },
 ];
-
-interface ThemeSettingsProps {
-    appearanceSettings: AppearanceSettings;
-    setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
-    expandedSections: Set<string>;
-    toggleSection: (id: string) => void;
-}
 
 const THEME_OPTIONS: { id: ThemeMode; label: string; icon?: React.ElementType; colors: { bg: string; panel: string; text: string; primary: string } }[] = [
     { id: 'system', label: 'System Default', icon: MonitorSmartphone, colors: { bg: '#0e0e0e', panel: '#1c1c1c', text: '#ffffff', primary: '#7f22fe' } },
@@ -39,11 +59,20 @@ const THEME_OPTIONS: { id: ThemeMode; label: string; icon?: React.ElementType; c
     { id: 'coffee', label: 'Coffee', colors: { bg: '#2c211f', panel: '#3e2f2b', text: '#eee0d5', primary: '#d4a373' } },
 ];
 
+interface ThemeSettingsProps {
+    appearanceSettings: AppearanceSettings;
+    setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
+    expandedSections: Set<string>;
+    toggleSection: (id: string) => void;
+    highlightedControl?: { sectionId: string; controlId: string } | null;
+}
+
 export const ThemeSettings: React.FC<ThemeSettingsProps> = ({
     appearanceSettings,
     setAppearanceSettings,
     expandedSections,
-    toggleSection
+    toggleSection,
+    highlightedControl
 }) => {
     const handleToggleThemeList = useCallback(() => {
         toggleSection('theme-list');

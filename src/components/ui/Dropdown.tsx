@@ -16,9 +16,10 @@ interface DropdownProps {
     options: DropdownOption[];
     label: string;
     disabled?: boolean;
+    highlighted?: boolean;
 }
 
-export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, label, disabled = false }) => {
+export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, label, disabled = false, highlighted = false }) => {
     const id = useId();
     const labelId = `${id}-label`;
     const [isOpen, setIsOpen] = useState(false);
@@ -38,6 +39,12 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
     useEffect(() => {
         valueRef.current = value;
     }, [value]);
+
+    useEffect(() => {
+        if (highlighted && buttonRef.current) {
+            buttonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [highlighted]);
 
     const selectedOption = options.find(opt => opt.value === value);
 
@@ -172,7 +179,8 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
                     onKeyDown={handleKeyDown}
                     className={cn(
                         "w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gx-gray border border-white/5 rounded-lg hover:border-gx-accent/30 transition-all",
-                        disabled && "opacity-50"
+                        disabled && "opacity-50",
+                        highlighted && "ring-2 ring-gx-accent animate-pulse"
                     )}
                 >
                     <div className="flex items-center gap-2">
