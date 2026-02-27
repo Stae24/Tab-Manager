@@ -75,6 +75,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(true);
   const [isCleaning, setIsCleaning] = useState(false);
   const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
+  const [headerWidth, setHeaderWidth] = useState(0);
 
   const sidebarPanelPadding = useStore((s) => s.appearanceSettings.sidebarPanelPadding);
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
@@ -84,6 +85,19 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   useEffect(() => {
     detectSidebarContext().then(setIsSidebar);
   }, []);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const observer = new ResizeObserver((entries) => {
+      setHeaderWidth(entries[0]?.contentRect.width ?? 0);
+    });
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+
+  const iconHidden = headerWidth > 0 && headerWidth < 50;
+  const textHidden = headerWidth > 0 && headerWidth < 90;
 
   const horizontalPadding = isSidebar === null
     ? SIDEBAR_PANEL_PADDING_DEFAULT
@@ -208,18 +222,14 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
       )}
       style={{ width: `${100 - dividerPosition}%` }}
     >
-      <div ref={headerRef} className="flex items-center justify-between px-4 py-3 border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20 @container/panel-header">
-        <div className={cn(
-          "flex items-center gap-2 min-w-0",
-          !showPanelIcon && "hidden"
-        )}>
-          <Save className="w-4 h-4 text-gx-red drop-shadow-[0_0_4px_rgba(239,68,68,0.6)] flex-shrink-0 @max-60/panel-header:hidden" />
-        </div>
-        <div className={cn(
-          "flex items-center gap-2 min-w-0",
-          !showPanelName && "hidden"
-        )}>
-          <h2 className="text-sm font-bold tracking-widest uppercase italic text-gx-red truncate @max-80/panel-header:hidden">Vault</h2>
+      <div ref={headerRef} className="flex items-center justify-between px-4 py-3 border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
+        <div className="flex items-center gap-3 min-w-0">
+          {showPanelIcon && !iconHidden && (
+            <Save className="w-4 h-4 text-gx-red drop-shadow-[0_0_4px_rgba(239,68,68,0.6)] flex-shrink-0" />
+          )}
+          {showPanelName && !textHidden && (
+            <h2 className="text-sm font-bold tracking-widest uppercase italic text-gx-red truncate flex-1 min-w-0">Vault</h2>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -286,7 +296,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 scroll-smooth overscroll-none"
-        style={{ paddingLeft: `${horizontalPadding}px`, paddingRight: `${horizontalPadding}px`, paddingTop: '1rem', paddingBottom: '1rem' }}
+        style={{ paddingLeft: `${horizontalPadding}px`, paddingRight: `${horizontalPadding}px`, paddingTop: '0.5rem', paddingBottom: '1rem' }}
       >
         <ScrollContainerProvider containerRef={scrollRef}>
           {vaultQuota && (
