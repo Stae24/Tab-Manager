@@ -1,11 +1,10 @@
 import React, { useCallback } from 'react';
-import { Monitor, Palette, Moon, Sun, MonitorSmartphone } from 'lucide-react';
+import { Monitor, Palette, Moon, Sun, MonitorSmartphone, Paintbrush, Check, X } from 'lucide-react';
 import { CollapsibleSection } from './ui/CollapsibleSection';
-import { Dropdown } from './ui/Dropdown';
 import { ColorPalette } from './ui/ColorPalette';
 import { Toggle } from './ui/Toggle';
 import { cn } from '../utils/cn';
-import type { AppearanceSettings, ThemeMode } from '../types';
+import type { AppearanceSettings, ThemeMode, AccentMode } from '../types';
 import type { SettingSection } from './AppearanceSettingsPanel';
 
 export const SETTING_SECTIONS: SettingSection[] = [
@@ -36,7 +35,6 @@ export const SETTING_SECTIONS: SettingSection[] = [
             { id: 'theme-backgrounds', label: 'Backgrounds', description: 'Main app background color', keywords: ['background', 'theme', 'color'] },
             { id: 'theme-panels', label: 'Panels & Sidebars', description: 'Islands, settings panels, and context menus', keywords: ['panel', 'sidebar', 'island', 'theme'] },
             { id: 'theme-text', label: 'Text & Borders', description: 'Typography and outline colors', keywords: ['text', 'border', 'typography', 'theme'] },
-            { id: 'theme-accent', label: 'Accent Colors', description: 'Theme defines primary button colors if no custom accent is set', keywords: ['accent', 'button', 'color', 'theme'] },
         ],
     },
 ];
@@ -90,11 +88,26 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({
         setAppearanceSettings({ theme: value });
     }, [setAppearanceSettings]);
 
-    const handleAccentColorChange = useCallback((value: string) => {
-        setAppearanceSettings({ accentColor: value });
-    }, [setAppearanceSettings]);
+    const handleAccentModeChange = useCallback((mode: AccentMode) => {
+        setAppearanceSettings({
+            themeElements: {
+                ...appearanceSettings.themeElements,
+                accent: mode
+            }
+        });
+    }, [appearanceSettings.themeElements, setAppearanceSettings]);
 
-    const handleThemeElementToggle = useCallback((key: keyof AppearanceSettings['themeElements']) => {
+    const handleAccentColorChange = useCallback((value: string) => {
+        setAppearanceSettings({
+            accentColor: value,
+            themeElements: {
+                ...appearanceSettings.themeElements,
+                accent: 'custom'
+            }
+        });
+    }, [appearanceSettings.themeElements, setAppearanceSettings]);
+
+    const handleThemeElementToggle = useCallback((key: 'background' | 'panels' | 'text') => {
         setAppearanceSettings({
             themeElements: {
                 ...appearanceSettings.themeElements,
@@ -173,14 +186,103 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({
                 isExpanded={expandedSections.has('accent-color')}
                 onToggle={handleToggleAccentColor}
             >
-                <div className="text-xs text-gx-text/60 mb-3 ml-1">
-                    Customize the primary accent color used for buttons, active tabs, and highlights. Overrides the theme's default.
+                <div className="space-y-3">
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={() => handleAccentModeChange('custom')}
+                            className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+                                appearanceSettings.themeElements.accent === 'custom'
+                                    ? "border-gx-accent bg-gx-accent/10"
+                                    : "border-gx-border bg-gx-gray/30 hover:bg-gx-gray/50"
+                            )}
+                        >
+                            <div className={cn(
+                                "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                                appearanceSettings.themeElements.accent === 'custom'
+                                    ? "border-gx-accent"
+                                    : "border-gx-border"
+                            )}>
+                                {appearanceSettings.themeElements.accent === 'custom' && (
+                                    <div className="w-2.5 h-2.5 rounded-full bg-gx-accent" />
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <Paintbrush size={14} className="text-gx-muted" />
+                                    <span className="text-sm font-medium text-gx-text">Custom Color</span>
+                                </div>
+                                <span className="text-xs text-gx-muted">Pick your own accent color</span>
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={() => handleAccentModeChange('theme')}
+                            className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+                                appearanceSettings.themeElements.accent === 'theme'
+                                    ? "border-gx-accent bg-gx-accent/10"
+                                    : "border-gx-border bg-gx-gray/30 hover:bg-gx-gray/50"
+                            )}
+                        >
+                            <div className={cn(
+                                "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                                appearanceSettings.themeElements.accent === 'theme'
+                                    ? "border-gx-accent"
+                                    : "border-gx-border"
+                            )}>
+                                {appearanceSettings.themeElements.accent === 'theme' && (
+                                    <div className="w-2.5 h-2.5 rounded-full bg-gx-accent" />
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <Check size={14} className="text-gx-muted" />
+                                    <span className="text-sm font-medium text-gx-text">Theme Default</span>
+                                </div>
+                                <span className="text-xs text-gx-muted">Use the selected theme's accent color</span>
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={() => handleAccentModeChange('none')}
+                            className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+                                appearanceSettings.themeElements.accent === 'none'
+                                    ? "border-gx-accent bg-gx-accent/10"
+                                    : "border-gx-border bg-gx-gray/30 hover:bg-gx-gray/50"
+                            )}
+                        >
+                            <div className={cn(
+                                "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                                appearanceSettings.themeElements.accent === 'none'
+                                    ? "border-gx-accent"
+                                    : "border-gx-border"
+                            )}>
+                                {appearanceSettings.themeElements.accent === 'none' && (
+                                    <div className="w-2.5 h-2.5 rounded-full bg-gx-accent" />
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <X size={14} className="text-gx-muted" />
+                                    <span className="text-sm font-medium text-gx-text">None</span>
+                                </div>
+                                <span className="text-xs text-gx-muted">Disable accent styling entirely</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    {appearanceSettings.themeElements.accent === 'custom' && (
+                        <div className="pt-2 border-t border-gx-border">
+                            <ColorPalette
+                                value={appearanceSettings.accentColor}
+                                onChange={handleAccentColorChange}
+                                label="Choose Accent Color"
+                            />
+                        </div>
+                    )}
                 </div>
-                <ColorPalette
-                    value={appearanceSettings.accentColor}
-                    onChange={handleAccentColorChange}
-                    label="Choose Accent Color"
-                />
             </CollapsibleSection>
 
             <CollapsibleSection
@@ -211,12 +313,6 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({
                         description="Typography and outline colors"
                         checked={appearanceSettings.themeElements.text}
                         onChange={() => handleThemeElementToggle('text')}
-                    />
-                    <Toggle
-                        label="Accent Colors"
-                        description="Theme defines primary button colors if no custom accent is set"
-                        checked={appearanceSettings.themeElements.accent}
-                        onChange={() => handleThemeElementToggle('accent')}
                     />
                 </div>
             </CollapsibleSection>
