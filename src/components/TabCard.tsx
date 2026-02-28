@@ -76,18 +76,18 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
     large: 'p-2',
   };
 
-  const buttonVerticalPadding: Record<string, string> = {
-    minified: 'py-0.5',
-    compact: 'py-1',
-    normal: 'py-1.5',
-    spacious: 'py-2',
+  const getButtonPaddingClass = (): string => {
+    if (appearanceSettings.customButtonHoverSize) {
+      return '';
+    }
+    return buttonPadding[appearanceSettings.buttonSize];
   };
 
-  const getEffectiveButtonSizeMode = (): string => {
-    if (appearanceSettings.tabButtonSizeMode === 'match-tab-density') {
-      return appearanceSettings.tabDensity;
+  const getButtonPaddingStyle = (): React.CSSProperties => {
+    if (appearanceSettings.customButtonHoverSize) {
+      return { padding: `${appearanceSettings.buttonHoverPaddingPx}px` };
     }
-    return appearanceSettings.tabButtonSizeMode;
+    return {};
   };
 
   const buttonIconSize: Record<string, number> = {
@@ -265,7 +265,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
 
         {/* Action Buttons - visible on hover */}
         {!isOverlay && (
-          <div className={cn("hidden group-hover:flex items-center gap-1.5 relative z-20", buttonVerticalPadding[getEffectiveButtonSizeMode()])}>
+          <div className="hidden group-hover:flex items-center gap-1.5 relative z-20">
             {!isVault && onSave && (
               <button
                 onClick={(e) => {
@@ -274,8 +274,9 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
                 }}
                 className={cn(
                   "rounded-lg hover:bg-gx-cyan/20 text-gx-muted hover:text-gx-cyan transition-all group/save",
-                  buttonPadding[appearanceSettings.buttonSize]
+                  getButtonPaddingClass()
                 )}
+                style={getButtonPaddingStyle()}
                 title="Save to Vault"
               >
                 <Save size={buttonIconSize[appearanceSettings.buttonSize]} className="group-hover/save:scale-110 transition-transform" />
@@ -289,8 +290,9 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
                 }}
                 className={cn(
                   "rounded-lg hover:bg-gx-green/20 text-gx-muted hover:text-gx-green transition-all group/restore",
-                  buttonPadding[appearanceSettings.buttonSize]
+                  getButtonPaddingClass()
                 )}
+                style={getButtonPaddingStyle()}
                 title="Open in Window"
               >
                 <ExternalLink size={buttonIconSize[appearanceSettings.buttonSize]} className="group-hover/restore:scale-110 transition-transform" />
@@ -307,8 +309,9 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
               }}
               className={cn(
                 "rounded-lg hover:bg-gx-red/20 text-gx-muted hover:text-gx-red transition-all group/close",
-                buttonPadding[appearanceSettings.buttonSize]
+                getButtonPaddingClass()
               )}
+              style={getButtonPaddingStyle()}
               title={isVault ? "Delete from Vault" : "Close Tab"}
             >
               <X size={buttonIconSize[appearanceSettings.buttonSize]} className="group-hover/close:scale-110 transition-transform" />
