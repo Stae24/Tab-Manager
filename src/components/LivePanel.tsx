@@ -108,6 +108,8 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     detectSidebarContext().then(setIsSidebar);
   }, []);
 
+
+
   const horizontalPadding = isSidebar === null
     ? SIDEBAR_PANEL_PADDING_DEFAULT
     : (isSidebar ? (sidebarPanelPadding ?? SIDEBAR_PANEL_PADDING_DEFAULT) : (managerPanelPadding ?? MANAGER_PANEL_PADDING_DEFAULT));
@@ -264,6 +266,8 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [searchQuery]);
 
+
+
   const handleToggleAll = useCallback(async (targetCollapsed: boolean) => {
     (islands || []).forEach(island => {
       if (island && 'tabs' in island && island.collapsed !== targetCollapsed) {
@@ -298,9 +302,30 @@ export const LivePanel: React.FC<LivePanelProps> = ({
       style={{ width: showVault ? `${dividerPosition}%` : '100%' }}
     >
       <div ref={headerRef} className="flex flex-col border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
-        <div className={cn("flex items-center py-3 pr-4", (showPanelIcon || showPanelName) ? "pl-4" : "!pl-0")}>
+        <style>{`
+          .live-header-row {
+            container-type: inline-size;
+            container-name: live-header;
+          }
+          @container live-header (max-width: 520px) {
+            .live-panel-title {
+              display: none !important;
+            }
+            .live-panel-actions {
+              margin-left: 0 !important;
+            }
+          }
+        `}</style>
+        <div
+          className={cn(
+            "live-header-row flex items-center py-3 pr-4",
+            (showPanelIcon || showPanelName) ? "pl-4" : "pl-0"
+          )}
+        >
           {(showPanelIcon || showPanelName) && (
-            <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+            <div
+              className="live-panel-title flex items-center min-w-0 overflow-hidden transition-all duration-200"
+            >
               {showPanelIcon && (
                 <FolderOpen className="w-4 h-4 text-gx-accent drop-shadow-[0_0_4px_rgba(127,34,254,0.6)] flex-shrink-0" />
               )}
@@ -309,7 +334,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               )}
             </div>
           )}
-          <div className={cn("flex items-center gap-3 flex-1", (showPanelIcon || showPanelName) ? "ml-4 justify-end" : "justify-start")}>
+          <div className={cn("live-panel-actions flex items-center gap-3 justify-end flex-1", (showPanelIcon || showPanelName) ? "ml-4" : "")}>
             <SearchBar
               ref={searchInputRef}
               query={searchQuery}

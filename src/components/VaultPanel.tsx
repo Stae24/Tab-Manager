@@ -208,9 +208,23 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
       )}
       style={{ width: `${100 - dividerPosition}%` }}
     >
-      <div ref={headerRef} className={cn("flex items-center justify-between py-3 pr-4 border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20", (showPanelIcon || showPanelName) ? "pl-4" : "!pl-0")}>
+      <style>{`
+        .vault-header-row {
+          container-type: inline-size;
+          container-name: vault-header;
+        }
+        @container vault-header (max-width: 220px) {
+          .vault-panel-title {
+            display: none !important;
+          }
+          .vault-panel-actions {
+            margin-left: 0 !important;
+          }
+        }
+      `}</style>
+      <div ref={headerRef} className={cn("vault-header-row flex items-center justify-between py-3 pr-4 border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20", (showPanelIcon || showPanelName) ? "pl-4" : "!pl-0")}>
         {(showPanelIcon || showPanelName) && (
-          <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+          <div className="vault-panel-title flex items-center gap-3 min-w-0 overflow-hidden">
             {showPanelIcon && (
               <Save className="w-4 h-4 text-gx-red drop-shadow-[0_0_4px_rgba(239,68,68,0.6)] flex-shrink-0" />
             )}
@@ -219,7 +233,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
             )}
           </div>
         )}
-        <div className={cn("flex items-center gap-2", (showPanelIcon || showPanelName) && "ml-4")}>
+        <div className={cn("vault-panel-actions flex items-center gap-2", (showPanelIcon || showPanelName) ? "ml-4" : "")}>
           <button
             onClick={sortVaultGroupsToTop}
             title="Sort Groups to Top"
