@@ -76,6 +76,20 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
     large: 'p-2',
   };
 
+  const buttonVerticalPadding: Record<string, string> = {
+    minified: 'py-0.5',
+    compact: 'py-1',
+    normal: 'py-1.5',
+    spacious: 'py-2',
+  };
+
+  const getEffectiveButtonSizeMode = (): string => {
+    if (appearanceSettings.tabButtonSizeMode === 'match-tab-density') {
+      return appearanceSettings.tabDensity;
+    }
+    return appearanceSettings.tabButtonSizeMode;
+  };
+
   const buttonIconSize: Record<string, number> = {
     small: 14,
     medium: 16,
@@ -251,7 +265,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
 
         {/* Action Buttons - visible on hover */}
         {!isOverlay && (
-          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity relative z-20">
+          <div className={cn("hidden group-hover:flex items-center gap-1.5 relative z-20", buttonVerticalPadding[getEffectiveButtonSizeMode()])}>
             {!isVault && onSave && (
               <button
                 onClick={(e) => {
