@@ -4,6 +4,13 @@ import { useStore } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { AppearanceSettingsPanel } from './AppearanceSettingsPanel';
 import { Island, Tab, LiveItem, VaultItem } from '../types/index';
+import {
+  SIDEBAR_HEADER_PADDING_DEFAULT,
+  SIDEBAR_ROW_GAP_DEFAULT,
+  SIDEBAR_BUTTON_GAP_DEFAULT,
+  SIDEBAR_BUTTON_PADDING_Y_DEFAULT,
+  SIDEBAR_BUTTON_ICON_SIZE_DEFAULT,
+} from '../constants';
 
 export const Sidebar: React.FC = () => {
   const isDarkMode = useStore(state => state.isDarkMode);
@@ -19,6 +26,12 @@ export const Sidebar: React.FC = () => {
   const undo = useStore(state => state.undo);
   const redo = useStore(state => state.redo);
   const appearanceSettings = useStore(state => state.appearanceSettings);
+
+  const headerPadding = appearanceSettings.sidebarHeaderPadding ?? SIDEBAR_HEADER_PADDING_DEFAULT;
+  const rowGap = appearanceSettings.sidebarRowGap ?? SIDEBAR_ROW_GAP_DEFAULT;
+  const buttonGap = appearanceSettings.sidebarButtonGap ?? SIDEBAR_BUTTON_GAP_DEFAULT;
+  const buttonPaddingY = appearanceSettings.sidebarButtonPaddingY ?? SIDEBAR_BUTTON_PADDING_Y_DEFAULT;
+  const buttonIconSize = appearanceSettings.sidebarButtonIconSize ?? SIDEBAR_BUTTON_ICON_SIZE_DEFAULT;
 
 
   const [showExportDropdown, setShowExportDropdown] = useState(false);
@@ -113,7 +126,13 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className="relative flex flex-col gap-4 p-4 border-b border-gx-gray bg-gx-gray/50">
+    <div 
+      className="relative flex flex-col border-b border-gx-gray bg-gx-gray/50"
+      style={{ 
+        padding: headerPadding, 
+        gap: rowGap 
+      }}
+    >
       {/* Logo / Title */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1">
@@ -152,29 +171,31 @@ export const Sidebar: React.FC = () => {
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex" style={{ gap: buttonGap }}>
         <button
           onClick={undo}
           disabled={undoStack.length === 0}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-gx-border",
+            "flex-1 flex items-center justify-center rounded-lg bg-gx-gray transition-all border border-gx-border",
             undoStack.length === 0 ? "opacity-30" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
           )}
+          style={{ gap: buttonGap, padding: `${buttonPaddingY}px 0` }}
           title={undoStack.length > 0 ? `Undo ${undoStack[undoStack.length - 1].label}` : 'Nothing to undo'}
         >
-          <Undo size={14} className="text-gx-accent" />
+          <Undo size={buttonIconSize} className="text-gx-accent" />
           <span className="text-[10px] font-bold uppercase">Undo</span>
         </button>
         <button
           onClick={redo}
           disabled={redoStack.length === 0}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray transition-all border border-gx-border",
+            "flex-1 flex items-center justify-center rounded-lg bg-gx-gray transition-all border border-gx-border",
             redoStack.length === 0 ? "opacity-30" : "hover:bg-gx-gray/80 hover:border-gx-accent/30"
           )}
+          style={{ gap: buttonGap, padding: `${buttonPaddingY}px 0` }}
           title={redoStack.length > 0 ? `Redo ${redoStack[0].label}` : 'Nothing to redo'}
         >
-          <Redo size={14} className="text-gx-accent" />
+          <Redo size={buttonIconSize} className="text-gx-accent" />
           <span className="text-[10px] font-bold uppercase">Redo</span>
         </button>
         {appearanceSettings.moveSettingsButtonDown && (
@@ -195,13 +216,14 @@ export const Sidebar: React.FC = () => {
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex" style={{ gap: buttonGap }}>
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray hover:bg-gx-gray/80 transition-all border border-gx-border hover:border-gx-accent/30"
+          className="flex-1 flex items-center justify-center rounded-lg bg-gx-gray hover:bg-gx-gray/80 transition-all border border-gx-border hover:border-gx-accent/30"
+          style={{ gap: buttonGap, padding: `${buttonPaddingY}px 0` }}
         >
-          {isDarkMode ? <Moon size={14} className="text-gx-accent" /> : <Sun size={14} className="text-yellow-500" />}
+          {isDarkMode ? <Moon size={buttonIconSize} className="text-gx-accent" /> : <Sun size={buttonIconSize} className="text-yellow-500" />}
           <span className="text-[10px] font-bold uppercase">Theme</span>
         </button>
 
@@ -209,13 +231,14 @@ export const Sidebar: React.FC = () => {
         <button
           onClick={() => setShowVault(!showVault)}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-all border",
+            "flex-1 flex items-center justify-center rounded-lg transition-all border",
             showVault
               ? "bg-gx-gray border-gx-border hover:bg-gx-gray/80 hover:border-gx-accent/30"
               : "bg-gx-red/10 border-gx-red/20 text-gx-muted hover:bg-gx-red/20 hover:border-gx-red/30"
           )}
+          style={{ gap: buttonGap, padding: `${buttonPaddingY}px 0` }}
         >
-          <Save size={14} className={showVault ? "text-gx-red" : "text-gx-muted"} />
+          <Save size={buttonIconSize} className={showVault ? "text-gx-red" : "text-gx-muted"} />
           <span className="text-[10px] font-bold uppercase">
             Vault {showVault ? 'ON' : 'OFF'}
           </span>
@@ -228,9 +251,10 @@ export const Sidebar: React.FC = () => {
               e.stopPropagation();
               setShowExportDropdown(!showExportDropdown);
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gx-gray hover:bg-gx-gray/80 transition-all border border-gx-border hover:border-gx-accent/30"
+            className="w-full flex items-center justify-center rounded-lg bg-gx-gray hover:bg-gx-gray/80 transition-all border border-gx-border hover:border-gx-accent/30"
+            style={{ gap: buttonGap, padding: `${buttonPaddingY}px 0` }}
           >
-            <Download size={14} className="text-gx-red" />
+            <Download size={buttonIconSize} className="text-gx-red" />
             <span className="text-[10px] font-bold uppercase">Export</span>
             <ChevronDown size={10} className={cn("transition-transform", showExportDropdown && "rotate-180")} />
           </button>

@@ -82,6 +82,90 @@ export const PANEL_PADDING_STEP = 2;
 export const SIDEBAR_PANEL_PADDING_DEFAULT = 4;
 export const MANAGER_PANEL_PADDING_DEFAULT = 8;
 
+// Sidebar Header Spacing
+export const SIDEBAR_HEADER_PADDING_MIN = 0;
+export const SIDEBAR_HEADER_PADDING_MAX = 48;
+export const SIDEBAR_HEADER_PADDING_DEFAULT = 16;
+export const SIDEBAR_HEADER_PADDING_STEP = 2;
+
+export const SIDEBAR_ROW_GAP_MIN = 0;
+export const SIDEBAR_ROW_GAP_MAX = 32;
+export const SIDEBAR_ROW_GAP_DEFAULT = 16;
+export const SIDEBAR_ROW_GAP_STEP = 2;
+
+export const SIDEBAR_BUTTON_GAP_MIN = 0;
+export const SIDEBAR_BUTTON_GAP_MAX = 24;
+export const SIDEBAR_BUTTON_GAP_DEFAULT = 8;
+export const SIDEBAR_BUTTON_GAP_STEP = 2;
+
+export const SIDEBAR_BUTTON_PADDING_Y_MIN = 0;
+export const SIDEBAR_BUTTON_PADDING_Y_MAX = 24;
+export const SIDEBAR_BUTTON_PADDING_Y_DEFAULT = 8;
+export const SIDEBAR_BUTTON_PADDING_Y_STEP = 2;
+
+export const SIDEBAR_BUTTON_ICON_SIZE_MIN = 8;
+export const SIDEBAR_BUTTON_ICON_SIZE_MAX = 24;
+export const SIDEBAR_BUTTON_ICON_SIZE_DEFAULT = 14;
+export const SIDEBAR_BUTTON_ICON_SIZE_STEP = 1;
+
+// Panel Header Spacing
+export const PANEL_HEADER_PADDING_Y_MIN = 0;
+export const PANEL_HEADER_PADDING_Y_MAX = 32;
+export const PANEL_HEADER_PADDING_Y_DEFAULT = 12;
+export const PANEL_HEADER_PADDING_Y_STEP = 2;
+
+export const PANEL_HEADER_PADDING_X_MIN = 0;
+export const PANEL_HEADER_PADDING_X_MAX = 32;
+export const PANEL_HEADER_PADDING_X_DEFAULT = 16;
+export const PANEL_HEADER_PADDING_X_STEP = 2;
+
+export const PANEL_HEADER_ACTION_GAP_MIN = 0;
+export const PANEL_HEADER_ACTION_GAP_MAX = 32;
+export const PANEL_HEADER_ACTION_GAP_DEFAULT = 12;
+export const PANEL_HEADER_ACTION_GAP_STEP = 2;
+
+// Panel List Spacing
+export const PANEL_LIST_GAP_MIN = 0;
+export const PANEL_LIST_GAP_MAX = 24;
+export const PANEL_LIST_GAP_DEFAULT = 8;
+export const PANEL_LIST_GAP_STEP = 2;
+
+export const PANEL_LIST_PADDING_TOP_MIN = 0;
+export const PANEL_LIST_PADDING_TOP_MAX = 32;
+export const PANEL_LIST_PADDING_TOP_DEFAULT = 8;
+export const PANEL_LIST_PADDING_TOP_STEP = 2;
+
+export const PANEL_LIST_PADDING_BOTTOM_MIN = 0;
+export const PANEL_LIST_PADDING_BOTTOM_MAX = 48;
+export const PANEL_LIST_PADDING_BOTTOM_DEFAULT = 16;
+export const PANEL_LIST_PADDING_BOTTOM_STEP = 2;
+
+// Settings Panel Spacing
+export const SETTINGS_HEADER_PADDING_MIN = 0;
+export const SETTINGS_HEADER_PADDING_MAX = 48;
+export const SETTINGS_HEADER_PADDING_DEFAULT = 16;
+export const SETTINGS_HEADER_PADDING_STEP = 2;
+
+export const SETTINGS_TABS_PADDING_MIN = 0;
+export const SETTINGS_TABS_PADDING_MAX = 32;
+export const SETTINGS_TABS_PADDING_DEFAULT = 12;
+export const SETTINGS_TABS_PADDING_STEP = 2;
+
+export const SETTINGS_TAB_GAP_MIN = 0;
+export const SETTINGS_TAB_GAP_MAX = 16;
+export const SETTINGS_TAB_GAP_DEFAULT = 4;
+export const SETTINGS_TAB_GAP_STEP = 1;
+
+export const SETTINGS_CONTENT_PADDING_MIN = 0;
+export const SETTINGS_CONTENT_PADDING_MAX = 48;
+export const SETTINGS_CONTENT_PADDING_DEFAULT = 20;
+export const SETTINGS_CONTENT_PADDING_STEP = 2;
+
+export const SETTINGS_SECTION_GAP_MIN = 0;
+export const SETTINGS_SECTION_GAP_MAX = 48;
+export const SETTINGS_SECTION_GAP_DEFAULT = 16;
+export const SETTINGS_SECTION_GAP_STEP = 2;
+
 export const GROUP_HEADERS_SECTION = 'group-headers';
 export const TAB_COUNT_SECTION = 'tab-count';
 export const SORT_GROUPS_SECTION = 'sort-groups';

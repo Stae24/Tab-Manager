@@ -14,7 +14,23 @@ import {
   SIDEBAR_DEFAULT_LAYOUT_MODE,
   SIDEBAR_MAX_WIDTH_PCT_DEFAULT,
   SIDEBAR_PANEL_PADDING_DEFAULT,
-  MANAGER_PANEL_PADDING_DEFAULT
+  MANAGER_PANEL_PADDING_DEFAULT,
+  SIDEBAR_HEADER_PADDING_DEFAULT,
+  SIDEBAR_ROW_GAP_DEFAULT,
+  SIDEBAR_BUTTON_GAP_DEFAULT,
+  SIDEBAR_BUTTON_PADDING_Y_DEFAULT,
+  SIDEBAR_BUTTON_ICON_SIZE_DEFAULT,
+  PANEL_HEADER_PADDING_Y_DEFAULT,
+  PANEL_HEADER_PADDING_X_DEFAULT,
+  PANEL_HEADER_ACTION_GAP_DEFAULT,
+  PANEL_LIST_GAP_DEFAULT,
+  PANEL_LIST_PADDING_TOP_DEFAULT,
+  PANEL_LIST_PADDING_BOTTOM_DEFAULT,
+  SETTINGS_HEADER_PADDING_DEFAULT,
+  SETTINGS_TABS_PADDING_DEFAULT,
+  SETTINGS_TAB_GAP_DEFAULT,
+  SETTINGS_CONTENT_PADDING_DEFAULT,
+  SETTINGS_SECTION_GAP_DEFAULT
 } from '../constants';
 
 export const debounce = <T extends (...args: any[]) => any>(fn: T, ms = DEBOUNCE_DEFAULT_MS) => {
@@ -282,6 +298,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   sortGroupsByCount: true,
   sortVaultGroupsByCount: true,
   tabElementOrder: 'indicators-first',
+  tabButtonSizeMode: 'match-tab-density',
   autoPinTabManager: true,
   focusExistingTab: true,
   searchDebounce: SEARCH_DEBOUNCE_MS,
@@ -297,6 +314,26 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   showIslandManagerIcon: true,
   showIslandManagerTitle: true,
   moveSettingsButtonDown: false,
+  // Sidebar Header Spacing
+  sidebarHeaderPadding: SIDEBAR_HEADER_PADDING_DEFAULT,
+  sidebarRowGap: SIDEBAR_ROW_GAP_DEFAULT,
+  sidebarButtonGap: SIDEBAR_BUTTON_GAP_DEFAULT,
+  sidebarButtonPaddingY: SIDEBAR_BUTTON_PADDING_Y_DEFAULT,
+  sidebarButtonIconSize: SIDEBAR_BUTTON_ICON_SIZE_DEFAULT,
+  // Panel Header Spacing
+  panelHeaderPaddingY: PANEL_HEADER_PADDING_Y_DEFAULT,
+  panelHeaderPaddingX: PANEL_HEADER_PADDING_X_DEFAULT,
+  panelHeaderActionGap: PANEL_HEADER_ACTION_GAP_DEFAULT,
+  // Panel List Spacing
+  panelListGap: PANEL_LIST_GAP_DEFAULT,
+  panelListPaddingTop: PANEL_LIST_PADDING_TOP_DEFAULT,
+  panelListPaddingBottom: PANEL_LIST_PADDING_BOTTOM_DEFAULT,
+  // Settings Panel Spacing
+  settingsHeaderPadding: SETTINGS_HEADER_PADDING_DEFAULT,
+  settingsTabsPadding: SETTINGS_TABS_PADDING_DEFAULT,
+  settingsTabGap: SETTINGS_TAB_GAP_DEFAULT,
+  settingsContentPadding: SETTINGS_CONTENT_PADDING_DEFAULT,
+  settingsSectionGap: SETTINGS_SECTION_GAP_DEFAULT,
   debugMode: false,
 };
 
