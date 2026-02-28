@@ -195,5 +195,9 @@ export interface AppearanceSettings {
   sidebarPanelPadding?: number;
   managerPanelPadding?: number;
 
+  showIslandManagerIcon: boolean;
+  showIslandManagerTitle: boolean;
+  moveSettingsButtonDown: boolean;
+
   debugMode: boolean;
 }
