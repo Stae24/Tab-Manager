@@ -142,3 +142,5 @@ body {
 .animate-loading-slide {
   animation: loading-slide 1.5s ease-in-out infinite;
 }
+
+/* Header title collapse styles - REMOVED, using CSS truncation only */

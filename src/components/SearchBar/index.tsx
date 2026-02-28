@@ -202,11 +202,11 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
   }, [onQueryChange]);
 
   return (
-    <div className={cn('relative flex items-center gap-2 w-full flex-1', className)}>
+    <div className={cn('relative flex items-center gap-2 w-full flex-1 border-2 border-green-500', className)}>
       <div
         className={cn(
           'flex-1 flex items-center gap-2 py-1.5 rounded-lg border transition-all',
-          compact ? 'px-0' : 'px-3',
+          compact ? '!px-0' : 'px-3',
           query
             ? 'border-gx-accent/30 ring-1 ring-gx-accent/10 shadow-[0_0_12px_rgba(127,34,254,0.15)]'
             : 'border-gx-gray/30 hover:border-gx-accent/20'
