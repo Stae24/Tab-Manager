@@ -16,7 +16,13 @@ import {
   CLEANUP_ANIMATION_DELAY_MS,
   SEARCH_DEBOUNCE_MS,
   SIDEBAR_PANEL_PADDING_DEFAULT,
-  MANAGER_PANEL_PADDING_DEFAULT
+  MANAGER_PANEL_PADDING_DEFAULT,
+  PANEL_HEADER_PADDING_Y_DEFAULT,
+  PANEL_HEADER_PADDING_X_DEFAULT,
+  PANEL_HEADER_ACTION_GAP_DEFAULT,
+  PANEL_LIST_GAP_DEFAULT,
+  PANEL_LIST_PADDING_TOP_DEFAULT,
+  PANEL_LIST_PADDING_BOTTOM_DEFAULT,
 } from '../constants';
 import { search, searchAndExecute, parseQuery, isSearchActive, hasCommands } from '../search';
 import { useStore } from '../store/useStore';
@@ -101,6 +107,12 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
   const showPanelName = useStore((s) => s.appearanceSettings.showPanelName);
   const showPanelIcon = useStore((s) => s.appearanceSettings.showPanelIcon);
+  const panelHeaderPaddingY = useStore((s) => s.appearanceSettings.panelHeaderPaddingY);
+  const panelHeaderPaddingX = useStore((s) => s.appearanceSettings.panelHeaderPaddingX);
+  const panelHeaderActionGap = useStore((s) => s.appearanceSettings.panelHeaderActionGap);
+  const panelListGap = useStore((s) => s.appearanceSettings.panelListGap);
+  const panelListPaddingTop = useStore((s) => s.appearanceSettings.panelListPaddingTop);
+  const panelListPaddingBottom = useStore((s) => s.appearanceSettings.panelListPaddingBottom);
 
   const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
 
@@ -317,10 +329,13 @@ export const LivePanel: React.FC<LivePanelProps> = ({
           }
         `}</style>
         <div
-          className={cn(
-            "live-header-row flex items-center py-3 pr-4",
-            (showPanelIcon || showPanelName) ? "pl-4" : "pl-0"
-          )}
+          className="live-header-row flex items-center"
+          style={{ 
+            paddingTop: panelHeaderPaddingY ?? PANEL_HEADER_PADDING_Y_DEFAULT, 
+            paddingBottom: panelHeaderPaddingY ?? PANEL_HEADER_PADDING_Y_DEFAULT,
+            paddingRight: panelHeaderPaddingX ?? PANEL_HEADER_PADDING_X_DEFAULT,
+            paddingLeft: (showPanelIcon || showPanelName) ? (panelHeaderPaddingX ?? PANEL_HEADER_PADDING_X_DEFAULT) : 0
+          }}
         >
           {(showPanelIcon || showPanelName) && (
             <div
@@ -334,7 +349,10 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               )}
             </div>
           )}
-          <div className={cn("live-panel-actions flex items-center gap-3 justify-end flex-1", (showPanelIcon || showPanelName) ? "ml-4" : "")}>
+          <div 
+            className="live-panel-actions flex items-center justify-end flex-1" 
+            style={{ gap: panelHeaderActionGap ?? PANEL_HEADER_ACTION_GAP_DEFAULT, marginLeft: (showPanelIcon || showPanelName) ? (panelHeaderActionGap ?? PANEL_HEADER_ACTION_GAP_DEFAULT) : 0 }}
+          >
             <SearchBar
               ref={searchInputRef}
               query={searchQuery}
@@ -462,8 +480,16 @@ export const LivePanel: React.FC<LivePanelProps> = ({
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 scroll-smooth overscroll-none scrollbar-hide"
-        style={{ paddingLeft: `${horizontalPadding}px`, paddingRight: `${horizontalPadding}px`, paddingTop: '0.5rem', paddingBottom: '1rem' }}
+        className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth overscroll-none scrollbar-hide"
+        style={{ 
+          paddingLeft: `${horizontalPadding}px`, 
+          paddingRight: `${horizontalPadding}px`, 
+          paddingTop: panelListPaddingTop ?? PANEL_LIST_PADDING_TOP_DEFAULT, 
+          paddingBottom: panelListPaddingBottom ?? PANEL_LIST_PADDING_BOTTOM_DEFAULT,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: panelListGap ?? PANEL_LIST_GAP_DEFAULT
+        }}
       >
         {searchQuery ? (
           <SearchResultList

@@ -11,7 +11,8 @@ import {
   Cloud,
   Sidebar,
   Terminal,
-  Monitor
+  Monitor,
+  Space
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
@@ -20,6 +21,11 @@ import {
   SETTINGS_PANEL_MIN_WIDTH,
   SETTINGS_PANEL_MAX_WIDTH,
   SETTINGS_PANEL_WINDOW_GAP,
+  SETTINGS_HEADER_PADDING_DEFAULT,
+  SETTINGS_TABS_PADDING_DEFAULT,
+  SETTINGS_TAB_GAP_DEFAULT,
+  SETTINGS_CONTENT_PADDING_DEFAULT,
+  SETTINGS_SECTION_GAP_DEFAULT,
 } from '../constants';
 
 import { ThemeSettings, SETTING_SECTIONS as THEME_SECTIONS } from './ThemeSettings';
@@ -30,6 +36,7 @@ import { VaultSettings, SETTING_SECTIONS as VAULT_SECTIONS } from './VaultSettin
 import { GeneralSettings, SETTING_SECTIONS as GENERAL_SECTIONS } from './GeneralSettings';
 import { SidebarSettings, SETTING_SECTIONS as SIDEBAR_SECTIONS } from './SidebarSettings';
 import { DevSettings, SETTING_SECTIONS as DEV_SECTIONS } from './DevSettings';
+import { SpacingSettings, SETTING_SECTIONS as SPACING_SECTIONS } from './SpacingSettings';
 
 export interface SettingControl {
     id: string;
@@ -54,10 +61,11 @@ export const ALL_SETTING_SECTIONS: SettingSection[] = [
     ...VAULT_SECTIONS,
     ...GENERAL_SECTIONS,
     ...SIDEBAR_SECTIONS,
+    ...SPACING_SECTIONS,
     ...DEV_SECTIONS,
 ];
 
-type TabId = 'theme' | 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced' | 'dev' | 'sidebar';
+type TabId = 'theme' | 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced' | 'dev' | 'sidebar' | 'spacing';
 
 interface AppearanceSettingsPanelProps {
   isOpen: boolean;
@@ -230,6 +238,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
     { id: 'vault' as TabId, label: 'Vault', icon: Cloud },
     { id: 'general' as TabId, label: 'General', icon: Settings },
     { id: 'sidebar' as TabId, label: 'Sidebar', icon: Sidebar },
+    { id: 'spacing' as TabId, label: 'Spacing', icon: Space },
     { id: 'dev' as TabId, label: 'Developer', icon: Terminal },
   ];
 
@@ -305,7 +314,10 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
           )}
         />
 
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gx-gray bg-gx-gray/50">
+        <div 
+          className="flex items-center border-b border-gx-gray bg-gx-gray/50"
+          style={{ gap: 12, padding: appearanceSettings.settingsHeaderPadding ?? SETTINGS_HEADER_PADDING_DEFAULT }}
+        >
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gx-accent to-gx-red flex items-center justify-center shadow-lg shadow-gx-accent/30 flex-shrink-0">
             <Settings className="w-5 h-5 text-gx-text" />
           </div>
@@ -345,19 +357,33 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
         {/* Responsive Tabs Section */}
         {!searchQuery && (
-          <div className="px-5 py-3 border-b border-gx-gray bg-gx-gray/30">
-            <div className="flex flex-wrap justify-center gap-1">
+          <div 
+            className="border-b border-gx-gray bg-gx-gray/30"
+            style={{ padding: appearanceSettings.settingsTabsPadding ?? SETTINGS_TABS_PADDING_DEFAULT }}
+          >
+            <div 
+              className="flex flex-wrap justify-center"
+              style={{ gap: appearanceSettings.settingsTabGap ?? SETTINGS_TAB_GAP_DEFAULT }}
+            >
               {tabs.map(renderTabButton)}
             </div>
           </div>
         )}
 
         {/* Settings Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 scroll-smooth overscroll-none scrollbar-hide">
+        <div 
+          className="flex-1 overflow-y-auto scroll-smooth overscroll-none scrollbar-hide"
+          style={{ 
+            padding: appearanceSettings.settingsContentPadding ?? SETTINGS_CONTENT_PADDING_DEFAULT,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: appearanceSettings.settingsSectionGap ?? SETTINGS_SECTION_GAP_DEFAULT
+          }}
+        >
           {searchQuery ? (
             <>
               {matchingSections.length > 0 || matchingCategories.length > 0 || matchingControls.length > 0 ? (
-                <div className="space-y-2">
+                <div>
                   {matchingCategories.length > 0 && (
                     <>
                       <div className="text-xs text-gx-muted font-bold uppercase tracking-wider mb-2">
@@ -530,6 +556,16 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
               {activeTab === 'sidebar' && filterSettings('Sidebar') && (
                 <SidebarSettings
+                  appearanceSettings={appearanceSettings}
+                  setAppearanceSettings={setAppearanceSettings}
+                  expandedSections={expandedSections}
+                  toggleSection={toggleSection}
+                  highlightedControl={highlightedControl}
+                />
+              )}
+
+              {activeTab === 'spacing' && filterSettings('Spacing') && (
+                <SpacingSettings
                   appearanceSettings={appearanceSettings}
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}

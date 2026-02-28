@@ -131,6 +131,7 @@ export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | '
 export type FaviconFallback = FaviconSource | 'none';
 export type FaviconSize = '16' | '32' | '64' | '128';
 export type TabElementOrder = 'favicon-first' | 'indicators-first';
+export type TabButtonSizeMode = 'match-tab-density' | 'minified' | 'compact' | 'normal' | 'spacious';
 
 export type LoadingSpinnerStyle = 'pulse' | 'dots' | 'bars' | 'ring';
 export type AccentMode = 'custom' | 'theme' | 'none';
@@ -179,6 +180,7 @@ export interface AppearanceSettings {
   sortVaultGroupsByCount: boolean;
 
   tabElementOrder: TabElementOrder;
+  tabButtonSizeMode: TabButtonSizeMode;
 
   autoPinTabManager: boolean;
   focusExistingTab?: boolean;
@@ -198,6 +200,30 @@ export interface AppearanceSettings {
   showIslandManagerIcon: boolean;
   showIslandManagerTitle: boolean;
   moveSettingsButtonDown: boolean;
+
+  // Sidebar Header Spacing
+  sidebarHeaderPadding?: number;
+  sidebarRowGap?: number;
+  sidebarButtonGap?: number;
+  sidebarButtonPaddingY?: number;
+  sidebarButtonIconSize?: number;
+
+  // Panel Header Spacing
+  panelHeaderPaddingY?: number;
+  panelHeaderPaddingX?: number;
+  panelHeaderActionGap?: number;
+
+  // Panel List Spacing
+  panelListGap?: number;
+  panelListPaddingTop?: number;
+  panelListPaddingBottom?: number;
+
+  // Settings Panel Spacing
+  settingsHeaderPadding?: number;
+  settingsTabsPadding?: number;
+  settingsTabGap?: number;
+  settingsContentPadding?: number;
+  settingsSectionGap?: number;
 
   debugMode: boolean;
 }

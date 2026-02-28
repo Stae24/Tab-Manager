@@ -14,7 +14,7 @@ import { logger } from '../utils/logger';
 import { detectSidebarContext } from '../utils/browser';
 import { useStore } from '../store/useStore';
 import { Island as IslandType, Tab as TabType, UniversalId, VaultQuotaInfo, DashboardRow, CompressionTier } from '../types';
-import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS, SIDEBAR_PANEL_PADDING_DEFAULT, MANAGER_PANEL_PADDING_DEFAULT } from '../constants';
+import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS, SIDEBAR_PANEL_PADDING_DEFAULT, MANAGER_PANEL_PADDING_DEFAULT, PANEL_HEADER_PADDING_Y_DEFAULT, PANEL_HEADER_PADDING_X_DEFAULT, PANEL_HEADER_ACTION_GAP_DEFAULT, PANEL_LIST_GAP_DEFAULT, PANEL_LIST_PADDING_TOP_DEFAULT, PANEL_LIST_PADDING_BOTTOM_DEFAULT } from '../constants';
 
 interface VaultPanelProps {
   dividerPosition: number;
@@ -80,6 +80,12 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
   const showPanelName = useStore((s) => s.appearanceSettings.showPanelName);
   const showPanelIcon = useStore((s) => s.appearanceSettings.showPanelIcon);
+  const panelHeaderPaddingY = useStore((s) => s.appearanceSettings.panelHeaderPaddingY);
+  const panelHeaderPaddingX = useStore((s) => s.appearanceSettings.panelHeaderPaddingX);
+  const panelHeaderActionGap = useStore((s) => s.appearanceSettings.panelHeaderActionGap);
+  const panelListGap = useStore((s) => s.appearanceSettings.panelListGap);
+  const panelListPaddingTop = useStore((s) => s.appearanceSettings.panelListPaddingTop);
+  const panelListPaddingBottom = useStore((s) => s.appearanceSettings.panelListPaddingBottom);
 
   useEffect(() => {
     detectSidebarContext().then(setIsSidebar);
@@ -222,7 +228,15 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
           }
         }
       `}</style>
-      <div ref={headerRef} className={cn("vault-header-row flex items-center justify-between py-3 pr-4 border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20", (showPanelIcon || showPanelName) ? "pl-4" : "!pl-0")}>
+      <div ref={headerRef} 
+        className="vault-header-row flex items-center justify-between border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20"
+        style={{ 
+          paddingTop: panelHeaderPaddingY ?? PANEL_HEADER_PADDING_Y_DEFAULT,
+          paddingBottom: panelHeaderPaddingY ?? PANEL_HEADER_PADDING_Y_DEFAULT,
+          paddingRight: panelHeaderPaddingX ?? PANEL_HEADER_PADDING_X_DEFAULT,
+          paddingLeft: (showPanelIcon || showPanelName) ? (panelHeaderPaddingX ?? PANEL_HEADER_PADDING_X_DEFAULT) : 0
+        }}
+      >
         {(showPanelIcon || showPanelName) && (
           <div className="vault-panel-title flex items-center gap-3 min-w-0 overflow-hidden">
             {showPanelIcon && (
@@ -233,7 +247,10 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
             )}
           </div>
         )}
-        <div className={cn("vault-panel-actions flex items-center gap-2", (showPanelIcon || showPanelName) ? "ml-4" : "")}>
+        <div 
+          className="vault-panel-actions flex items-center"
+          style={{ gap: panelHeaderActionGap ?? PANEL_HEADER_ACTION_GAP_DEFAULT, marginLeft: (showPanelIcon || showPanelName) ? (panelHeaderActionGap ?? PANEL_HEADER_ACTION_GAP_DEFAULT) : 0 }}
+        >
           <button
             onClick={sortVaultGroupsToTop}
             title="Sort Groups to Top"
@@ -297,8 +314,16 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 scroll-smooth overscroll-none"
-        style={{ paddingLeft: `${horizontalPadding}px`, paddingRight: `${horizontalPadding}px`, paddingTop: '0.5rem', paddingBottom: '1rem' }}
+        className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth overscroll-none"
+        style={{ 
+          paddingLeft: `${horizontalPadding}px`, 
+          paddingRight: `${horizontalPadding}px`, 
+          paddingTop: panelListPaddingTop ?? PANEL_LIST_PADDING_TOP_DEFAULT,
+          paddingBottom: panelListPaddingBottom ?? PANEL_LIST_PADDING_BOTTOM_DEFAULT,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: panelListGap ?? PANEL_LIST_GAP_DEFAULT
+        }}
       >
         <ScrollContainerProvider containerRef={scrollRef}>
           {vaultQuota && (
