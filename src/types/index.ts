@@ -131,7 +131,6 @@ export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | '
 export type FaviconFallback = FaviconSource | 'none';
 export type FaviconSize = '16' | '32' | '64' | '128';
 export type TabElementOrder = 'favicon-first' | 'indicators-first';
-export type TabButtonSizeMode = 'match-tab-density' | 'minified' | 'compact' | 'normal' | 'spacious';
 
 export type LoadingSpinnerStyle = 'pulse' | 'dots' | 'bars' | 'ring';
 export type AccentMode = 'custom' | 'theme' | 'none';
@@ -180,7 +179,8 @@ export interface AppearanceSettings {
   sortVaultGroupsByCount: boolean;
 
   tabElementOrder: TabElementOrder;
-  tabButtonSizeMode: TabButtonSizeMode;
+  customButtonHoverSize: boolean;
+  buttonHoverPaddingPx: number;
 
   autoPinTabManager: boolean;
   focusExistingTab?: boolean;

@@ -18,14 +18,14 @@ import { cn } from '../utils/cn';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Dropdown } from './ui/Dropdown';
 import { Toggle } from './ui/Toggle';
+import { Slider } from './ui/Slider';
 import type {
     AppearanceSettings,
     FaviconSource,
     FaviconFallback,
     FaviconSize,
     AudioIndicatorMode,
-    TabElementOrder,
-    TabButtonSizeMode
+    TabElementOrder
 } from '../types';
 import type { SettingSection } from './AppearanceSettingsPanel';
 
@@ -88,12 +88,13 @@ export const SETTING_SECTIONS: SettingSection[] = [
         ],
     },
     {
-        id: 'tab-button-size',
-        title: 'Tab Button Size',
+        id: 'tab-button-hover-size',
+        title: 'Button Hover Size',
         category: 'tabs',
         icon: MousePointerClick,
         controls: [
-            { id: 'button-size-options', label: 'Button Size', keywords: ['button', 'size', 'match', 'minified', 'compact', 'normal', 'spacious'] },
+            { id: 'custom-button-hover-size', label: 'Custom Button Size', keywords: ['button', 'hover', 'size', 'custom', 'padding'] },
+            { id: 'button-hover-padding', label: 'Button Padding', keywords: ['button', 'padding', 'px', 'pixels'] },
         ],
     },
 ];
@@ -287,43 +288,29 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
             </CollapsibleSection>
 
             <CollapsibleSection
-                id="tab-button-size"
-                title="Tab Button Size"
+                id="tab-button-hover-size"
+                title="Button Hover Size"
                 icon={MousePointerClick}
-                isExpanded={expandedSections.has('tab-button-size')}
-                onToggle={() => toggleSection('tab-button-size')}
+                isExpanded={expandedSections.has('tab-button-hover-size')}
+                onToggle={() => toggleSection('tab-button-hover-size')}
             >
-                <div className="grid grid-cols-5 gap-2">
-                    {[
-                        { value: 'match-tab-density', label: 'Match Density', icon: Layers },
-                        { value: 'minified', label: 'Minified', icon: MinusCircle },
-                        { value: 'compact', label: 'Compact', icon: Minus },
-                        { value: 'normal', label: 'Normal', icon: Layers },
-                        { value: 'spacious', label: 'Spacious', icon: Plus },
-                    ].map((sizeOption) => (
-                        <button
-                            type="button"
-                            key={sizeOption.value}
-                            onClick={() => setAppearanceSettings({ tabButtonSizeMode: sizeOption.value as TabButtonSizeMode })}
-                            aria-pressed={appearanceSettings.tabButtonSizeMode === sizeOption.value}
-                            className={cn(
-                                "flex flex-col items-center gap-2 p-3 rounded-lg border transition-all",
-                                appearanceSettings.tabButtonSizeMode === sizeOption.value
-                                    ? "bg-gx-cyan/10 border-gx-cyan/50"
-                                    : "bg-gx-gray border-white/5 hover:border-gx-cyan/30"
-                            )}
-                        >
-                            <sizeOption.icon size={18} className={cn(
-                                appearanceSettings.tabButtonSizeMode === sizeOption.value ? "text-gx-cyan" : "text-gray-500"
-                            )} />
-                            <span className={cn(
-                                "text-[9px] font-bold uppercase tracking-wider text-center",
-                                appearanceSettings.tabButtonSizeMode === sizeOption.value ? "text-gx-cyan" : "text-gray-500"
-                            )}>
-                                {sizeOption.label}
-                            </span>
-                        </button>
-                    ))}
+                <Toggle
+                    checked={appearanceSettings.customButtonHoverSize}
+                    onChange={(checked) => setAppearanceSettings({ customButtonHoverSize: checked })}
+                    label="Enable Custom Button Size"
+                    description="Override the default button padding with a custom value"
+                    highlighted={highlightedControl?.sectionId === 'tab-button-hover-size' && highlightedControl?.controlId === 'custom-button-hover-size'}
+                />
+                <div className={cn("mt-4", !appearanceSettings.customButtonHoverSize && "opacity-50 pointer-events-none")}>
+                    <Slider
+                        value={appearanceSettings.buttonHoverPaddingPx}
+                        onChange={(value: number) => setAppearanceSettings({ buttonHoverPaddingPx: value })}
+                        min={2}
+                        max={24}
+                        step={1}
+                        label="Button Padding"
+                        displayValue={`${appearanceSettings.buttonHoverPaddingPx}px`}
+                    />
                 </div>
             </CollapsibleSection>
         </>
