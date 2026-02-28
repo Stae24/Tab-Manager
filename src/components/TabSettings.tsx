@@ -11,7 +11,8 @@ import {
     Volume1,
     VolumeX,
     Snowflake,
-    GripVertical
+    GripVertical,
+    MousePointerClick
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { CollapsibleSection } from './ui/CollapsibleSection';
@@ -23,7 +24,8 @@ import type {
     FaviconFallback,
     FaviconSize,
     AudioIndicatorMode,
-    TabElementOrder
+    TabElementOrder,
+    TabButtonSizeMode
 } from '../types';
 import type { SettingSection } from './AppearanceSettingsPanel';
 
@@ -83,6 +85,15 @@ export const SETTING_SECTIONS: SettingSection[] = [
         icon: GripVertical,
         controls: [
             { id: 'element-order', label: 'Element Order', keywords: ['element', 'order', 'layout', 'favicon', 'indicator', 'position'] },
+        ],
+    },
+    {
+        id: 'tab-button-size',
+        title: 'Tab Button Size',
+        category: 'tabs',
+        icon: MousePointerClick,
+        controls: [
+            { id: 'button-size-options', label: 'Button Size', keywords: ['button', 'size', 'match', 'minified', 'compact', 'normal', 'spacious'] },
         ],
     },
 ];
@@ -273,6 +284,47 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
                     ]}
                     label="Element Order"
                 />
+            </CollapsibleSection>
+
+            <CollapsibleSection
+                id="tab-button-size"
+                title="Tab Button Size"
+                icon={MousePointerClick}
+                isExpanded={expandedSections.has('tab-button-size')}
+                onToggle={() => toggleSection('tab-button-size')}
+            >
+                <div className="grid grid-cols-5 gap-2">
+                    {[
+                        { value: 'match-tab-density', label: 'Match Density', icon: Layers },
+                        { value: 'minified', label: 'Minified', icon: MinusCircle },
+                        { value: 'compact', label: 'Compact', icon: Minus },
+                        { value: 'normal', label: 'Normal', icon: Layers },
+                        { value: 'spacious', label: 'Spacious', icon: Plus },
+                    ].map((sizeOption) => (
+                        <button
+                            type="button"
+                            key={sizeOption.value}
+                            onClick={() => setAppearanceSettings({ tabButtonSizeMode: sizeOption.value as TabButtonSizeMode })}
+                            aria-pressed={appearanceSettings.tabButtonSizeMode === sizeOption.value}
+                            className={cn(
+                                "flex flex-col items-center gap-2 p-3 rounded-lg border transition-all",
+                                appearanceSettings.tabButtonSizeMode === sizeOption.value
+                                    ? "bg-gx-cyan/10 border-gx-cyan/50"
+                                    : "bg-gx-gray border-white/5 hover:border-gx-cyan/30"
+                            )}
+                        >
+                            <sizeOption.icon size={18} className={cn(
+                                appearanceSettings.tabButtonSizeMode === sizeOption.value ? "text-gx-cyan" : "text-gray-500"
+                            )} />
+                            <span className={cn(
+                                "text-[9px] font-bold uppercase tracking-wider text-center",
+                                appearanceSettings.tabButtonSizeMode === sizeOption.value ? "text-gx-cyan" : "text-gray-500"
+                            )}>
+                                {sizeOption.label}
+                            </span>
+                        </button>
+                    ))}
+                </div>
             </CollapsibleSection>
         </>
     );
