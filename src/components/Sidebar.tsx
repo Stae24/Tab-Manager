@@ -18,6 +18,7 @@ export const Sidebar: React.FC = () => {
   const redoStack = useStore(state => state.redoStack);
   const undo = useStore(state => state.undo);
   const redo = useStore(state => state.redo);
+  const appearanceSettings = useStore(state => state.appearanceSettings);
 
 
   const [showExportDropdown, setShowExportDropdown] = useState(false);
@@ -115,31 +116,40 @@ export const Sidebar: React.FC = () => {
     <div className="relative flex flex-col gap-4 p-4 border-b border-gx-gray bg-gx-gray/50">
       {/* Logo / Title */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gx-accent to-gx-red flex items-center justify-center shadow-lg shadow-gx-accent/30">
-            <RefreshCw className="w-4 h-4 text-gx-text" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold text-gx-text tracking-wide uppercase">
-              Island Manager
-            </h1>
-            <p className="text-[10px] text-gx-muted font-mono">GX EDITION</p>
-          </div>
-        </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowAppearancePanel(!showAppearancePanel);
-          }}
-          className={cn(
-            "p-2 rounded-lg transition-all border",
-            showAppearancePanel
-              ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan"
-              : "bg-gx-gray hover:bg-gx-accent/20 text-gx-muted hover:text-gx-text border-gx-border"
+        <div className="flex items-center gap-2 flex-1">
+          {appearanceSettings.showIslandManagerIcon && (
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gx-accent to-gx-red flex items-center justify-center shadow-lg shadow-gx-accent/30">
+              <RefreshCw className="w-4 h-4 text-gx-text" />
+            </div>
           )}
-        >
-          <Settings size={18} />
-        </button>
+          {appearanceSettings.showIslandManagerTitle && (
+            <div>
+              <h1 className="text-sm font-bold text-gx-text tracking-wide uppercase">
+                Island Manager
+              </h1>
+              <p className="text-[10px] text-gx-muted font-mono">GX EDITION</p>
+            </div>
+          )}
+          {!appearanceSettings.showIslandManagerIcon && !appearanceSettings.showIslandManagerTitle && (
+            <div className="flex-1" />
+          )}
+        </div>
+        {!appearanceSettings.moveSettingsButtonDown && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowAppearancePanel(!showAppearancePanel);
+            }}
+            className={cn(
+              "p-2 rounded-lg transition-all border",
+              showAppearancePanel
+                ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan"
+                : "bg-gx-gray hover:bg-gx-accent/20 text-gx-muted hover:text-gx-text border-gx-border"
+            )}
+          >
+            <Settings size={18} />
+          </button>
+        )}
       </div>
 
       <div className="flex gap-2">
@@ -167,6 +177,22 @@ export const Sidebar: React.FC = () => {
           <Redo size={14} className="text-gx-accent" />
           <span className="text-[10px] font-bold uppercase">Redo</span>
         </button>
+        {appearanceSettings.moveSettingsButtonDown && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowAppearancePanel(!showAppearancePanel);
+            }}
+            className={cn(
+              "w-9 h-9 flex items-center justify-center rounded-lg transition-all border",
+              showAppearancePanel
+                ? "bg-gx-cyan/20 border-gx-cyan/50 text-gx-cyan"
+                : "bg-gx-gray hover:bg-gx-accent/20 text-gx-muted hover:text-gx-text border-gx-border"
+            )}
+          >
+            <Settings size={18} />
+          </button>
+        )}
       </div>
 
       <div className="flex gap-2">

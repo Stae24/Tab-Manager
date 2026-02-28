@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
-import { ZoomIn, Square } from 'lucide-react';
+import { ZoomIn, Square, LayoutPanelTop } from 'lucide-react';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Dropdown } from './ui/Dropdown';
 import { Slider } from './ui/Slider';
+import { Toggle } from './ui/Toggle';
 import {
     UI_SCALE_MIN,
     UI_SCALE_MAX,
@@ -29,6 +30,17 @@ export const SETTING_SECTIONS: SettingSection[] = [
         icon: Square,
         controls: [
             { id: 'corner-style', label: 'Corner Style', keywords: ['corner', 'radius', 'border', 'square', 'pill', 'rounded'] },
+        ],
+    },
+    {
+        id: 'header',
+        title: 'Header',
+        category: 'display',
+        icon: LayoutPanelTop,
+        controls: [
+            { id: 'show-island-manager-icon', label: 'Show Icon', keywords: ['icon', 'show', 'header', 'logo'] },
+            { id: 'show-island-manager-title', label: 'Show Title', keywords: ['title', 'show', 'header', 'text'] },
+            { id: 'move-settings-button-down', label: 'Move Settings Down', keywords: ['settings', 'button', 'move', 'down'] },
         ],
     },
 ];
@@ -60,6 +72,10 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({
         toggleSection('border-radius');
     }, [toggleSection]);
 
+    const handleToggleHeader = useCallback(() => {
+        toggleSection('header');
+    }, [toggleSection]);
+
     const handleBorderRadiusChange = useCallback((value: unknown) => {
         if (isBorderRadius(value)) {
             setAppearanceSettings({ borderRadius: value });
@@ -72,6 +88,18 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({
 
     const handleSettingsScaleChange = useCallback((value: number) => {
         setAppearanceSettings({ settingsScale: value });
+    }, [setAppearanceSettings]);
+
+    const handleShowIslandManagerIconChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ showIslandManagerIcon: checked });
+    }, [setAppearanceSettings]);
+
+    const handleShowIslandManagerTitleChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ showIslandManagerTitle: checked });
+    }, [setAppearanceSettings]);
+
+    const handleMoveSettingsButtonDownChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ moveSettingsButtonDown: checked });
     }, [setAppearanceSettings]);
 
     return (
@@ -123,6 +151,36 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({
                         { value: 'full', label: 'Full (Pill)' },
                     ]}
                     label="Corner Style"
+                />
+            </CollapsibleSection>
+
+            <CollapsibleSection
+                id="header"
+                title="Header"
+                icon={LayoutPanelTop}
+                isExpanded={expandedSections.has('header')}
+                onToggle={handleToggleHeader}
+            >
+                <Toggle
+                    checked={appearanceSettings.showIslandManagerIcon}
+                    onChange={handleShowIslandManagerIconChange}
+                    label="Show Icon"
+                    description="Display the gradient icon in the header"
+                    highlighted={highlightedControl?.sectionId === 'header' && highlightedControl?.controlId === 'show-island-manager-icon'}
+                />
+                <Toggle
+                    checked={appearanceSettings.showIslandManagerTitle}
+                    onChange={handleShowIslandManagerTitleChange}
+                    label="Show Title"
+                    description="Display the Island Manager title and edition text"
+                    highlighted={highlightedControl?.sectionId === 'header' && highlightedControl?.controlId === 'show-island-manager-title'}
+                />
+                <Toggle
+                    checked={appearanceSettings.moveSettingsButtonDown}
+                    onChange={handleMoveSettingsButtonDownChange}
+                    label="Move Settings Down"
+                    description="Move the settings button to the row with Theme, Vault, and Export"
+                    highlighted={highlightedControl?.sectionId === 'header' && highlightedControl?.controlId === 'move-settings-button-down'}
                 />
             </CollapsibleSection>
         </>

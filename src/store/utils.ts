@@ -294,6 +294,9 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   managerPageHotkey: DEFAULT_MANAGER_PAGE_HOTKEY,
   sidebarPanelPadding: SIDEBAR_PANEL_PADDING_DEFAULT,
   managerPanelPadding: MANAGER_PANEL_PADDING_DEFAULT,
+  showIslandManagerIcon: true,
+  showIslandManagerTitle: true,
+  moveSettingsButtonDown: false,
   debugMode: false,
 };
 
