@@ -39,13 +39,15 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
   const { appearanceSettings, islands, vault, removeFromVault } = useStore();
 
   const tabsBelow = React.useMemo(() => {
-    const items = isVault ? vault : islands;
+    if (isVault) return [];
+    const items = islands;
     if (!items) return [];
     const allTabs = items.flatMap((item) => (isIsland(item) ? item.tabs : [item]));
+    const liveTab = tab as Tab;
     return allTabs.filter(
-      (t) => t.index > tab.index && t.windowId === tab.windowId && String(t.id) !== String(tab.id)
+      (t) => t.index > liveTab.index && t.windowId === liveTab.windowId && String(t.id) !== String(liveTab.id)
     );
-  }, [isVault, vault, islands, tab.index, tab.windowId, tab.id]);
+  }, [isVault, islands, tab]);
 
   const tabsBelowCount = tabsBelow.length;
   const { containerRef } = useScrollContainer();
@@ -418,6 +420,49 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
           <button onClick={() => { onRestore(); setShowMenu(false); }} className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-green/20 hover:text-gx-green rounded">
             <ExternalLink size={10} /> OPEN IN WINDOW
           </button>
+        )}
+        {isVault && (
+          <>
+            <button
+              onClick={() => {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== null) {
+                  const { toggleVaultTabHint } = useStore.getState();
+                  void toggleVaultTabHint(tab.id, 'wasPinned');
+                }
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+            >
+              <Link size={10} /> {(tab as { wasPinned?: boolean }).wasPinned ? 'UNPIN' : 'PIN'}
+            </button>
+            <button
+              onClick={() => {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== null) {
+                  const { toggleVaultTabHint } = useStore.getState();
+                  void toggleVaultTabHint(tab.id, 'wasMuted');
+                }
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+            >
+              {(tab as { wasMuted?: boolean }).wasMuted ? <Volume2 size={10} /> : <VolumeX size={10} />} {(tab as { wasMuted?: boolean }).wasMuted ? 'UNMUTE' : 'MUTE'}
+            </button>
+            <button
+              onClick={() => {
+                const numericId = parseNumericId(tab.id);
+                if (numericId !== null) {
+                  const { toggleVaultTabHint } = useStore.getState();
+                  void toggleVaultTabHint(tab.id, 'wasFrozen');
+                }
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
+            >
+              <Snowflake size={10} /> {(tab as { wasFrozen?: boolean }).wasFrozen ? 'UNFREEZE' : 'FREEZE'}
+            </button>
+          </>
         )}
         {isVault && (
           <button
