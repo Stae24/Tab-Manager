@@ -9,6 +9,7 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
   const { setNodeRef, isOver } = useDroppable({ id: gapId });
   const gapRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const [expandedHeight, setExpandedHeight] = useState(0);
 
   const ref = useCallback((node: HTMLDivElement | null) => {
     gapRef.current = node;
@@ -18,6 +19,7 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
   useEffect(() => {
     if (!active || !gapRef.current || isDraggingGroup) {
       setExpanded(false);
+      setExpandedHeight(0);
       return;
     }
 
@@ -54,8 +56,15 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
     const expandDown = distance >= 0 && distance < 3 * baseRem;
     const isWithinHorizontal = pointerPosition.x >= gapRect.left && pointerPosition.x <= gapRect.right;
 
-    setExpanded((expandUp || expandDown) && isWithinHorizontal);
+    const shouldExpand = (expandUp || expandDown) && isWithinHorizontal;
+    setExpanded(shouldExpand);
+
+    if (shouldExpand && active.rect.current && active.rect.current.initial) {
+      setExpandedHeight(active.rect.current.initial.height);
+    } else {
+      setExpandedHeight(0);
+    }
   }, [active, isDraggingGroup, pointerPosition, panelType]);
 
-  return { ref, isOver, expanded };
+  return { ref, isOver, expanded, expandedHeight };
 };

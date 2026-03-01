@@ -12,7 +12,7 @@ interface DroppableGapProps {
 export const DroppableGap: React.FC<DroppableGapProps> = ({ index, panelType, isDraggingGroup }) => {
   const { active } = useDndContext();
   const gapId = `${panelType}-gap-${index}`;
-  const { ref, expanded } = useProximityGap(
+  const { ref, expanded, expandedHeight } = useProximityGap(
     gapId,
     active,
     isDraggingGroup,
@@ -24,9 +24,9 @@ export const DroppableGap: React.FC<DroppableGapProps> = ({ index, panelType, is
       ref={ref}
       className={cn(
         "w-full rounded transition-all duration-200 ease-out pointer-events-none",
-        !expanded && "h-0",
-        expanded && "h-[2.375rem]"
+        !expanded && "h-0"
       )}
+      style={expanded ? { height: expandedHeight } : undefined}
     />
   );
 };
