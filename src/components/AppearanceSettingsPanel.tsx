@@ -80,6 +80,15 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
   const settingsPanelWidth = useStore((state) => state.settingsPanelWidth);
   const setSettingsPanelWidth = useStore((state) => state.setSettingsPanelWidth);
 
+  const blurValue = appearanceSettings.settingsBackgroundBlur ?? 0;
+  const opacityValue = appearanceSettings.settingsBackgroundOpacity ?? 0;
+  const backdropStyle = blurValue > 0 || opacityValue > 0 
+    ? { 
+        backgroundColor: `rgba(0, 0, 0, ${opacityValue / 100})`,
+        backdropFilter: blurValue > 0 ? `blur(${blurValue}px)` : undefined
+      }
+    : undefined;
+
   const [activeTab, setActiveTab] = useState<TabId>('theme');
   const [isResizing, setIsResizing] = useState(false);
   const [panelWidth, setPanelWidth] = useState(settingsPanelWidth || 400);
@@ -282,9 +291,10 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
       {/* Backdrop */}
       <div
         className={cn(
-          "fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300",
+          "fixed inset-0 z-40 transition-opacity duration-300",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
+        style={backdropStyle}
         onClick={(e) => {
           if (panelRef.current?.contains(e.target as Node)) {
             return;
