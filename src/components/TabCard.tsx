@@ -8,7 +8,7 @@ import { parseNumericId, isIsland, useStore } from '../store/useStore';
 import { Favicon } from './Favicon';
 import { useScrollContainer } from '../contexts/ScrollContainerContext';
 import { ContextMenu } from './ContextMenu';
-import { INTERSECTION_OBSERVER_MARGIN_PX, TAB_LOAD_DELAY_BASE_MS } from '../constants';
+import { INTERSECTION_OBSERVER_MARGIN_PX, TAB_LOAD_DELAY_BASE_MS, Z_INDEX_SCALE } from '../constants';
 import type { Tab } from '../types/index';
 
 interface TabCardProps {
@@ -100,10 +100,15 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging && !isOverlay ? appearanceSettings.dragOpacity : 1,
-    zIndex: isOverlay ? 9999 : undefined,
+    zIndex: isOverlay ? Z_INDEX_SCALE.dragOverlay : undefined,
   };
 
+  const observersRef = useRef<IntersectionObserver[]>([]);
+  const isMountedRef = useRef(true);
+
   useEffect(() => {
+    isMountedRef.current = true;
+
     if (isOverlay || !appearanceSettings.showFavicons) {
       setPriority(0);
       setHasStartedLoading(true);
@@ -111,6 +116,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
     }
 
     const visibleObserver = new IntersectionObserver(([entry]) => {
+      if (!isMountedRef.current) return;
       if (entry.isIntersecting) {
         setPriority(0);
       }
@@ -120,6 +126,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
     });
 
     const nearObserver = new IntersectionObserver(([entry]) => {
+      if (!isMountedRef.current) return;
       if (entry.isIntersecting) {
         const rect = entry.boundingClientRect;
         const viewportHeight = window.innerHeight;
@@ -137,16 +144,21 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
       root: containerRef?.current || null
     });
 
+    observersRef.current = [visibleObserver, nearObserver];
+
     if (cardRef.current) {
       visibleObserver.observe(cardRef.current);
       nearObserver.observe(cardRef.current);
     }
 
     return () => {
-      visibleObserver.disconnect();
-      nearObserver.disconnect();
+      isMountedRef.current = false;
+      observersRef.current.forEach(observer => {
+        observer.disconnect();
+      });
+      observersRef.current = [];
     };
-  }, [isOverlay, appearanceSettings.showFavicons]);
+  }, [isOverlay, appearanceSettings.showFavicons, containerRef]);
 
   useEffect(() => {
     if (priority === 0) {

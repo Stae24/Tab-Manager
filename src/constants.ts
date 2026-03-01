@@ -52,10 +52,26 @@ export const REFRESH_TABS_DEBOUNCE_MS = 200;
 export const VIRTUAL_ROW_ESTIMATE_SIZE = 40;
 export const VIRTUAL_ROW_OVERSCAN = 10;
 export const VIRTUAL_ROW_GAP_PX = 8;
+
+// Proximity gap threshold constants
+export const PROXIMITY_THRESHOLD_UP_REM = 1;
+export const PROXIMITY_THRESHOLD_DOWN_REM = 3;
 export const CLEANUP_ANIMATION_DELAY_MS = 500;
 export const NO_TABS_ICON_SIZE = 48;
 export const INTERSECTION_OBSERVER_MARGIN_PX = 500;
 export const TAB_LOAD_DELAY_BASE_MS = 50;
+
+export const Z_INDEX_SCALE = {
+  base: 0,
+  panel: 10,
+  header: 20,
+  dropdown: 100,
+  sticky: 200,
+  overlay: 1000,
+  dragOverlay: 9999,
+  modal: 10000,
+  tooltip: 10001,
+} as const;
 
 export const DEFAULT_DRAG_OPACITY = 0.5;
 
