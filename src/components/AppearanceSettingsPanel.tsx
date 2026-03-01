@@ -12,7 +12,8 @@ import {
   Sidebar,
   Terminal,
   Monitor,
-  Space
+  Space,
+  GripVertical
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
@@ -32,7 +33,7 @@ import { ThemeSettings, SETTING_SECTIONS as THEME_SECTIONS } from './ThemeSettin
 import { DisplaySettings, SETTING_SECTIONS as DISPLAY_SECTIONS } from './DisplaySettings';
 import { TabSettings, SETTING_SECTIONS as TAB_SECTIONS } from './TabSettings';
 import { GroupSettings, SETTING_SECTIONS as GROUP_SECTIONS } from './GroupSettings';
-import { VaultSettings, SETTING_SECTIONS as VAULT_SECTIONS } from './VaultSettings';
+import { VaultSettings, VaultRestorationSettings, SETTING_SECTIONS as VAULT_SECTIONS } from './VaultSettings';
 import { GeneralSettings, SETTING_SECTIONS as GENERAL_SECTIONS } from './GeneralSettings';
 import { SidebarSettings, SETTING_SECTIONS as SIDEBAR_SECTIONS } from './SidebarSettings';
 import { DevSettings, SETTING_SECTIONS as DEV_SECTIONS } from './DevSettings';
@@ -330,10 +331,12 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
         <div
           onMouseDown={handleResizeStart}
           className={cn(
-            "absolute -left-1.5 top-0 bottom-0 w-3 cursor-ew-resize z-[60] transition-all",
-            isResizing && "bg-gx-accent/20"
+            "absolute -left-1 top-0 bottom-0 w-3 cursor-ew-resize z-[60] transition-all flex items-center justify-center",
+            isResizing && "bg-gx-accent"
           )}
-        />
+        >
+          <GripVertical className={cn("w-4 h-4 text-gx-gray transition-colors", isResizing && "text-gx-text")} />
+        </div>
 
         <div 
           className="flex items-center border-b border-gx-gray bg-gx-gray/50"
@@ -554,15 +557,24 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
               )}
 
               {activeTab === 'vault' && filterSettings('Vault') && (
-                <VaultSettings
-                  appearanceSettings={appearanceSettings}
-                  setAppearanceSettings={setAppearanceSettings}
-                  setVaultSyncEnabled={setVaultSyncEnabled}
-                  vaultQuota={vaultQuota}
-                  expandedSections={expandedSections}
-                  toggleSection={toggleSection}
-                  highlightedControl={highlightedControl}
-                />
+                <>
+                  <VaultSettings
+                    appearanceSettings={appearanceSettings}
+                    setAppearanceSettings={setAppearanceSettings}
+                    setVaultSyncEnabled={setVaultSyncEnabled}
+                    vaultQuota={vaultQuota}
+                    expandedSections={expandedSections}
+                    toggleSection={toggleSection}
+                    highlightedControl={highlightedControl}
+                  />
+                  <VaultRestorationSettings
+                    appearanceSettings={appearanceSettings}
+                    setAppearanceSettings={setAppearanceSettings}
+                    expandedSections={expandedSections}
+                    toggleSection={toggleSection}
+                    highlightedControl={highlightedControl}
+                  />
+                </>
               )}
 
               {activeTab === 'general' && filterSettings('General') && (

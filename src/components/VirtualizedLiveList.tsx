@@ -7,7 +7,7 @@ import { TabCard } from './TabCard';
 import { DroppableGap } from './DroppableGap';
 import { cn } from '../utils/cn';
 import { VIRTUAL_ROW_GAP_PX } from '../constants';
-import { Island as IslandType, Tab as TabType, UniversalId, DashboardRow } from '../types';
+import { Island as IslandType, Tab as TabType, LiveItem, UniversalId, DashboardRow } from '../types';
 
 interface VirtualizedLiveListProps {
     islands: (IslandType | TabType)[];
@@ -83,7 +83,7 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
                                     <Island
                                         island={row.item as IslandType}
                                         onTabClick={(tab) => handleTabClick(tab.id)}
-                                        onNonDestructiveSave={() => saveToVault(row.item)}
+                                        onNonDestructiveSave={() => saveToVault(row.item as LiveItem)}
                                         onSave={() => moveToVault(row.item.id)}
                                         onDelete={() => onDeleteIsland ? onDeleteIsland(row.item.id) : (row.item as IslandType).tabs?.forEach((t: TabType) => closeTab(t.id))}
                                         onRename={(title) => onRenameGroup(row.item.id, title)}
@@ -96,7 +96,7 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
                                     <TabCard
                                         tab={row.item as TabType}
                                         onClick={() => handleTabClick(row.item.id)}
-                                        onSave={() => saveToVault(row.item)}
+                                        onSave={() => saveToVault(row.item as LiveItem)}
                                         onClose={() => closeTab(row.item.id)}
                                         disabled={!!searchQuery}
                                         isLoading={isCreatingIsland && creatingTabId === row.item.id}
