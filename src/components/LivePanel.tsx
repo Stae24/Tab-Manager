@@ -323,7 +323,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
         "flex flex-col h-full overflow-hidden transition-colors duration-200 border-r border-gx-gray",
         isOver && "bg-gx-accent/5"
       )}
-      style={{ width: showVault ? `${dividerPosition}%` : '100%' }}
+       style={{ width: showVault ? `calc(${dividerPosition}% - 0.125rem)` : '100%' }}
     >
       <div ref={headerRef} className="flex flex-col border-b border-gx-gray flex-shrink-0 bg-gx-gray/80 backdrop-blur-md z-20">
         <style>{`
