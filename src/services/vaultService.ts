@@ -1,6 +1,8 @@
 import LZString from 'lz-string';
 import type {
   VaultItem,
+  VaultTab,
+  VaultIsland,
   VaultStorageConfig,
   VaultStorageResult,
   VaultMeta,
@@ -103,29 +105,27 @@ function denormalizeUrl(normalized: string): string {
 const KEY_MAP = {
   id: 'i', title: 't', url: 'u', favicon: 'f',
   savedAt: 's', originalId: 'o', color: 'c',
-  collapsed: 'k', tabs: 'b', active: 'a',
-  discarded: 'd', windowId: 'w', index: 'n',
-  groupId: 'g', muted: 'm', pinned: 'p', audible: 'z'
+  collapsed: 'k', tabs: 'b',
+  wasPinned: 'wp', wasMuted: 'wm', wasFrozen: 'wf'
 } as const;
 
-export const KEY_ORDER = ['id', 'title', 'url', 'favicon', 'savedAt', 'originalId', 'color', 'collapsed', 'tabs', 'active', 'discarded', 'windowId', 'index', 'groupId', 'muted', 'pinned', 'audible'] as const;
+export const KEY_ORDER = ['id', 'title', 'url', 'favicon', 'savedAt', 'originalId', 'color', 'collapsed', 'tabs', 'wasPinned', 'wasMuted', 'wasFrozen'] as const;
 
 const REVERSE_KEY_MAP: Record<string, string> = {
   i: 'id', t: 'title', u: 'url', f: 'favicon',
   s: 'savedAt', o: 'originalId', c: 'color',
-  k: 'collapsed', b: 'tabs', a: 'active',
-  d: 'discarded', w: 'windowId', n: 'index',
-  g: 'groupId', m: 'muted', p: 'pinned', z: 'audible'
+  k: 'collapsed', b: 'tabs',
+  wp: 'wasPinned', wm: 'wasMuted', wf: 'wasFrozen'
 };
 
-function minifyTab(tab: Tab): unknown[] {
+function minifyVaultTab(tab: VaultTab): unknown[] {
   const result: unknown[] = [];
   for (const key of KEY_ORDER) {
-    if (key === 'tabs') {
+    if (key === 'tabs' || key === 'color' || key === 'collapsed') {
       result.push(null);
       continue;
     }
-    const value = tab[key as keyof Tab];
+    const value = tab[key as keyof VaultTab];
     if (value !== undefined) {
       result.push(value);
     } else {
@@ -135,12 +135,12 @@ function minifyTab(tab: Tab): unknown[] {
   return result;
 }
 
-function minifyIsland(island: Island & { savedAt: number; originalId: unknown }): unknown[] {
+function minifyVaultIsland(island: VaultIsland): unknown[] {
   const result: unknown[] = [];
   for (const key of KEY_ORDER) {
-    const value = island[key as keyof typeof island];
+    const value = island[key as keyof VaultIsland];
     if (key === 'tabs' && Array.isArray(value)) {
-      result.push((value as Tab[]).map(minifyTab));
+      result.push((value as VaultTab[]).map(minifyVaultTab));
     } else if (value !== undefined) {
       result.push(value);
     } else {
@@ -152,19 +152,19 @@ function minifyIsland(island: Island & { savedAt: number; originalId: unknown })
 
 function minifyVaultItem(item: VaultItem): unknown[] {
   if ('tabs' in item && Array.isArray(item.tabs)) {
-    return minifyIsland(item as Island & { savedAt: number; originalId: unknown });
+    return minifyVaultIsland(item as VaultIsland);
   }
-  return minifyTab(item as Tab);
+  return minifyVaultTab(item as VaultTab);
 }
 
 function minifyVaultItemWithNormalizedUrls(item: VaultItem): unknown[] {
   if ('tabs' in item && Array.isArray(item.tabs)) {
-    const island = item as Island & { savedAt: number; originalId: unknown };
+    const island = item as VaultIsland;
     const result: unknown[] = [];
     for (const key of KEY_ORDER) {
-      const value = island[key as keyof typeof island];
+      const value = island[key as keyof VaultIsland];
       if (key === 'tabs' && Array.isArray(value)) {
-        result.push((value as Tab[]).map(tab => minifyTab({ ...tab, url: normalizeUrl(tab.url) })));
+        result.push((value as VaultTab[]).map(tab => minifyVaultTab({ ...tab, url: normalizeUrl(tab.url) })));
       } else if (value !== undefined) {
         result.push(value);
       } else {
@@ -173,14 +173,14 @@ function minifyVaultItemWithNormalizedUrls(item: VaultItem): unknown[] {
     }
     return result;
   }
-  const tab = item as Tab;
+  const tab = item as VaultTab;
   const result: unknown[] = [];
   for (const key of KEY_ORDER) {
-    if (key === 'tabs') {
+    if (key === 'tabs' || key === 'color' || key === 'collapsed') {
       result.push(null);
       continue;
     }
-    const value = tab[key as keyof Tab];
+    const value = tab[key as keyof VaultTab];
     if (key === 'url' && typeof value === 'string') {
       result.push(normalizeUrl(value));
     } else if (value !== undefined) {
@@ -299,7 +299,7 @@ function extractDomain(normalizedUrl: string): { domain: string; path: string } 
   return { domain, path };
 }
 
-function isTabWithUrl(item: VaultItem): item is Tab & { savedAt: number; originalId: UniversalId } {
+function isTabWithUrl(item: VaultItem): item is VaultTab {
   return 'url' in item && typeof item.url === 'string';
 }
 
@@ -338,7 +338,7 @@ function minifyVaultWithDomains(vault: VaultItem[]): MinifiedVaultWithDomains {
         url: `${domainIndex}${path}`
       };
     } else {
-      const island = item as Island & { savedAt: number; originalId: UniversalId };
+      const island = item as VaultIsland;
       const normalizedTabs = island.tabs.map(tab => {
         const normalizedUrl = normalizeUrl(tab.url);
         const { domain, path } = extractDomain(normalizedUrl);
@@ -359,11 +359,11 @@ function minifyVaultWithDomains(vault: VaultItem[]): MinifiedVaultWithDomains {
       return {
         ...island,
         tabs: normalizedTabs
-      };
+      } as VaultIsland;
     }
   });
 
-  const items = itemsWithDomainRefs.map(minifyVaultItem);
+  const items = itemsWithDomainRefs.map(item => minifyVaultItem(item as VaultItem));
 
   return { version: 1, domains, items };
 }
@@ -419,10 +419,10 @@ function applyCompressionTier(item: VaultItem, tier: CompressionTier): VaultItem
 
   if (tier === 'minimal') {
     if ('color' in stripped) {
-      (stripped as Island).color = 'grey';
+      (stripped as VaultIsland).color = 'grey';
     }
     if ('collapsed' in stripped) {
-      (stripped as Island).collapsed = false;
+      (stripped as VaultIsland).collapsed = false;
     }
   }
 
@@ -600,6 +600,53 @@ async function tryCompressionTiers(
   throw new Error('Vault too large for any compression tier');
 }
 
+function migrateLegacyVaultItem(item: unknown): VaultItem | null {
+  if (!item || typeof item !== 'object') return null;
+
+  const legacy = item as Record<string, unknown>;
+
+  if ('tabs' in legacy && Array.isArray(legacy.tabs)) {
+    const migratedTabs: VaultTab[] = [];
+    for (const tab of legacy.tabs) {
+      const migratedTab = migrateLegacyVaultTab(tab);
+      if (migratedTab) migratedTabs.push(migratedTab);
+    }
+
+    return {
+      id: legacy.id as UniversalId,
+      title: String(legacy.title || ''),
+      color: String(legacy.color || 'grey'),
+      collapsed: Boolean(legacy.collapsed),
+      tabs: migratedTabs,
+      savedAt: Number(legacy.savedAt) || Date.now(),
+      originalId: legacy.originalId as UniversalId ?? legacy.id as UniversalId,
+    };
+  }
+
+  return migrateLegacyVaultTab(legacy);
+}
+
+function migrateLegacyVaultTab(tab: unknown): VaultTab | null {
+  if (!tab || typeof tab !== 'object') return null;
+
+  const legacy = tab as Record<string, unknown>;
+
+  const migrated: VaultTab = {
+    id: legacy.id as UniversalId,
+    title: String(legacy.title || ''),
+    url: String(legacy.url || ''),
+    favicon: String(legacy.favicon || ''),
+    savedAt: Number(legacy.savedAt) || Date.now(),
+    originalId: legacy.originalId as UniversalId ?? legacy.id as UniversalId,
+  };
+
+  if (legacy.pinned) migrated.wasPinned = true;
+  if (legacy.muted) migrated.wasMuted = true;
+  if (legacy.discarded) migrated.wasFrozen = true;
+
+  return migrated;
+}
+
 export const vaultService = {
   loadVault: async (config: VaultStorageConfig): Promise<VaultLoadResult> => {
     if (!config.syncEnabled) {
@@ -703,6 +750,18 @@ export const vaultService = {
         if (!Array.isArray(parsed)) {
           logger.error('VaultService', 'Parsed data is not an array, loading from backup');
           return { vault: await loadFromBackup(), timestamp: meta.timestamp };
+        }
+
+        const needsMigration = parsed.some((item: unknown) => {
+          if (!item || typeof item !== 'object') return false;
+          const i = item as Record<string, unknown>;
+          return 'active' in i || 'discarded' in i || 'windowId' in i || 'index' in i || 'groupId' in i || 'audible' in i || 'pinned' in i || 'muted' in i;
+        });
+
+        if (needsMigration) {
+          logger.info('VaultService', `Migrating ${parsed.length} legacy vault items to new format`);
+          const migrated = parsed.map(migrateLegacyVaultItem).filter((item): item is VaultItem => item !== null);
+          parsed = migrated;
         }
       } catch (parseError) {
         logger.error('VaultService', 'JSON parse failed, loading from backup:', parseError);

@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import LZString from 'lz-string';
-import { VaultItem, UniversalId, LiveItem, VaultQuotaInfo, VaultStorageResult, Island, Tab, CompressionTier } from '../../types/index';
+import { VaultItem, VaultTab, VaultIsland, UniversalId, LiveItem, VaultQuotaInfo, VaultStorageResult, Island, Tab, CompressionTier, AppearanceSettings } from '../../types/index';
 import { vaultService } from '../../services/vaultService';
 import { quotaService } from '../../services/quotaService';
 import { tabService } from '../../services/tabService';
@@ -10,6 +10,22 @@ import { logger } from '../../utils/logger';
 import { VAULT_QUOTA_SAFETY_MARGIN_BYTES } from '../../constants';
 
 import type { StoreState } from '../types';
+
+async function applyRestorationHints(tabId: number, vaultTab: VaultTab, settings: AppearanceSettings): Promise<void> {
+  try {
+    if (settings.restorePinnedState && vaultTab.wasPinned) {
+      await tabService.pinTab(tabId);
+    }
+    if (settings.restoreMutedState && vaultTab.wasMuted) {
+      await tabService.muteTab(tabId);
+    }
+    if (settings.restoreFrozenState && vaultTab.wasFrozen) {
+      await tabService.discardTab(tabId);
+    }
+  } catch (error) {
+    logger.warn('VaultSlice', `Failed to apply restoration hints for tab ${tabId}:`, error);
+  }
+}
 
 function estimateItemSize(item: LiveItem): number {
   const json = JSON.stringify(item);
@@ -75,6 +91,7 @@ export interface VaultSlice {
   setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
   clearSyncRecovered: () => void;
   dismissCompressionWarning: () => void;
+  toggleVaultTabHint: (id: UniversalId, hint: 'wasPinned' | 'wasMuted' | 'wasFrozen') => Promise<void>;
 
   persistVault: (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]) => Promise<VaultStorageResult>;
 }
@@ -382,7 +399,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   },
 
   restoreFromVault: async (id) => {
-    const { vault, appearanceSettings, persistVault } = get();
+    const { vault, appearanceSettings } = get();
     const itemIndex = vault.findIndex((v: VaultItem) => String(v.id) === String(id));
     if (itemIndex === -1) return;
 
@@ -407,17 +424,25 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       insertionIndex = currentWindowTabs.length;
     }
 
-    if (isIsland(item)) {
+    if ('tabs' in item && Array.isArray(item.tabs)) {
+      const vaultIsland = item as VaultIsland;
       const newIds: number[] = [];
-      for (const t of (item.tabs || [])) {
+      for (const t of vaultIsland.tabs) {
         const nt = await tabService.createTab({ url: t.url, active: false, index: insertionIndex + newIds.length });
-        if (nt.id) newIds.push(nt.id);
+        if (nt.id) {
+          newIds.push(nt.id);
+          await applyRestorationHints(nt.id, t, appearanceSettings);
+        }
       }
       if (newIds.length > 0) {
-        await tabService.createIsland(newIds, item.title, item.color as chrome.tabGroups.Color);
+        await tabService.createIsland(newIds, vaultIsland.title, vaultIsland.color as chrome.tabGroups.Color);
       }
     } else {
-      await tabService.createTab({ url: item.url, active: false, index: insertionIndex });
+      const vaultTab = item as VaultTab;
+      const nt = await tabService.createTab({ url: vaultTab.url, active: false, index: insertionIndex });
+      if (nt.id) {
+        await applyRestorationHints(nt.id, vaultTab, appearanceSettings);
+      }
     }
   },
 
@@ -461,16 +486,26 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
   sortVaultGroupsToTop: async () => {
     const { vault, appearanceSettings, reorderVault } = get();
-    const pinned = vault.filter((i: VaultItem): i is Tab & { savedAt: number; originalId: UniversalId } => !isIsland(i) && !!(i as Tab).pinned);
-    const vaultGroups = vault.filter(isIsland) as (Island & { savedAt: number; originalId: UniversalId; })[];
+    const vaultTabs: VaultTab[] = [];
+    const vaultGroups: VaultIsland[] = [];
+
+    for (const item of vault) {
+      if ('tabs' in item && Array.isArray(item.tabs)) {
+        vaultGroups.push(item as VaultIsland);
+      } else {
+        vaultTabs.push(item as VaultTab);
+      }
+    }
+
+    const pinned = vaultTabs.filter(t => t.wasPinned);
+    const loose = vaultTabs.filter(t => !t.wasPinned);
     let groups = [...vaultGroups];
-    const loose = vault.filter((i: VaultItem): i is Tab & { savedAt: number; originalId: UniversalId } => !isIsland(i) && !(i as Tab).pinned);
 
     if (appearanceSettings.sortVaultGroupsByCount) {
       groups = groups.sort((a, b) => (b.tabs?.length || 0) - (a.tabs?.length || 0));
     }
 
-    const sorted = [...pinned, ...groups, ...loose];
+    const sorted: VaultItem[] = [...pinned, ...groups, ...loose];
     if (sorted.every((item, idx) => item.id === vault[idx]?.id)) return;
 
     await reorderVault(sorted);
@@ -482,8 +517,9 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     const urlMap = new Map<string, VaultItem[]>();
 
     const collectUrls = (item: VaultItem) => {
-      if (isIsland(item)) {
-        for (const tab of (item.tabs || [])) {
+      if ('tabs' in item && Array.isArray(item.tabs)) {
+        const island = item as VaultIsland;
+        for (const tab of island.tabs) {
           if (tab.url) {
             try {
               const url = new URL(tab.url);
@@ -499,18 +535,21 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
             }
           }
         }
-      } else if (item.url) {
-        try {
-          const url = new URL(item.url);
-          const normalized = `${url.protocol}//${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, '').toLowerCase()}${url.search}`;
-          const existing = urlMap.get(normalized) || [];
-          existing.push(item);
-          urlMap.set(normalized, existing);
-        } catch {
-          const normalized = item.url.split('#')[0].trim().replace(/\/+$/, '');
-          const existing = urlMap.get(normalized) || [];
-          existing.push(item);
-          urlMap.set(normalized, existing);
+      } else {
+        const tab = item as VaultTab;
+        if (tab.url) {
+          try {
+            const url = new URL(tab.url);
+            const normalized = `${url.protocol}//${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, '').toLowerCase()}${url.search}`;
+            const existing = urlMap.get(normalized) || [];
+            existing.push(item);
+            urlMap.set(normalized, existing);
+          } catch {
+            const normalized = tab.url.split('#')[0].trim().replace(/\/+$/, '');
+            const existing = urlMap.get(normalized) || [];
+            existing.push(item);
+            urlMap.set(normalized, existing);
+          }
         }
       }
     };
@@ -538,6 +577,32 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   removeFromVault: async (id) => {
     const { vault, appearanceSettings, persistVault } = get();
     const newVault = vault.filter((v: VaultItem) => v && String(v.id) !== String(id));
+    set({ vault: newVault });
+    await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
+  },
+
+  toggleVaultTabHint: async (id, hint) => {
+    const { vault, appearanceSettings, persistVault } = get();
+    const idStr = String(id);
+
+    const newVault = vault.map((item: VaultItem) => {
+      if (String(item.id) === idStr && !('tabs' in item)) {
+        const vaultTab = item as VaultTab;
+        return { ...vaultTab, [hint]: !vaultTab[hint] };
+      }
+      if ('tabs' in item && Array.isArray(item.tabs)) {
+        const vaultIsland = item as VaultIsland;
+        const newTabs = vaultIsland.tabs.map((tab: VaultTab) => {
+          if (String(tab.id) === idStr) {
+            return { ...tab, [hint]: !tab[hint] };
+          }
+          return tab;
+        });
+        return { ...vaultIsland, tabs: newTabs };
+      }
+      return item;
+    });
+
     set({ vault: newVault });
     await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
   },
