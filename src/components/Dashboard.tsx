@@ -117,9 +117,10 @@ export const Dashboard: React.FC = () => {
     windowId: number;
   } | null>(null);
 
-  const inFlightCount = useRef(0);
-  const preDragSnapshot = useRef<{ islands: LiveItem[]; vault: VaultItem[] } | null>(null);
-  const isUnmounted = useRef(false);
+   const inFlightCount = useRef(0);
+   const preDragSnapshot = useRef<{ islands: LiveItem[]; vault: VaultItem[] } | null>(null);
+   const isUnmounted = useRef(false);
+   const containerRef = useRef<HTMLDivElement>(null);
 
   const vaultTabCount = useMemo(() => {
     return (vault || []).reduce((acc, i) => {
@@ -148,24 +149,23 @@ export const Dashboard: React.FC = () => {
     e.preventDefault();
   };
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const x = e.clientX;
-      const width = window.innerWidth;
-      const percentage = (x / width) * 100;
-      setDividerPosition(Math.max(DIVIDER_POSITION_MIN, Math.min(DIVIDER_POSITION_MAX, percentage)));
-    };
-    const handleMouseUp = () => setIsResizing(false);
-    if (isResizing) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, setDividerPosition]);
+   useEffect(() => {
+     const handleMouseMove = (e: MouseEvent) => {
+       if (!isResizing || !containerRef.current) return;
+       const rect = containerRef.current.getBoundingClientRect();
+       const percentage = ((e.clientX - rect.left) / rect.width) * 100;
+       setDividerPosition(Math.max(DIVIDER_POSITION_MIN, Math.min(DIVIDER_POSITION_MAX, percentage)));
+     };
+     const handleMouseUp = () => setIsResizing(false);
+     if (isResizing) {
+       window.addEventListener('mousemove', handleMouseMove);
+       window.addEventListener('mouseup', handleMouseUp);
+     }
+     return () => {
+       window.removeEventListener('mousemove', handleMouseMove);
+       window.removeEventListener('mouseup', handleMouseUp);
+     };
+   }, [isResizing, setDividerPosition]);
 
   useEffect(() => {
     isUnmounted.current = false;
@@ -525,8 +525,8 @@ export const Dashboard: React.FC = () => {
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <PointerPositionProvider isDragging={activeItem !== null}>
-            <div className="flex flex-1 overflow-hidden relative overscroll-none">
+           <PointerPositionProvider isDragging={activeItem !== null}>
+             <div ref={containerRef} className="flex flex-1 overflow-hidden relative overscroll-none">
               <LivePanel
                 dividerPosition={dividerPosition}
                 islands={islands}
@@ -553,12 +553,12 @@ export const Dashboard: React.FC = () => {
                   <div
                     onMouseDown={showAppearancePanel ? undefined : handleMouseDown}
                     className={cn(
-                      "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-col-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative",
+                      "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-ew-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative",
                       showAppearancePanel && "pointer-events-none opacity-0",
                       isResizing && "bg-gx-accent"
                     )}
                   >
-                    <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
+                    <div className="absolute inset-y-0 -left-1 -right-1 cursor-ew-resize" />
                     <GripVertical className={cn("w-4 h-4 text-gx-gray transition-colors", isResizing && "text-gx-text")} />
                   </div>
                   <VaultPanel

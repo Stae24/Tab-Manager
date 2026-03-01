@@ -3,7 +3,7 @@ import { Plus, Sun, Moon, ZoomIn, ZoomOut, RefreshCw, Download, Settings, X, Sav
 import { useStore } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { AppearanceSettingsPanel } from './AppearanceSettingsPanel';
-import { Island, Tab, LiveItem, VaultItem } from '../types/index';
+import { Island, Tab, LiveItem, VaultItem, VaultTab, VaultIsland } from '../types/index';
 import {
   SIDEBAR_HEADER_PADDING_DEFAULT,
   SIDEBAR_ROW_GAP_DEFAULT,
@@ -84,11 +84,13 @@ export const Sidebar: React.FC = () => {
       });
       vault.forEach((i: VaultItem) => {
         if ('tabs' in i) {
-          i.tabs?.forEach((t: Tab) => {
-            content += `${escapeCsv('Vault')},${escapeCsv(i.title || 'Untitled Group')},${escapeCsv(t.title)},${escapeCsv(t.url)}\n`;
+          const island = i as VaultIsland;
+          island.tabs?.forEach((t: VaultTab) => {
+            content += `${escapeCsv('Vault')},${escapeCsv(island.title || 'Untitled Group')},${escapeCsv(t.title)},${escapeCsv(t.url)}\n`;
           });
         } else {
-          content += `${escapeCsv('Vault')},${escapeCsv('Loose Tab')},${escapeCsv(i.title)},${escapeCsv(i.url)}\n`;
+          const tab = i as VaultTab;
+          content += `${escapeCsv('Vault')},${escapeCsv('Loose Tab')},${escapeCsv(tab.title)},${escapeCsv(tab.url)}\n`;
         }
       });
 
@@ -106,10 +108,12 @@ export const Sidebar: React.FC = () => {
       content += '\n## Vault\n';
       vault.forEach((i: VaultItem) => {
         if ('tabs' in i) {
-          content += `### ${i.title || 'Untitled Group'}\n`;
-          i.tabs?.forEach((t: Tab) => content += `- [${t.title}](${t.url})\n`);
+          const island = i as VaultIsland;
+          content += `### ${island.title || 'Untitled Group'}\n`;
+          island.tabs?.forEach((t: VaultTab) => content += `- [${t.title}](${t.url})\n`);
         } else {
-          content += `- [${i.title}](${i.url})\n`;
+          const tab = i as VaultTab;
+          content += `- [${tab.title}](${tab.url})\n`;
         }
       });
     }
