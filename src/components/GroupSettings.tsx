@@ -48,6 +48,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
         controls: [
             { id: 'show-panel-name', label: 'Show Panel Name', description: 'Display "Live" and "Vault" text in panel headers', keywords: ['panel', 'name', 'text', 'header'] },
             { id: 'show-panel-icon', label: 'Show Panel Icon', description: 'Display folder and save icons in panel headers', keywords: ['panel', 'icon', 'header'] },
+            { id: 'collapse-expand-layout', label: 'Horizontal Collapse/Expand', description: 'Stack collapse/expand buttons horizontally instead of vertically', keywords: ['collapse', 'expand', 'layout', 'buttons', 'vertical', 'horizontal'] },
         ],
     },
 ];
@@ -105,6 +106,10 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({
 
     const handleShowPanelIconChange = useCallback((checked: boolean) => {
         setAppearanceSettings({ showPanelIcon: checked });
+    }, [setAppearanceSettings]);
+
+    const handleCollapseExpandLayoutChange = useCallback((checked: boolean) => {
+        setAppearanceSettings({ collapseExpandLayout: checked ? 'horizontal' : 'vertical' });
     }, [setAppearanceSettings]);
 
     return (
@@ -184,6 +189,13 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({
                     label="Show Panel Icon"
                     description="Display folder and save icons in panel headers"
                     highlighted={highlightedControl?.sectionId === PANEL_HEADERS_SECTION && highlightedControl?.controlId === 'show-panel-icon'}
+                />
+                <Toggle
+                    checked={appearanceSettings.collapseExpandLayout === 'horizontal'}
+                    onChange={handleCollapseExpandLayoutChange}
+                    label="Horizontal Collapse/Expand"
+                    description="Stack collapse/expand buttons horizontally instead of vertically"
+                    highlighted={highlightedControl?.sectionId === PANEL_HEADERS_SECTION && highlightedControl?.controlId === 'collapse-expand-layout'}
                 />
             </CollapsibleSection>
         </div>
