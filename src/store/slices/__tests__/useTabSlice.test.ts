@@ -185,7 +185,11 @@ describe('useTabSlice', () => {
   describe('renameGroup', () => {
     it('renames vault group (optimistic update)', async () => {
       const vaultItem: VaultItem = {
-        ...createMockIsland({ id: 'vault-group-1' }),
+        id: 'vault-group-1',
+        title: 'Test Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [],
         savedAt: Date.now(),
         originalId: 1,
       };
@@ -221,7 +225,11 @@ describe('useTabSlice', () => {
 
     it('persists vault changes when not updating', async () => {
       const vaultItem: VaultItem = {
-        ...createMockIsland({ id: 'vault-group-1' }),
+        id: 'vault-group-1',
+        title: 'Test Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [],
         savedAt: Date.now(),
         originalId: 1,
       };
@@ -240,7 +248,11 @@ describe('useTabSlice', () => {
 
     it('skips persist when isUpdating is true', async () => {
       const vaultItem: VaultItem = {
-        ...createMockIsland({ id: 'vault-group-1' }),
+        id: 'vault-group-1',
+        title: 'Test Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [],
         savedAt: Date.now(),
         originalId: 1,
       };

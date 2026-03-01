@@ -156,17 +156,9 @@ describe('useStore - restoreFromVault', () => {
       title: 'Test Tab',
       url: 'https://example.com',
       favicon: '',
-      active: false,
-      discarded: false,
-      windowId: 1,
-      index: 0,
-      groupId: -1,
-      muted: false,
-      pinned: false,
-      audible: false,
       savedAt: 123456,
       originalId: 1,
-    } as any;
+    };
     
     useStore.setState({ vault: [vaultItem] });
     // @ts-expect-error
@@ -180,7 +172,7 @@ describe('useStore - restoreFromVault', () => {
     
     const { vault } = useStore.getState();
     expect(vault).toHaveLength(1);
-    expect(chrome.tabs.create).toHaveBeenCalledWith(expect.objectContaining({ url: (vaultItem as Tab).url }));
+    expect(chrome.tabs.create).toHaveBeenCalledWith(expect.objectContaining({ url: vaultItem.url }));
   });
 });
 
@@ -195,7 +187,7 @@ describe('useStore - moveItemOptimistically', () => {
 
   it('blocks cross-panel moves (live -> vault)', async () => {
     const liveTab: Tab = { id: 'live-tab-1', title: 'A', url: '', favicon: '', active: false, discarded: false, windowId: 1, index: 0, groupId: -1, muted: false, pinned: false, audible: false };
-    const vaultItem: VaultItem = { id: 'vault-tab-2-0', title: 'B', url: '', favicon: '', active: false, discarded: false, windowId: 1, index: 0, groupId: -1, muted: false, pinned: false, audible: false, savedAt: 0, originalId: 2 } as any;
+    const vaultItem: VaultItem = { id: 'vault-tab-2-0', title: 'B', url: '', favicon: '', savedAt: 0, originalId: 2 };
     
     useStore.setState({ islands: [liveTab], vault: [vaultItem] });
     
