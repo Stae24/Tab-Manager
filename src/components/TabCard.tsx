@@ -71,9 +71,9 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
   };
 
   const buttonPadding: Record<string, string> = {
-    small: 'p-1',
-    medium: 'p-1.5',
-    large: 'p-2',
+    small: 'px-1',
+    medium: 'px-1.5',
+    large: 'px-2',
   };
 
   const getButtonPaddingClass = (): string => {
@@ -265,7 +265,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
 
         {/* Action Buttons - visible on hover */}
         {!isOverlay && (
-          <div className="hidden group-hover:flex items-center gap-1.5 relative z-20">
+          <div className="hidden group-hover:flex items-stretch gap-1.5 relative z-20">
             {!isVault && onSave && (
               <button
                 onClick={(e) => {
@@ -273,7 +273,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
                   onSave();
                 }}
                 className={cn(
-                  "rounded-lg hover:bg-gx-cyan/20 text-gx-muted hover:text-gx-cyan transition-all group/save",
+                  "flex items-center rounded-lg hover:bg-gx-cyan/20 text-gx-muted hover:text-gx-cyan transition-all group/save",
                   getButtonPaddingClass()
                 )}
                 style={getButtonPaddingStyle()}
@@ -289,7 +289,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
                   onRestore();
                 }}
                 className={cn(
-                  "rounded-lg hover:bg-gx-green/20 text-gx-muted hover:text-gx-green transition-all group/restore",
+                  "flex items-center rounded-lg hover:bg-gx-green/20 text-gx-muted hover:text-gx-green transition-all group/restore",
                   getButtonPaddingClass()
                 )}
                 style={getButtonPaddingStyle()}
@@ -308,7 +308,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
                 }
               }}
               className={cn(
-                "rounded-lg hover:bg-gx-red/20 text-gx-muted hover:text-gx-red transition-all group/close",
+                "flex items-center rounded-lg hover:bg-gx-red/20 text-gx-muted hover:text-gx-red transition-all group/close",
                 getButtonPaddingClass()
               )}
               style={getButtonPaddingStyle()}
