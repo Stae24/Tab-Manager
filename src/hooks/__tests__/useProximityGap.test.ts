@@ -191,7 +191,7 @@ describe('useProximityGap', () => {
     rerender({ active });
 
     expect(result.current.expanded).toBe(true);
-    expect(result.current.expandedHeight).toBe(38);
+    expect(result.current.expandedHeight).toBe(46); // 38 + 8 (VIRTUAL_ROW_GAP_PX)
 
     rectSpy.mockRestore();
     vi.unstubAllGlobals();
@@ -237,7 +237,7 @@ describe('useProximityGap', () => {
     rerender({ active });
 
     expect(result.current.expanded).toBe(true);
-    expect(result.current.expandedHeight).toBe(40);
+    expect(result.current.expandedHeight).toBe(48); // 40 + 8 (VIRTUAL_ROW_GAP_PX)
 
     rectSpy.mockRestore();
     vi.unstubAllGlobals();
@@ -389,7 +389,7 @@ describe('useProximityGap', () => {
     rerender({ active });
 
     expect(result.current.expanded).toBe(true);
-    expect(result.current.expandedHeight).toBe(45);
+    expect(result.current.expandedHeight).toBe(53); // 45 + 8 (VIRTUAL_ROW_GAP_PX)
 
     rectSpy.mockRestore();
     vi.unstubAllGlobals();
