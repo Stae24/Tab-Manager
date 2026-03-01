@@ -1,6 +1,6 @@
 import { UniqueIdentifier } from '@dnd-kit/core';
 import { Island, Tab, LiveItem, VaultItem } from '../../types/index';
-import { findItemInList, cloneWithDeepGroups } from '../utils';
+import { findItemInList, cloneWithDeepGroups, isLiveId, isVaultId } from '../utils';
 
 export interface FoundItem {
   item: LiveItem | VaultItem | Tab;
@@ -48,8 +48,8 @@ export function determineTargetPanel(
   if (overIdStr.startsWith('vault-gap-')) return false;
 
   if (over) {
-    if (isItemInList(islands, overId)) return true;
-    if (isItemInList(vault, overId)) return false;
+    if (isLiveId(overId)) return true;
+    if (isVaultId(overId)) return false;
   }
 
   return activeInLive;
@@ -61,7 +61,8 @@ export function calculateMoveTarget(
   overId: UniqueIdentifier,
   islands: LiveItem[],
   vault: VaultItem[],
-  activeInLive: boolean
+  activeInLive: boolean,
+  dropDirection?: 'top' | 'bottom'
 ): MoveTarget | null {
   let targetContainerId: UniqueIdentifier = 'root';
   let targetIndex = -1;
@@ -111,19 +112,25 @@ export function calculateMoveTarget(
     }
   }
 
-  if (active.containerId !== targetContainerId && over.item && !('tabs' in over.item)) {
-    const targetGroup = (activeInLive ? islands : vault).find(
-      (i) => String(i.id) === String(targetContainerId)
-    );
-    if (
-      targetGroup &&
-      'tabs' in targetGroup &&
-      targetGroup.tabs &&
-      targetIndex === targetGroup.tabs.length - 1
-    ) {
-      targetIndex = targetIndex + 1;
-    }
+  // Adjust targetIndex based on geometric context (dropDirection)
+  if (dropDirection === 'bottom' && targetIndex !== -1) {
+    targetIndex += 1;
   }
+
+  // REMOVED: Forced append logic that prevented "insert before last"
+  // if (active.containerId !== targetContainerId && over.item && !('tabs' in over.item)) {
+  //   const targetGroup = (activeInLive ? islands : vault).find(
+  //     (i) => String(i.id) === String(targetContainerId)
+  //   );
+  //   if (
+  //     targetGroup &&
+  //     'tabs' in targetGroup &&
+  //     targetGroup.tabs &&
+  //     targetIndex === targetGroup.tabs.length - 1
+  //   ) {
+  //     targetIndex = targetIndex + 1;
+  //   }
+  // }
 
   return { targetContainerId, targetIndex };
 }
@@ -170,7 +177,10 @@ export function applyOptimisticMove(
   const [movedItem] = sourceArr.splice(resolvedIndex, 1);
   if (!movedItem) return null;
 
-  const safeTargetIndex = Math.max(0, Math.min(Number(target.targetIndex), targetArr.length));
+  let safeTargetIndex = Math.max(0, Math.min(Number(target.targetIndex), targetArr.length));
+  if (sourceArr === targetArr && resolvedIndex < safeTargetIndex) {
+    safeTargetIndex -= 1;
+  }
   targetArr.splice(safeTargetIndex, 0, movedItem);
 
   return {
@@ -184,7 +194,8 @@ export function prepareOptimisticMove(
   islands: LiveItem[],
   vault: VaultItem[],
   activeId: UniqueIdentifier,
-  overId: UniqueIdentifier
+  overId: UniqueIdentifier,
+  dropDirection?: 'top' | 'bottom'
 ): { result: MoveResult; active: FoundItem } | null {
   if (activeId === overId) return null;
 
@@ -198,7 +209,7 @@ export function prepareOptimisticMove(
 
   if (targetIsLive !== activeInLive) return null;
 
-  const target = calculateMoveTarget(active, over, overId, islands, vault, activeInLive);
+  const target = calculateMoveTarget(active, over, overId, islands, vault, activeInLive, dropDirection);
 
   if (!target || target.targetIndex === -1) return null;
   if (active.containerId === target.targetContainerId && active.index === target.targetIndex) {
