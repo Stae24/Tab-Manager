@@ -83,14 +83,6 @@ const createMockVaultItem = (id: number, title: string): VaultItem => ({
   title,
   url: `https://example${id}.com`,
   favicon: '',
-  active: false,
-  discarded: false,
-  windowId: 1,
-  index: id,
-  groupId: -1,
-  muted: false,
-  pinned: false,
-  audible: false,
   savedAt: Date.now(),
   originalId: id,
 } as VaultItem);
@@ -690,13 +682,13 @@ describe('vaultStorage - domain deduplication', () => {
       color: 'blue',
       collapsed: false,
       tabs: [
-        { id: 1, title: 'Video 1', url: 'https://youtube.com/watch?v=abc', favicon: '', active: false, discarded: false, windowId: 1, index: 0, groupId: 1 },
-        { id: 2, title: 'Video 2', url: 'https://youtube.com/watch?v=def', favicon: '', active: false, discarded: false, windowId: 1, index: 1, groupId: 1 },
-        { id: 3, title: 'Video 3', url: 'https://youtube.com/watch?v=ghi', favicon: '', active: false, discarded: false, windowId: 1, index: 2, groupId: 1 },
+        { id: 'v-tab-1', title: 'Video 1', url: 'https://youtube.com/watch?v=abc', favicon: '', savedAt: Date.now(), originalId: 1 },
+        { id: 'v-tab-2', title: 'Video 2', url: 'https://youtube.com/watch?v=def', favicon: '', savedAt: Date.now(), originalId: 2 },
+        { id: 'v-tab-3', title: 'Video 3', url: 'https://youtube.com/watch?v=ghi', favicon: '', savedAt: Date.now(), originalId: 3 },
       ],
       savedAt: Date.now(),
       originalId: 1,
-    } as VaultItem;
+    };
     
     await saveVault([island], { syncEnabled: true });
     const { vault: loaded } = await loadVault({ syncEnabled: true });
@@ -718,14 +710,6 @@ describe('vaultStorage - backward compatibility', () => {
     title: `Tab ${id}`,
     url,
     favicon: '',
-    active: false,
-    discarded: false,
-    windowId: 1,
-    index: id,
-    groupId: -1,
-    muted: false,
-    pinned: false,
-    audible: false,
     savedAt: Date.now(),
     originalId: id,
   } as VaultItem);
