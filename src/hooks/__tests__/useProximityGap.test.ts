@@ -42,7 +42,9 @@ describe('useProximityGap', () => {
     expect(result.current).toHaveProperty('ref');
     expect(result.current).toHaveProperty('isOver');
     expect(result.current).toHaveProperty('expanded');
+    expect(result.current).toHaveProperty('expandedHeight');
     expect(result.current.expanded).toBe(false);
+    expect(result.current.expandedHeight).toBe(0);
   });
 
   it('sets expanded to false when active is null', () => {
@@ -150,7 +152,16 @@ describe('useProximityGap', () => {
   });
 
   it('expands gap when pointer is within vertical threshold below gap', () => {
-    const active = { id: 'test-active' } as any;
+    const active = { 
+      id: 'test-active',
+      rect: {
+        current: {
+          initial: {
+            height: 38
+          }
+        }
+      }
+    } as any;
     
     const { result, rerender } = renderHook(
       ({ active }) => useProximityGap('test-gap', active, false),
@@ -180,13 +191,23 @@ describe('useProximityGap', () => {
     rerender({ active });
 
     expect(result.current.expanded).toBe(true);
+    expect(result.current.expandedHeight).toBe(38);
 
     rectSpy.mockRestore();
     vi.unstubAllGlobals();
   });
 
   it('expands gap when pointer is within vertical threshold above gap', () => {
-    const active = { id: 'test-active' } as any;
+    const active = { 
+      id: 'test-active',
+      rect: {
+        current: {
+          initial: {
+            height: 40
+          }
+        }
+      }
+    } as any;
     
     const { result, rerender } = renderHook(
       ({ active }) => useProximityGap('test-gap', active, false),
@@ -216,6 +237,7 @@ describe('useProximityGap', () => {
     rerender({ active });
 
     expect(result.current.expanded).toBe(true);
+    expect(result.current.expandedHeight).toBe(40);
 
     rectSpy.mockRestore();
     vi.unstubAllGlobals();
@@ -250,6 +272,7 @@ describe('useProximityGap', () => {
     rerender({ active });
 
     expect(result.current.expanded).toBe(false);
+    expect(result.current.expandedHeight).toBe(0);
 
     rectSpy.mockRestore();
   });
@@ -285,6 +308,7 @@ describe('useProximityGap', () => {
     rerender({ active });
 
     expect(result.current.expanded).toBe(false);
+    expect(result.current.expandedHeight).toBe(0);
 
     rectSpy.mockRestore();
     vi.unstubAllGlobals();
@@ -320,7 +344,54 @@ describe('useProximityGap', () => {
     rerender({ active });
 
     expect(result.current.expanded).toBe(false);
+    expect(result.current.expandedHeight).toBe(0);
 
     rectSpy.mockRestore();
+  });
+
+  it('sets expandedHeight from active.rect.current.initial.height when expanded', () => {
+    const active = { 
+      id: 'test-active',
+      rect: {
+        current: {
+          initial: {
+            height: 45
+          }
+        }
+      }
+    } as any;
+    
+    const { result, rerender } = renderHook(
+      ({ active }) => useProximityGap('test-gap', active, false),
+      { initialProps: { active } }
+    );
+
+    const mockNode = document.createElement('div');
+    const rectSpy = vi.spyOn(mockNode, 'getBoundingClientRect').mockReturnValue({
+      top: 100,
+      left: 0,
+      right: 100,
+      bottom: 120,
+      width: 100,
+      height: 20,
+      x: 0,
+      y: 100,
+      toJSON: () => ({}),
+    } as DOMRect);
+    
+    vi.stubGlobal('getComputedStyle', vi.fn().mockReturnValue({ fontSize: '16px' }));
+
+    act(() => {
+      result.current.ref(mockNode);
+    });
+
+    pointerState.pointerPosition = { x: 50, y: 110 };
+    rerender({ active });
+
+    expect(result.current.expanded).toBe(true);
+    expect(result.current.expandedHeight).toBe(45);
+
+    rectSpy.mockRestore();
+    vi.unstubAllGlobals();
   });
 });

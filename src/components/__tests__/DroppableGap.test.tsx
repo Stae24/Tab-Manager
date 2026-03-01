@@ -5,7 +5,8 @@ import React from 'react';
 
 let mockProximityGapResult = { 
   ref: vi.fn(), 
-  expanded: false as boolean 
+  expanded: false as boolean,
+  expandedHeight: 0 as number
 };
 
 let mockDndContextResult: { active: { id: string } | null } = { active: null };
@@ -33,7 +34,8 @@ describe('DroppableGap', () => {
   beforeEach(async () => {
     mockProximityGapResult = { 
       ref: vi.fn(), 
-      expanded: false 
+      expanded: false,
+      expandedHeight: 0
     };
     mockDndContextResult = { active: null };
     vi.resetModules();
@@ -54,10 +56,11 @@ describe('DroppableGap', () => {
 
     it('has expanded height when expanded=true', async () => {
       mockProximityGapResult.expanded = true;
+      mockProximityGapResult.expandedHeight = 38;
       vi.resetModules();
       const { DroppableGap: Gap } = await import('../DroppableGap');
       const { container } = render(<Gap index={0} panelType="live" />);
-      expect(container.firstChild).toHaveClass('h-[2.375rem]');
+      expect(container.firstChild).toHaveStyle({ height: '38px' });
     });
   });
 
