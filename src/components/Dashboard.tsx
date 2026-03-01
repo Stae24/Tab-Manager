@@ -253,8 +253,18 @@ export const Dashboard: React.FC = () => {
 
     if (overId === 'create-island-dropzone') return;
 
-    moveItemOptimistically(activeId, overId);
+    // Calculate geometric context for drop precision
+    let dropDirection: 'top' | 'bottom' | undefined = undefined;
+    const overRect = over.rect;
 
+    // activatorEvent is typically a MouseEvent or PointerEvent during dragging
+    const mouseEvent = event.activatorEvent as MouseEvent;
+    if (overRect && mouseEvent && typeof mouseEvent.clientY === 'number') {
+      const midY = overRect.top + overRect.height / 2;
+      dropDirection = mouseEvent.clientY > midY ? 'bottom' : 'top';
+    }
+
+    moveItemOptimistically(activeId, overId, dropDirection);
   };
 
   const handleDragCancel = (event: DragCancelEvent) => {
@@ -413,23 +423,19 @@ export const Dashboard: React.FC = () => {
           if (String(item.id) === String(activeId)) {
             targetItem = item;
             isMovingGroup = 'tabs' in item;
-          }
-          if (String(item.id) === String(overId)) {
             break;
           }
+
           if ('tabs' in item && item.tabs) {
-            const nestedInActive = item.tabs?.find((t: TabType) => String(t.id) === String(activeId));
-            if (nestedInActive && !targetItem) {
-              targetItem = nestedInActive;
+            const nestedIndex = item.tabs.findIndex((t: TabType) => String(t.id) === String(activeId));
+            if (nestedIndex !== -1) {
+              targetItem = item.tabs[nestedIndex];
               targetIslandId = item.id;
               isMovingGroup = false;
-            }
-            const nestedInOver = item.tabs?.find((t: TabType) => String(t.id) === String(overId));
-            if (nestedInOver) {
-              browserIndex += item.tabs?.indexOf(nestedInOver) ?? 0;
+              browserIndex += nestedIndex;
               break;
             }
-            browserIndex += item.tabs?.length ?? 0;
+            browserIndex += item.tabs.length;
           } else {
             browserIndex += 1;
           }
