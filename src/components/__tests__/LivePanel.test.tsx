@@ -209,7 +209,7 @@ describe('LivePanel Component', () => {
     const { container } = render(<LivePanel {...defaultProps} dividerPosition={75} showVault={true} />);
 
     const panel = container.firstChild as HTMLElement;
-    expect(panel.style.width).toBe('75%');
+    expect(panel.style.width).toBe('calc(75% - 0.125rem)');
   });
 
   it('applies 100% width when showVault is false', () => {

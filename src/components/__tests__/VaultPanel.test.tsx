@@ -193,7 +193,7 @@ describe('VaultPanel Component', () => {
     const { container } = render(<VaultPanel {...defaultProps} dividerPosition={30} />);
 
     const panel = container.firstChild as HTMLElement;
-    expect(panel.style.width).toBe('70%');
+    expect(panel.style.width).toBe('calc(70% - 0.125rem)');
   });
 
   it('renders vault items correctly', async () => {
