@@ -317,8 +317,8 @@ describe('Dashboard DnD Integration', () => {
     it('shows divider when showVault is true', () => {
       const { container } = render(<Dashboard />);
 
-      // Find the divider element (it's a div with cursor-col-resize class)
-      const divider = container.querySelector('.cursor-col-resize');
+      // Find the divider element (it's a div with cursor-ew-resize class)
+      const divider = container.querySelector('.cursor-ew-resize');
       expect(divider).toBeInTheDocument();
     });
 

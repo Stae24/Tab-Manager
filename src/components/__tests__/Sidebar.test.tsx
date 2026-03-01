@@ -30,11 +30,6 @@ const sampleVaultItem: VaultItemType = {
     title: 'Saved Tab',
     url: 'https://saved.com',
     favicon: '',
-    active: false,
-    discarded: false,
-    windowId: 1,
-    index: 0,
-    groupId: -1,
     savedAt: Date.now(),
     originalId: 'live-tab-100',
 };
