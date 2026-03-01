@@ -26,7 +26,7 @@ export interface TabSlice {
   renameGroup: (id: UniversalId, newTitle: string) => Promise<void>;
   toggleLiveGroupCollapse: (id: UniversalId) => Promise<void>;
   initBrowserCapabilities: () => Promise<void>;
-  moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier, dropDirection?: 'top' | 'bottom') => void;
+  moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
   deleteDuplicateTabs: () => Promise<void>;
   sortGroupsToTop: () => Promise<void>;
   groupSearchResults: (tabs: Tab[]) => Promise<void>;
@@ -168,29 +168,24 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
   moveItemOptimistically: (() => {
     const pendingId = { current: null as UniqueIdentifier | null };
     const pendingOverId = { current: null as UniqueIdentifier | null };
-    const pendingDropDirection = { current: undefined as 'top' | 'bottom' | undefined };
     const rafId = { current: null as number | null };
 
-    return (activeId: UniqueIdentifier, overId: UniqueIdentifier, dropDirection?: 'top' | 'bottom') => {
+    return (activeId: UniqueIdentifier, overId: UniqueIdentifier) => {
       if (rafId.current !== null) {
         pendingId.current = activeId;
         pendingOverId.current = overId;
-        pendingDropDirection.current = dropDirection;
         return;
       }
 
       pendingId.current = activeId;
       pendingOverId.current = overId;
-      pendingDropDirection.current = dropDirection;
 
       rafId.current = requestAnimationFrame(() => {
         const activeIdVal = pendingId.current;
         const overIdVal = pendingOverId.current;
-        const dropDirVal = pendingDropDirection.current;
 
         pendingId.current = null;
         pendingOverId.current = null;
-        pendingDropDirection.current = undefined;
         rafId.current = null;
 
         if (activeIdVal === null || overIdVal === null) {
@@ -199,7 +194,7 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
 
         const { islands, vault } = get();
 
-        const moveData = prepareOptimisticMove(islands, vault, activeIdVal, overIdVal, dropDirVal);
+        const moveData = prepareOptimisticMove(islands, vault, activeIdVal, overIdVal);
 
         if (!moveData) return;
 

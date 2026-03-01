@@ -253,18 +253,7 @@ export const Dashboard: React.FC = () => {
 
     if (overId === 'create-island-dropzone') return;
 
-    // Calculate geometric context for drop precision
-    let dropDirection: 'top' | 'bottom' | undefined = undefined;
-    const overRect = over.rect;
-
-    // activatorEvent is typically a MouseEvent or PointerEvent during dragging
-    const mouseEvent = event.activatorEvent as MouseEvent;
-    if (overRect && mouseEvent && typeof mouseEvent.clientY === 'number') {
-      const midY = overRect.top + overRect.height / 2;
-      dropDirection = mouseEvent.clientY > midY ? 'bottom' : 'top';
-    }
-
-    moveItemOptimistically(activeId, overId, dropDirection);
+    moveItemOptimistically(activeId, overId);
   };
 
   const handleDragCancel = (event: DragCancelEvent) => {
