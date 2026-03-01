@@ -23,14 +23,30 @@ import {
     SIDEBAR_BUTTON_ICON_SIZE_MAX,
     SIDEBAR_BUTTON_ICON_SIZE_DEFAULT,
     SIDEBAR_BUTTON_ICON_SIZE_STEP,
-    PANEL_HEADER_PADDING_Y_MIN,
-    PANEL_HEADER_PADDING_Y_MAX,
-    PANEL_HEADER_PADDING_Y_DEFAULT,
-    PANEL_HEADER_PADDING_Y_STEP,
-    PANEL_HEADER_PADDING_X_MIN,
-    PANEL_HEADER_PADDING_X_MAX,
-    PANEL_HEADER_PADDING_X_DEFAULT,
-    PANEL_HEADER_PADDING_X_STEP,
+    PANEL_HEADER_PADDING_TOP_MIN,
+    PANEL_HEADER_PADDING_TOP_MAX,
+    PANEL_HEADER_PADDING_TOP_DEFAULT,
+    PANEL_HEADER_PADDING_TOP_STEP,
+    PANEL_HEADER_PADDING_BOTTOM_MIN,
+    PANEL_HEADER_PADDING_BOTTOM_MAX,
+    PANEL_HEADER_PADDING_BOTTOM_DEFAULT,
+    PANEL_HEADER_PADDING_BOTTOM_STEP,
+    PANEL_HEADER_PADDING_LEFT_MIN,
+    PANEL_HEADER_PADDING_LEFT_MAX,
+    PANEL_HEADER_PADDING_LEFT_DEFAULT,
+    PANEL_HEADER_PADDING_LEFT_STEP,
+    PANEL_HEADER_PADDING_RIGHT_MIN,
+    PANEL_HEADER_PADDING_RIGHT_MAX,
+    PANEL_HEADER_PADDING_RIGHT_DEFAULT,
+    PANEL_HEADER_PADDING_RIGHT_STEP,
+    PANEL_HEADER_ICON_TITLE_GAP_MIN,
+    PANEL_HEADER_ICON_TITLE_GAP_MAX,
+    PANEL_HEADER_ICON_TITLE_GAP_DEFAULT,
+    PANEL_HEADER_ICON_TITLE_GAP_STEP,
+    PANEL_HEADER_TITLE_ACTION_GAP_MIN,
+    PANEL_HEADER_TITLE_ACTION_GAP_MAX,
+    PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT,
+    PANEL_HEADER_TITLE_ACTION_GAP_STEP,
     PANEL_HEADER_ACTION_GAP_MIN,
     PANEL_HEADER_ACTION_GAP_MAX,
     PANEL_HEADER_ACTION_GAP_DEFAULT,
@@ -83,9 +99,13 @@ export const SETTING_SECTIONS: SettingSection[] = [
             { id: 'sidebar-button-gap', label: 'Sidebar Button Gap', keywords: ['sidebar', 'button', 'gap'] },
             { id: 'sidebar-button-padding-y', label: 'Sidebar Button Padding Y', keywords: ['sidebar', 'button', 'padding', 'vertical'] },
             { id: 'sidebar-button-icon-size', label: 'Sidebar Button Icon Size', keywords: ['sidebar', 'button', 'icon', 'size'] },
-            { id: 'panel-header-padding-y', label: 'Panel Header Padding Y', keywords: ['panel', 'header', 'padding', 'vertical'] },
-            { id: 'panel-header-padding-x', label: 'Panel Header Padding X', keywords: ['panel', 'header', 'padding', 'horizontal'] },
-            { id: 'panel-header-action-gap', label: 'Panel Header Action Gap', keywords: ['panel', 'header', 'action', 'gap'] },
+            { id: 'panel-header-padding-top', label: 'Panel Header Padding Top', keywords: ['panel', 'header', 'padding', 'top'] },
+            { id: 'panel-header-padding-bottom', label: 'Panel Header Padding Bottom', keywords: ['panel', 'header', 'padding', 'bottom'] },
+            { id: 'panel-header-padding-left', label: 'Panel Header Padding Left', keywords: ['panel', 'header', 'padding', 'left'] },
+            { id: 'panel-header-padding-right', label: 'Panel Header Padding Right', keywords: ['panel', 'header', 'padding', 'right'] },
+            { id: 'panel-header-icon-title-gap', label: 'Panel Header Icon-Title Gap', keywords: ['panel', 'header', 'icon', 'title', 'gap'] },
+            { id: 'panel-header-title-action-gap', label: 'Panel Header Title-Action Gap', keywords: ['panel', 'header', 'title', 'action', 'gap'] },
+            { id: 'panel-header-action-gap', label: 'Panel Header Action Button Gap', keywords: ['panel', 'header', 'action', 'gap', 'button'] },
             { id: 'panel-list-gap', label: 'Panel List Gap', keywords: ['panel', 'list', 'gap'] },
             { id: 'panel-list-padding-top', label: 'Panel List Padding Top', keywords: ['panel', 'list', 'padding', 'top'] },
             { id: 'panel-list-padding-bottom', label: 'Panel List Padding Bottom', keywords: ['panel', 'list', 'padding', 'bottom'] },
@@ -179,23 +199,63 @@ export const SpacingSettings: React.FC<SpacingSettingsProps> = ({
                 </div>
 
                 <Slider
-                    value={appearanceSettings.panelHeaderPaddingY ?? PANEL_HEADER_PADDING_Y_DEFAULT}
-                    onChange={(value) => setAppearanceSettings({ panelHeaderPaddingY: value })}
-                    min={PANEL_HEADER_PADDING_Y_MIN}
-                    max={PANEL_HEADER_PADDING_Y_MAX}
-                    step={PANEL_HEADER_PADDING_Y_STEP}
-                    label="Header Padding Y"
-                    displayValue={`${appearanceSettings.panelHeaderPaddingY ?? PANEL_HEADER_PADDING_Y_DEFAULT}px`}
+                    value={appearanceSettings.panelHeaderPaddingTop ?? PANEL_HEADER_PADDING_TOP_DEFAULT}
+                    onChange={(value) => setAppearanceSettings({ panelHeaderPaddingTop: value })}
+                    min={PANEL_HEADER_PADDING_TOP_MIN}
+                    max={PANEL_HEADER_PADDING_TOP_MAX}
+                    step={PANEL_HEADER_PADDING_TOP_STEP}
+                    label="Header Padding Top"
+                    displayValue={`${appearanceSettings.panelHeaderPaddingTop ?? PANEL_HEADER_PADDING_TOP_DEFAULT}px`}
                 />
 
                 <Slider
-                    value={appearanceSettings.panelHeaderPaddingX ?? PANEL_HEADER_PADDING_X_DEFAULT}
-                    onChange={(value) => setAppearanceSettings({ panelHeaderPaddingX: value })}
-                    min={PANEL_HEADER_PADDING_X_MIN}
-                    max={PANEL_HEADER_PADDING_X_MAX}
-                    step={PANEL_HEADER_PADDING_X_STEP}
-                    label="Header Padding X"
-                    displayValue={`${appearanceSettings.panelHeaderPaddingX ?? PANEL_HEADER_PADDING_X_DEFAULT}px`}
+                    value={appearanceSettings.panelHeaderPaddingBottom ?? PANEL_HEADER_PADDING_BOTTOM_DEFAULT}
+                    onChange={(value) => setAppearanceSettings({ panelHeaderPaddingBottom: value })}
+                    min={PANEL_HEADER_PADDING_BOTTOM_MIN}
+                    max={PANEL_HEADER_PADDING_BOTTOM_MAX}
+                    step={PANEL_HEADER_PADDING_BOTTOM_STEP}
+                    label="Header Padding Bottom"
+                    displayValue={`${appearanceSettings.panelHeaderPaddingBottom ?? PANEL_HEADER_PADDING_BOTTOM_DEFAULT}px`}
+                />
+
+                <Slider
+                    value={appearanceSettings.panelHeaderPaddingLeft ?? PANEL_HEADER_PADDING_LEFT_DEFAULT}
+                    onChange={(value) => setAppearanceSettings({ panelHeaderPaddingLeft: value })}
+                    min={PANEL_HEADER_PADDING_LEFT_MIN}
+                    max={PANEL_HEADER_PADDING_LEFT_MAX}
+                    step={PANEL_HEADER_PADDING_LEFT_STEP}
+                    label="Header Padding Left"
+                    displayValue={`${appearanceSettings.panelHeaderPaddingLeft ?? PANEL_HEADER_PADDING_LEFT_DEFAULT}px`}
+                />
+
+                <Slider
+                    value={appearanceSettings.panelHeaderPaddingRight ?? PANEL_HEADER_PADDING_RIGHT_DEFAULT}
+                    onChange={(value) => setAppearanceSettings({ panelHeaderPaddingRight: value })}
+                    min={PANEL_HEADER_PADDING_RIGHT_MIN}
+                    max={PANEL_HEADER_PADDING_RIGHT_MAX}
+                    step={PANEL_HEADER_PADDING_RIGHT_STEP}
+                    label="Header Padding Right"
+                    displayValue={`${appearanceSettings.panelHeaderPaddingRight ?? PANEL_HEADER_PADDING_RIGHT_DEFAULT}px`}
+                />
+
+                <Slider
+                    value={appearanceSettings.panelHeaderIconTitleGap ?? PANEL_HEADER_ICON_TITLE_GAP_DEFAULT}
+                    onChange={(value) => setAppearanceSettings({ panelHeaderIconTitleGap: value })}
+                    min={PANEL_HEADER_ICON_TITLE_GAP_MIN}
+                    max={PANEL_HEADER_ICON_TITLE_GAP_MAX}
+                    step={PANEL_HEADER_ICON_TITLE_GAP_STEP}
+                    label="Icon-Title Gap"
+                    displayValue={`${appearanceSettings.panelHeaderIconTitleGap ?? PANEL_HEADER_ICON_TITLE_GAP_DEFAULT}px`}
+                />
+
+                <Slider
+                    value={appearanceSettings.panelHeaderTitleActionGap ?? PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT}
+                    onChange={(value) => setAppearanceSettings({ panelHeaderTitleActionGap: value })}
+                    min={PANEL_HEADER_TITLE_ACTION_GAP_MIN}
+                    max={PANEL_HEADER_TITLE_ACTION_GAP_MAX}
+                    step={PANEL_HEADER_TITLE_ACTION_GAP_STEP}
+                    label="Title-Action Gap"
+                    displayValue={`${appearanceSettings.panelHeaderTitleActionGap ?? PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT}px`}
                 />
 
                 <Slider
@@ -204,7 +264,7 @@ export const SpacingSettings: React.FC<SpacingSettingsProps> = ({
                     min={PANEL_HEADER_ACTION_GAP_MIN}
                     max={PANEL_HEADER_ACTION_GAP_MAX}
                     step={PANEL_HEADER_ACTION_GAP_STEP}
-                    label="Action Gap"
+                    label="Action Button Gap"
                     displayValue={`${appearanceSettings.panelHeaderActionGap ?? PANEL_HEADER_ACTION_GAP_DEFAULT}px`}
                 />
 
