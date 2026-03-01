@@ -22,6 +22,12 @@ import {
   SIDEBAR_BUTTON_ICON_SIZE_DEFAULT,
   PANEL_HEADER_PADDING_Y_DEFAULT,
   PANEL_HEADER_PADDING_X_DEFAULT,
+  PANEL_HEADER_PADDING_TOP_DEFAULT,
+  PANEL_HEADER_PADDING_BOTTOM_DEFAULT,
+  PANEL_HEADER_PADDING_LEFT_DEFAULT,
+  PANEL_HEADER_PADDING_RIGHT_DEFAULT,
+  PANEL_HEADER_ICON_TITLE_GAP_DEFAULT,
+  PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT,
   PANEL_HEADER_ACTION_GAP_DEFAULT,
   PANEL_LIST_GAP_DEFAULT,
   PANEL_LIST_PADDING_TOP_DEFAULT,
@@ -32,6 +38,8 @@ import {
   SETTINGS_CONTENT_PADDING_DEFAULT,
   SETTINGS_SECTION_GAP_DEFAULT
 } from '../constants';
+
+export const VALID_THEMES = ['dark', 'light', 'system', 'dark-pro', 'ocean', 'forest', 'sunset', 'dracula', 'nord', 'monokai', 'solarized-light', 'solarized-dark', 'midnight', 'cyberpunk', 'coffee'] as const;
 
 export const debounce = <T extends (...args: any[]) => any>(fn: T, ms = DEBOUNCE_DEFAULT_MS) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -145,7 +153,7 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
   };
 
   return (
-    !!s.theme && ['dark', 'light', 'system', 'dark-pro', 'ocean', 'forest', 'sunset', 'dracula', 'nord', 'monokai', 'solarized-light', 'solarized-dark', 'midnight', 'cyberpunk', 'coffee'].includes(s.theme) &&
+    !!s.theme && VALID_THEMES.includes(s.theme as typeof VALID_THEMES[number]) &&
     !!s.themeElements && typeof s.themeElements.background === 'boolean' && typeof s.themeElements.panels === 'boolean' && typeof s.themeElements.text === 'boolean' && (s.themeElements.accent === 'custom' || s.themeElements.accent === 'theme' || s.themeElements.accent === 'none') &&
     typeof s.uiScale === 'number' &&
     typeof s.settingsScale === 'number' &&
@@ -170,7 +178,7 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     !!s.faviconSize && ['16', '32', '64', '128'].includes(s.faviconSize) &&
     typeof s.sortGroupsByCount === 'boolean' &&
     typeof s.sortVaultGroupsByCount === 'boolean' &&
-    !!s.tabElementOrder && ['favicon-first', 'indicators-first'].includes(s.tabElementOrder) &&
+    !!s.tabElementOrder && ['favicon-indicators-title', 'favicon-first', 'indicators-first'].includes(s.tabElementOrder) &&
     typeof s.autoPinTabManager === 'boolean' &&
     (typeof s.focusExistingTab === 'boolean' || s.focusExistingTab === undefined) &&
     !!s.toolbarClickAction && ['toggle-sidebar', 'open-manager-page'].includes(s.toolbarClickAction) &&
@@ -188,9 +196,22 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
 
 export const mergeAppearanceSettings = (settings: unknown): AppearanceSettings => {
   if (isAppearanceSettings(settings)) {
-    return { ...defaultAppearanceSettings, ...settings };
+    const merged = { ...defaultAppearanceSettings, ...settings };
+
+    // Migrate legacy panel header padding to granular settings
+    const s = settings as Partial<AppearanceSettings>;
+    if (s.panelHeaderPaddingY !== undefined && s.panelHeaderPaddingTop === undefined) {
+      merged.panelHeaderPaddingTop = s.panelHeaderPaddingY;
+      merged.panelHeaderPaddingBottom = s.panelHeaderPaddingY;
+    }
+    if (s.panelHeaderPaddingX !== undefined && s.panelHeaderPaddingLeft === undefined) {
+      merged.panelHeaderPaddingLeft = s.panelHeaderPaddingX;
+      merged.panelHeaderPaddingRight = s.panelHeaderPaddingX;
+    }
+
+    return merged;
   }
-  
+
   if (settings && typeof settings === 'object') {
     const s = settings as Partial<AppearanceSettings>;
     if (s.themeElements && typeof s.themeElements.accent === 'boolean') {
@@ -206,8 +227,20 @@ export const mergeAppearanceSettings = (settings: unknown): AppearanceSettings =
         }
       };
     }
+
+    // Migrate legacy panel header padding to granular settings
+    const merged = { ...defaultAppearanceSettings, ...s };
+    if (s.panelHeaderPaddingY !== undefined && s.panelHeaderPaddingTop === undefined) {
+      merged.panelHeaderPaddingTop = s.panelHeaderPaddingY;
+      merged.panelHeaderPaddingBottom = s.panelHeaderPaddingY;
+    }
+    if (s.panelHeaderPaddingX !== undefined && s.panelHeaderPaddingLeft === undefined) {
+      merged.panelHeaderPaddingLeft = s.panelHeaderPaddingX;
+      merged.panelHeaderPaddingRight = s.panelHeaderPaddingX;
+    }
+    return merged;
   }
-  
+
   return defaultAppearanceSettings;
 };
 
@@ -269,7 +302,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
     background: true,
     panels: true,
     text: true,
-    accent: 'theme' as const
+    accent: 'theme'
   },
   uiScale: 1,
   settingsScale: 1,
@@ -297,7 +330,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   faviconSize: '32',
   sortGroupsByCount: true,
   sortVaultGroupsByCount: true,
-  tabElementOrder: 'indicators-first',
+  tabElementOrder: 'favicon-indicators-title',
   customButtonHoverSize: false,
   buttonHoverPaddingPx: 8,
   autoPinTabManager: true,
@@ -321,10 +354,18 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   sidebarButtonGap: SIDEBAR_BUTTON_GAP_DEFAULT,
   sidebarButtonPaddingY: SIDEBAR_BUTTON_PADDING_Y_DEFAULT,
   sidebarButtonIconSize: SIDEBAR_BUTTON_ICON_SIZE_DEFAULT,
-  // Panel Header Spacing
+  // Panel Header Spacing (legacy)
   panelHeaderPaddingY: PANEL_HEADER_PADDING_Y_DEFAULT,
   panelHeaderPaddingX: PANEL_HEADER_PADDING_X_DEFAULT,
+  // Granular panel header padding
+  panelHeaderPaddingTop: PANEL_HEADER_PADDING_TOP_DEFAULT,
+  panelHeaderPaddingBottom: PANEL_HEADER_PADDING_BOTTOM_DEFAULT,
+  panelHeaderPaddingLeft: PANEL_HEADER_PADDING_LEFT_DEFAULT,
+  panelHeaderPaddingRight: PANEL_HEADER_PADDING_RIGHT_DEFAULT,
+  panelHeaderIconTitleGap: PANEL_HEADER_ICON_TITLE_GAP_DEFAULT,
+  panelHeaderTitleActionGap: PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT,
   panelHeaderActionGap: PANEL_HEADER_ACTION_GAP_DEFAULT,
+  collapseExpandLayout: 'vertical',
   // Panel List Spacing
   panelListGap: PANEL_LIST_GAP_DEFAULT,
   panelListPaddingTop: PANEL_LIST_PADDING_TOP_DEFAULT,
@@ -335,6 +376,8 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   settingsTabGap: SETTINGS_TAB_GAP_DEFAULT,
   settingsContentPadding: SETTINGS_CONTENT_PADDING_DEFAULT,
   settingsSectionGap: SETTINGS_SECTION_GAP_DEFAULT,
+  settingsBackgroundBlur: 0,
+  settingsBackgroundOpacity: 0,
   debugMode: false,
 };
 
