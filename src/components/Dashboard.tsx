@@ -257,12 +257,11 @@ export const Dashboard: React.FC = () => {
     let dropDirection: 'top' | 'bottom' | undefined = undefined;
     const overRect = over.rect;
 
+    // activatorEvent is typically a MouseEvent or PointerEvent during dragging
     const mouseEvent = event.activatorEvent as MouseEvent;
     if (overRect && mouseEvent && typeof mouseEvent.clientY === 'number') {
-      // Use delta to get current pointer position, not the initial activator position
-      const currentY = mouseEvent.clientY + event.delta.y;
       const midY = overRect.top + overRect.height / 2;
-      dropDirection = currentY > midY ? 'bottom' : 'top';
+      dropDirection = mouseEvent.clientY > midY ? 'bottom' : 'top';
     }
 
     moveItemOptimistically(activeId, overId, dropDirection);
