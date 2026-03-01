@@ -1,5 +1,5 @@
 import { UniqueIdentifier } from '@dnd-kit/core';
-import { Island, Tab, VaultItem, AppearanceSettings, LiveItem, HotkeyBinding, AccentMode } from '../types/index';
+import { Island, Tab, VaultItem, VaultTab, VaultIsland, AppearanceSettings, LiveItem, HotkeyBinding, AccentMode } from '../types/index';
 import { logger } from '../utils/logger';
 import {
   DEBOUNCE_DEFAULT_MS,
@@ -36,7 +36,10 @@ import {
   SETTINGS_TABS_PADDING_DEFAULT,
   SETTINGS_TAB_GAP_DEFAULT,
   SETTINGS_CONTENT_PADDING_DEFAULT,
-  SETTINGS_SECTION_GAP_DEFAULT
+  SETTINGS_SECTION_GAP_DEFAULT,
+  DEFAULT_RESTORE_PINNED_STATE,
+  DEFAULT_RESTORE_MUTED_STATE,
+  DEFAULT_RESTORE_FROZEN_STATE
 } from '../constants';
 
 export const VALID_THEMES = ['dark', 'light', 'system', 'dark-pro', 'ocean', 'forest', 'sunset', 'dracula', 'nord', 'monokai', 'solarized-light', 'solarized-dark', 'midnight', 'cyberpunk', 'coffee'] as const;
@@ -122,18 +125,75 @@ export const isIsland = (item: unknown): item is Island => {
   );
 };
 
-export const isVaultItem = (item: unknown): item is VaultItem => {
+export const isVaultTab = (item: unknown): item is VaultTab => {
   if (!item || typeof item !== 'object') return false;
-  const v = item as Partial<VaultItem>;
+  const v = item as Partial<VaultTab>;
   return (
+    (typeof v.id === 'string' || typeof v.id === 'number') &&
+    typeof v.title === 'string' &&
+    typeof v.url === 'string' &&
+    typeof v.favicon === 'string' &&
     typeof v.savedAt === 'number' &&
     (typeof v.originalId === 'string' || typeof v.originalId === 'number') &&
-    (isIsland(v) || isTab(v))
+    !('tabs' in item)
   );
+};
+
+export const isVaultIsland = (item: unknown): item is VaultIsland => {
+  if (!item || typeof item !== 'object') return false;
+  const v = item as Partial<VaultIsland>;
+  return (
+    (typeof v.id === 'string' || typeof v.id === 'number') &&
+    typeof v.title === 'string' &&
+    typeof v.color === 'string' &&
+    typeof v.collapsed === 'boolean' &&
+    Array.isArray(v.tabs) &&
+    v.tabs.every(isVaultTab) &&
+    typeof v.savedAt === 'number' &&
+    (typeof v.originalId === 'string' || typeof v.originalId === 'number')
+  );
+};
+
+export const isVaultItem = (item: unknown): item is VaultItem => {
+  return isVaultTab(item) || isVaultIsland(item);
 };
 
 export const isVaultItems = (items: unknown): items is VaultItem[] => {
   return Array.isArray(items) && items.every(isVaultItem);
+};
+
+export const tabToVaultTab = (tab: Tab, timestamp: number): VaultTab => {
+  const vaultTab: VaultTab = {
+    id: `vault-${tab.id}-${timestamp}`,
+    title: tab.title,
+    url: tab.url,
+    favicon: tab.favicon,
+    savedAt: timestamp,
+    originalId: parseNumericId(tab.id) ?? tab.id,
+  };
+  if (tab.pinned) vaultTab.wasPinned = true;
+  if (tab.muted) vaultTab.wasMuted = true;
+  if (tab.discarded) vaultTab.wasFrozen = true;
+  return vaultTab;
+};
+
+export const islandToVaultIsland = (island: Island, timestamp: number): VaultIsland => {
+  return {
+    id: `vault-${island.id}-${timestamp}`,
+    title: island.title,
+    color: island.color,
+    collapsed: island.collapsed,
+    tabs: island.tabs.map(tab => tabToVaultTab(tab, timestamp)),
+    savedAt: timestamp,
+    originalId: parseNumericId(island.id) ?? island.id,
+  };
+};
+
+export const liveItemToVaultItem = (item: LiveItem, timestamp: number): VaultItem => {
+  if (isIsland(item)) {
+    return islandToVaultIsland(item, timestamp);
+  }
+  return tabToVaultTab(item, timestamp);
 };
 
 export const isAppearanceSettings = (settings: unknown): settings is AppearanceSettings => {
@@ -190,7 +250,10 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     isHotkeyBinding(s.managerPageHotkey) &&
     (typeof s.sidebarPanelPadding === 'number' || s.sidebarPanelPadding === undefined) &&
     (typeof s.managerPanelPadding === 'number' || s.managerPanelPadding === undefined) &&
-    (typeof s.debugMode === 'boolean' || s.debugMode === undefined)
+    (typeof s.debugMode === 'boolean' || s.debugMode === undefined) &&
+    (typeof s.restorePinnedState === 'boolean' || s.restorePinnedState === undefined) &&
+    (typeof s.restoreMutedState === 'boolean' || s.restoreMutedState === undefined) &&
+    (typeof s.restoreFrozenState === 'boolean' || s.restoreFrozenState === undefined)
   );
 };
 
@@ -379,6 +442,9 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   settingsBackgroundBlur: 0,
   settingsBackgroundOpacity: 0,
   debugMode: false,
+  restorePinnedState: DEFAULT_RESTORE_PINNED_STATE,
+  restoreMutedState: DEFAULT_RESTORE_MUTED_STATE,
+  restoreFrozenState: DEFAULT_RESTORE_FROZEN_STATE,
 };
 
 export type SyncState = Partial<{
