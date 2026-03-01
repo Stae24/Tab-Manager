@@ -130,7 +130,7 @@ export type MenuPosition = 'left' | 'center' | 'right';
 export type FaviconSource = 'chrome' | 'google' | 'google-hd' | 'duckduckgo' | 'icon-horse';
 export type FaviconFallback = FaviconSource | 'none';
 export type FaviconSize = '16' | '32' | '64' | '128';
-export type TabElementOrder = 'favicon-first' | 'indicators-first';
+export type TabElementOrder = 'favicon-indicators-title' | 'favicon-first' | 'indicators-first';
 
 export type LoadingSpinnerStyle = 'pulse' | 'dots' | 'bars' | 'ring';
 export type AccentMode = 'custom' | 'theme' | 'none';
@@ -166,7 +166,7 @@ export interface AppearanceSettings {
 
   customFontFamily?: string;
   dragOpacity: number;
-  loadingSpinnerStyle: 'pulse' | 'dots' | 'bars' | 'ring';
+  loadingSpinnerStyle: LoadingSpinnerStyle;
   menuPosition: MenuPosition;
 
   vaultSyncEnabled: boolean;
@@ -208,10 +208,29 @@ export interface AppearanceSettings {
   sidebarButtonPaddingY?: number;
   sidebarButtonIconSize?: number;
 
-  // Panel Header Spacing
+  /**
+   * @deprecated Use panelHeaderPaddingTop and panelHeaderPaddingBottom instead.
+   * This field will be removed in a future version.
+   * When migrating, copy the value to both panelHeaderPaddingTop and panelHeaderPaddingBottom.
+   * Example: if panelHeaderPaddingY was 8, set panelHeaderPaddingTop: 8 and panelHeaderPaddingBottom: 8
+   */
   panelHeaderPaddingY?: number;
+  /**
+   * @deprecated Use panelHeaderPaddingLeft and panelHeaderPaddingRight instead.
+   * This field will be removed in a future version.
+   * When migrating, copy the value to both panelHeaderPaddingLeft and panelHeaderPaddingRight.
+   * Example: if panelHeaderPaddingX was 12, set panelHeaderPaddingLeft: 12 and panelHeaderPaddingRight: 12
+   */
   panelHeaderPaddingX?: number;
+  // Granular panel header padding
+  panelHeaderPaddingTop?: number;
+  panelHeaderPaddingBottom?: number;
+  panelHeaderPaddingLeft?: number;
+  panelHeaderPaddingRight?: number;
+  panelHeaderIconTitleGap?: number;
+  panelHeaderTitleActionGap?: number;
   panelHeaderActionGap?: number;
+  collapseExpandLayout?: 'vertical' | 'horizontal';
 
   // Panel List Spacing
   panelListGap?: number;
@@ -226,4 +245,6 @@ export interface AppearanceSettings {
   settingsSectionGap?: number;
 
   debugMode: boolean;
+  settingsBackgroundBlur: number;
+  settingsBackgroundOpacity: number;
 }
