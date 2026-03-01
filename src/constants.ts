@@ -75,6 +75,10 @@ export const Z_INDEX_SCALE = {
 
 export const DEFAULT_DRAG_OPACITY = 0.5;
 
+export const DEFAULT_RESTORE_PINNED_STATE = true;
+export const DEFAULT_RESTORE_MUTED_STATE = true;
+export const DEFAULT_RESTORE_FROZEN_STATE = true;
+
 export const GX_ACCENT_COLOR = '#7f22fe';
 export const GX_RED_COLOR = '#ff1b1b';
 export const GX_CYAN_COLOR = '#00d4ff';
