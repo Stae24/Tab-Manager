@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cloud, HardDrive } from 'lucide-react';
+import { Cloud, HardDrive, Link, Volume2, Snowflake } from 'lucide-react';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Toggle } from './ui/Toggle';
 import { cn } from '../utils/cn';
@@ -16,6 +16,17 @@ export const SETTING_SECTIONS: SettingSection[] = [
         controls: [
             { id: 'vault-sync-toggle', label: 'Sync Vault Across Devices', description: 'Vault syncs via Chrome/Opera account', keywords: ['sync', 'cloud', 'vault', 'chrome', 'storage'] },
             { id: 'vault-storage', label: 'Storage Used', keywords: ['storage', 'quota', 'used', 'limit'] },
+        ],
+    },
+    {
+        id: 'vault-restoration',
+        title: 'Restoration',
+        category: 'vault',
+        icon: Link,
+        controls: [
+            { id: 'restore-pinned', label: 'Restore Pinned State', description: 'Reopen pinned tabs as pinned', keywords: ['restore', 'pinned', 'pin'] },
+            { id: 'restore-muted', label: 'Restore Muted State', description: 'Reopen muted tabs as muted', keywords: ['restore', 'muted', 'mute'] },
+            { id: 'restore-frozen', label: 'Restore Frozen State', description: 'Reopen frozen tabs as frozen', keywords: ['restore', 'frozen', 'freeze', 'discard'] },
         ],
     },
 ];
@@ -126,6 +137,63 @@ export const VaultSettings: React.FC<VaultSettingsProps> = ({
                         </div>
                     </div>
                 )}
+            </div>
+        </CollapsibleSection>
+    );
+};
+
+interface VaultRestorationSettingsProps {
+    appearanceSettings: AppearanceSettings;
+    setAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
+    expandedSections: Set<string>;
+    toggleSection: (id: string) => void;
+    highlightedControl?: { sectionId: string; controlId: string } | null;
+}
+
+export const VaultRestorationSettings: React.FC<VaultRestorationSettingsProps> = ({
+    appearanceSettings,
+    setAppearanceSettings,
+    expandedSections,
+    toggleSection,
+    highlightedControl
+}) => {
+    const pinnedHighlighted = highlightedControl?.sectionId === 'vault-restoration' && highlightedControl?.controlId === 'restore-pinned';
+    const mutedHighlighted = highlightedControl?.sectionId === 'vault-restoration' && highlightedControl?.controlId === 'restore-muted';
+    const frozenHighlighted = highlightedControl?.sectionId === 'vault-restoration' && highlightedControl?.controlId === 'restore-frozen';
+
+    return (
+        <CollapsibleSection
+            id="vault-restoration"
+            title="Restoration"
+            icon={Link}
+            isExpanded={expandedSections.has('vault-restoration')}
+            onToggle={() => toggleSection('vault-restoration')}
+        >
+            <div className="space-y-4">
+                <div id="restore-pinned" className={cn(pinnedHighlighted && "animate-pulse rounded-lg ring-2 ring-gx-accent -m-1 p-1")}>
+                    <Toggle
+                        checked={appearanceSettings.restorePinnedState}
+                        onChange={(checked) => setAppearanceSettings({ restorePinnedState: checked })}
+                        label="Restore Pinned State"
+                        description="Reopen pinned tabs as pinned"
+                    />
+                </div>
+                <div id="restore-muted" className={cn(mutedHighlighted && "animate-pulse rounded-lg ring-2 ring-gx-accent -m-1 p-1")}>
+                    <Toggle
+                        checked={appearanceSettings.restoreMutedState}
+                        onChange={(checked) => setAppearanceSettings({ restoreMutedState: checked })}
+                        label="Restore Muted State"
+                        description="Reopen muted tabs as muted"
+                    />
+                </div>
+                <div id="restore-frozen" className={cn(frozenHighlighted && "animate-pulse rounded-lg ring-2 ring-gx-accent -m-1 p-1")}>
+                    <Toggle
+                        checked={appearanceSettings.restoreFrozenState}
+                        onChange={(checked) => setAppearanceSettings({ restoreFrozenState: checked })}
+                        label="Restore Frozen State"
+                        description="Reopen frozen tabs as frozen"
+                    />
+                </div>
             </div>
         </CollapsibleSection>
     );
