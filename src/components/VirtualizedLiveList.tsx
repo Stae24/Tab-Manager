@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, Loader2 } from 'lucide-react';
-import { SortableContext } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { Island } from './Island';
 import { TabCard } from './TabCard';
@@ -52,7 +52,7 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
 }) => {
     return (
         <>
-            <SortableContext items={(islands || []).map(i => i.id)} strategy={() => null}>
+            <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
                 <div
                     className="relative shrink-0"
                     style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%' }}

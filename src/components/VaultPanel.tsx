@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Plus, Save, LayoutGrid, X, CopyX } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
-import { SortableContext } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Island } from './Island';
 import { TabCard } from './TabCard';
 import { DroppableGap } from './DroppableGap';
@@ -145,7 +145,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
 
   const renderVaultList = () => {
     return (
-      <SortableContext items={(vault || []).map(i => i.id)} strategy={() => null}>
+      <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
         <div
           className="relative"
           style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%' }}
@@ -215,7 +215,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
       ref={setNodeRef}
       id="vault-dropzone"
       className={cn(
-        "flex flex-col h-full overflow-hidden bg-gx-gray/60 relative transition duration-300",
+        "flex flex-col h-full overflow-hidden bg-gx-gray/60 relative transition-all duration-300",
         isOver && isDraggingLiveItem && "bg-gx-red/5 ring-4 ring-inset ring-gx-red/10"
       )}
       style={{ width: `calc(${100 - dividerPosition}% - 0.125rem)` }}
