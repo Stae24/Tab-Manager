@@ -280,6 +280,7 @@ export const TabSettings: React.FC<TabSettingsProps> = ({
                     value={appearanceSettings.tabElementOrder}
                     onChange={(value) => setAppearanceSettings({ tabElementOrder: value as TabElementOrder })}
                     options={[
+                        { value: 'favicon-indicators-title', label: 'Favicon → Indicators → Title' },
                         { value: 'indicators-first', label: 'Indicators → Favicon → Title' },
                         { value: 'favicon-first', label: 'Favicon → Title → Indicators' },
                     ]}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2, Link, Volume2, VolumeX, Copy, CopyPlus, Speaker, ArrowDownToLine } from 'lucide-react';
+import { Snowflake, LogOut, Trash2, X, Save, ExternalLink, Loader2, Link, Volume2, VolumeX, Copy, CopyPlus, ArrowDownToLine } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn, getBorderRadiusClass } from '../utils/cn';
 import { tabService } from '../services/tabService';
 import { parseNumericId, isIsland, useStore } from '../store/useStore';
 import { Favicon } from './Favicon';
+import { TabIndicators } from './TabIndicators';
 import { useScrollContainer } from '../contexts/ScrollContainerContext';
 import { ContextMenu } from './ContextMenu';
 import { INTERSECTION_OBSERVER_MARGIN_PX, TAB_LOAD_DELAY_BASE_MS, Z_INDEX_SCALE } from '../constants';
@@ -236,18 +237,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
         )}
 
         {appearanceSettings.tabElementOrder === 'indicators-first' && (
-          <>
-            {tab.discarded && appearanceSettings.showFrozenIndicators && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
-            {appearanceSettings.showAudioIndicators !== 'off' && (
-              <>
-                {tab.muted && (appearanceSettings.showAudioIndicators === 'muted' || appearanceSettings.showAudioIndicators === 'both') ? (
-                  <VolumeX size={14} className="text-orange-400 relative z-10 mr-1" />
-                ) : tab.audible && (appearanceSettings.showAudioIndicators === 'playing' || appearanceSettings.showAudioIndicators === 'both') ? (
-                  <Speaker size={14} className="text-green-400 relative z-10 mr-1 animate-pulse" />
-                ) : null}
-              </>
-            )}
-          </>
+          <TabIndicators tab={tab} settings={appearanceSettings} />
         )}
 
         {appearanceSettings.showFavicons && (
@@ -259,20 +249,12 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
             )}
           </div>
         )}
+        {appearanceSettings.tabElementOrder === 'favicon-indicators-title' && (
+          <TabIndicators tab={tab} settings={appearanceSettings} />
+        )}
         <span className="flex-1 text-xs font-medium truncate pointer-events-none relative z-10">{tab.title}</span>
         {appearanceSettings.tabElementOrder === 'favicon-first' && (
-          <>
-            {tab.discarded && appearanceSettings.showFrozenIndicators && <Snowflake size={14} className="text-blue-400 relative z-10 mr-1" />}
-            {appearanceSettings.showAudioIndicators !== 'off' && (
-              <>
-                {tab.muted && (appearanceSettings.showAudioIndicators === 'muted' || appearanceSettings.showAudioIndicators === 'both') ? (
-                  <VolumeX size={14} className="text-orange-400 relative z-10 mr-1" />
-                ) : tab.audible && (appearanceSettings.showAudioIndicators === 'playing' || appearanceSettings.showAudioIndicators === 'both') ? (
-                  <Speaker size={14} className="text-green-400 relative z-10 mr-1 animate-pulse" />
-                ) : null}
-              </>
-            )}
-          </>
+          <TabIndicators tab={tab} settings={appearanceSettings} />
         )}
 
         {/* Action Buttons - visible on hover */}
