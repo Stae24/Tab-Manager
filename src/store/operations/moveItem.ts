@@ -1,5 +1,5 @@
 import { UniqueIdentifier } from '@dnd-kit/core';
-import { Island, Tab, LiveItem, VaultItem } from '../../types/index';
+import { Island, Tab, LiveItem, VaultItem, VaultTab, VaultIsland } from '../../types/index';
 import { findItemInList, cloneWithDeepGroups, isLiveId, isVaultId } from '../utils';
 
 export interface FoundItem {
@@ -27,7 +27,7 @@ export function isItemInList(
     if (!i) return false;
     if (String(i.id) === String(id)) return true;
     if ('tabs' in i && i.tabs) {
-      return i.tabs.some((t: Tab) => t && String(t.id) === String(id));
+      return i.tabs.some((t) => t && String(t.id) === String(id));
     }
     return false;
   });
@@ -135,14 +135,14 @@ export function calculateMoveTarget(
   return { targetContainerId, targetIndex };
 }
 
-export function getTargetList<T extends LiveItem | VaultItem>(
-  root: T[],
+export function getTargetList(
+  root: unknown[],
   containerId: UniqueIdentifier
-): (T | Tab)[] | null {
+): unknown[] | null {
   if (containerId === 'root') return root;
   const cIdStr = String(containerId);
-  const group = root.find((i) => i && String(i.id) === cIdStr);
-  if (group && 'tabs' in group && Array.isArray(group.tabs)) return group.tabs;
+  const group = root.find((i) => i && typeof i === 'object' && String((i as { id?: unknown }).id) === cIdStr);
+  if (group && typeof group === 'object' && 'tabs' in group && Array.isArray((group as { tabs?: unknown[] }).tabs)) return (group as { tabs: unknown[] }).tabs;
   return null;
 }
 
@@ -154,21 +154,21 @@ export function applyOptimisticMove(
   activeId: UniqueIdentifier,
   activeInLive: boolean
 ): MoveResult | null {
-  const newIslands = activeInLive ? cloneWithDeepGroups(islands) : [...islands];
+  const newIslands = activeInLive ? cloneWithDeepGroups(islands) : [...islands] as LiveItem[];
   const newVault = activeInLive ? [...vault] : cloneWithDeepGroups(vault);
-  const rootList = activeInLive ? newIslands : newVault;
+  const rootList = activeInLive ? (newIslands as unknown[]) : (newVault as unknown[]);
 
   const sourceArr = getTargetList(rootList, active.containerId);
   const targetArr = getTargetList(rootList, target.targetContainerId);
 
   if (!sourceArr || !targetArr) return null;
 
-  const sourceItem = sourceArr[active.index];
+  const sourceItem = sourceArr[active.index] as { id?: unknown } | undefined;
 
   let resolvedIndex = active.index;
   if (!sourceItem || String(sourceItem.id) !== String(activeId)) {
     const correctIndex = sourceArr.findIndex(
-      (item) => String((item as LiveItem | VaultItem).id) === String(activeId)
+      (item) => String((item as { id?: unknown }).id) === String(activeId)
     );
     if (correctIndex === -1) return null;
     resolvedIndex = correctIndex;
