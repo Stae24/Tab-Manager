@@ -39,12 +39,31 @@ export type LiveItem = Island | Tab;
 
 export type DashboardRow =
   | { type: 'gap'; id: string; index: number }
-  | { type: 'item'; id: UniversalId; item: Island | Tab };
+  | { type: 'item'; id: UniversalId; item: Island | Tab | VaultItem };
 
-export type VaultItem = (Island | Tab) & {
+export interface VaultTab {
+  id: UniversalId;
+  title: string;
+  url: string;
+  favicon: string;
   savedAt: number;
   originalId: UniversalId;
-};
+  wasPinned?: boolean;
+  wasMuted?: boolean;
+  wasFrozen?: boolean;
+}
+
+export interface VaultIsland {
+  id: UniversalId;
+  title: string;
+  color: string;
+  collapsed: boolean;
+  tabs: VaultTab[];
+  savedAt: number;
+  originalId: UniversalId;
+}
+
+export type VaultItem = VaultTab | VaultIsland;
 
 // Vault Storage Types
 export interface VaultStorageConfig {
@@ -247,4 +266,8 @@ export interface AppearanceSettings {
   debugMode: boolean;
   settingsBackgroundBlur: number;
   settingsBackgroundOpacity: number;
+
+  restorePinnedState: boolean;
+  restoreMutedState: boolean;
+  restoreFrozenState: boolean;
 }
