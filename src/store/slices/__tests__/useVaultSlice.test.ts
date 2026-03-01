@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Tab, Island, VaultItem, AppearanceSettings, VaultQuotaInfo, VaultStorageResult } from '../../../types/index';
+import type { Tab, Island, VaultItem, VaultTab, AppearanceSettings, VaultQuotaInfo, VaultStorageResult } from '../../../types/index';
 
 vi.mock('../../../services/vaultService', () => ({
   vaultService: {
@@ -92,12 +92,17 @@ const createMockIsland = (overrides: Partial<Island> = {}): Island => ({
   ...overrides,
 });
 
-const createMockVaultItem = (overrides: Partial<VaultItem> = {}): VaultItem => ({
-  ...createMockTab({ id: 'vault-tab-1' }),
+const createMockVaultTab = (overrides: Partial<VaultTab> = {}): VaultTab => ({
+  id: 'vault-tab-1',
+  title: 'Test Tab',
+  url: 'https://example.com',
+  favicon: 'https://example.com/favicon.ico',
   savedAt: Date.now(),
   originalId: 1,
   ...overrides,
 });
+
+const createMockVaultItem = (overrides: Partial<VaultItem> = {}): VaultItem => createMockVaultTab(overrides as Partial<VaultTab>);
 
 const createMockQuota = (overrides: Partial<VaultQuotaInfo> = {}): VaultQuotaInfo => ({
   used: 1000,
@@ -480,7 +485,11 @@ describe('useVaultSlice', () => {
 
     it('restores island (multiple tabs)', async () => {
       const vaultIsland: VaultItem = {
-        ...createMockIsland({ id: 'vault-group-1', tabs: [createMockTab({ url: 'https://example.com' })] }),
+        id: 'vault-group-1',
+        title: 'Test Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [createMockVaultTab({ url: 'https://example.com' })],
         savedAt: Date.now(),
         originalId: 1,
       };
@@ -533,12 +542,11 @@ describe('useVaultSlice', () => {
 
     it('preserves group color/title when restoring island', async () => {
       const vaultIsland: VaultItem = {
-        ...createMockIsland({ 
-          id: 'vault-group-1', 
-          title: 'My Group',
-          color: 'red',
-          tabs: [createMockTab({ url: 'https://example.com' })] 
-        }),
+        id: 'vault-group-1',
+        title: 'My Group',
+        color: 'red',
+        collapsed: false,
+        tabs: [createMockVaultTab({ url: 'https://example.com' })],
         savedAt: Date.now(),
         originalId: 1,
       };
@@ -588,9 +596,9 @@ describe('useVaultSlice', () => {
 
       await store.getState().createVaultGroup();
 
-      const vaultItem = store.getState().vault[0] as Island;
-      expect(vaultItem.title).toBe('');
-      expect(vaultItem.color).toBe('grey');
+      const vaultItem = store.getState().vault[0];
+      expect('title' in vaultItem ? vaultItem.title : '').toBe('');
+      expect('color' in vaultItem ? vaultItem.color : '').toBe('grey');
     });
 
     it('persists vault', async () => {
@@ -630,8 +638,16 @@ describe('useVaultSlice', () => {
 
   describe('toggleVaultGroupCollapse', () => {
     it('ignores non-vault IDs', async () => {
-      const island = createMockIsland({ id: 'live-group-1' });
-      store = createTestStore({ vault: [{ ...island, savedAt: Date.now(), originalId: 1 }] });
+      const vaultIsland: VaultItem = {
+        id: 'live-group-1',
+        title: 'Test Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [],
+        savedAt: Date.now(),
+        originalId: 1,
+      };
+      store = createTestStore({ vault: [vaultIsland] });
 
       await store.getState().toggleVaultGroupCollapse('live-group-1');
 
@@ -641,7 +657,11 @@ describe('useVaultSlice', () => {
 
     it('toggles collapsed state', async () => {
       const vaultIsland: VaultItem = {
-        ...createMockIsland({ id: 'vault-group-1', collapsed: false }),
+        id: 'vault-group-1',
+        title: 'Test Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [],
         savedAt: Date.now(),
         originalId: 1,
       };
@@ -657,7 +677,11 @@ describe('useVaultSlice', () => {
 
     it('persists when not updating', async () => {
       const vaultIsland: VaultItem = {
-        ...createMockIsland({ id: 'vault-group-1' }),
+        id: 'vault-group-1',
+        title: 'Test Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [],
         savedAt: Date.now(),
         originalId: 1,
       };
@@ -672,7 +696,11 @@ describe('useVaultSlice', () => {
 
     it('skips persist when updating', async () => {
       const vaultIsland: VaultItem = {
-        ...createMockIsland({ id: 'vault-group-1' }),
+        id: 'vault-group-1',
+        title: 'Test Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [],
         savedAt: Date.now(),
         originalId: 1,
       };
@@ -688,9 +716,9 @@ describe('useVaultSlice', () => {
 
   describe('sortVaultGroupsToTop', () => {
     it('categorizes items', async () => {
-      const pinnedTab: VaultItem = { ...createMockTab({ id: 'vault-tab-1', pinned: true }), savedAt: Date.now(), originalId: 1 };
-      const looseTab: VaultItem = { ...createMockTab({ id: 'vault-tab-2', pinned: false }), savedAt: Date.now(), originalId: 2 };
-      const group: VaultItem = { ...createMockIsland({ id: 'vault-group-3' }), savedAt: Date.now(), originalId: 3 };
+      const pinnedTab: VaultItem = { ...createMockVaultItem({ id: 'vault-tab-1', wasPinned: true }), savedAt: Date.now(), originalId: 1 };
+      const looseTab: VaultItem = { ...createMockVaultItem({ id: 'vault-tab-2' }), savedAt: Date.now(), originalId: 2 };
+      const group: VaultItem = { id: 'vault-group-3', title: 'Test Group', color: 'blue', collapsed: false, tabs: [], savedAt: Date.now(), originalId: 3 };
       store = createTestStore({ vault: [looseTab, group, pinnedTab] });
       vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota());
       vi.mocked(vaultService.saveVault).mockResolvedValue({ success: true });
@@ -702,12 +730,20 @@ describe('useVaultSlice', () => {
 
     it('sorts groups by count when enabled', async () => {
       const smallGroup: VaultItem = { 
-        ...createMockIsland({ id: 'vault-group-1', tabs: [createMockTab()] }), 
+        id: 'vault-group-1', 
+        title: 'Small Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [createMockVaultTab()], 
         savedAt: Date.now(), 
         originalId: 1 
       };
       const largeGroup: VaultItem = { 
-        ...createMockIsland({ id: 'vault-group-2', tabs: [createMockTab(), createMockTab()] }), 
+        id: 'vault-group-2',
+        title: 'Large Group',
+        color: 'blue',
+        collapsed: false,
+        tabs: [createMockVaultTab(), createMockVaultTab()], 
         savedAt: Date.now(), 
         originalId: 2 
       };
@@ -724,7 +760,7 @@ describe('useVaultSlice', () => {
     });
 
     it('skips if already sorted', async () => {
-      const tab: VaultItem = { ...createMockTab(), savedAt: Date.now(), originalId: 1 };
+      const tab: VaultItem = { ...createMockVaultItem(), savedAt: Date.now(), originalId: 1 };
       store = createTestStore({ vault: [tab] });
 
       await store.getState().sortVaultGroupsToTop();
@@ -733,8 +769,8 @@ describe('useVaultSlice', () => {
     });
 
     it('calls reorderVault when needs sorting', async () => {
-      const pinnedTab: VaultItem = { ...createMockTab({ id: 'vault-tab-1', pinned: true }), savedAt: Date.now(), originalId: 1 };
-      const looseTab: VaultItem = { ...createMockTab({ id: 'vault-tab-2', pinned: false }), savedAt: Date.now(), originalId: 2 };
+      const pinnedTab: VaultItem = { ...createMockVaultItem({ id: 'vault-tab-1', wasPinned: true }) };
+      const looseTab: VaultItem = { ...createMockVaultItem({ id: 'vault-tab-2', wasPinned: false }) };
       store = createTestStore({ vault: [looseTab, pinnedTab] });
       vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota());
       vi.mocked(vaultService.saveVault).mockResolvedValue({ success: true });
@@ -748,12 +784,20 @@ describe('useVaultSlice', () => {
   describe('deleteVaultDuplicates', () => {
     it('finds duplicates in groups', async () => {
       const group1: VaultItem = { 
-        ...createMockIsland({ id: 'vault-group-1', tabs: [createMockTab({ id: 't1', url: 'https://example.com' })] }), 
+        id: 'vault-group-1',
+        title: 'Group 1',
+        color: 'blue',
+        collapsed: false,
+        tabs: [createMockVaultTab({ id: 't1', url: 'https://example.com' })], 
         savedAt: Date.now(), 
         originalId: 1 
       };
       const group2: VaultItem = { 
-        ...createMockIsland({ id: 'vault-group-2', tabs: [createMockTab({ id: 't2', url: 'https://example.com' })] }), 
+        id: 'vault-group-2',
+        title: 'Group 2',
+        color: 'blue',
+        collapsed: false,
+        tabs: [createMockVaultTab({ id: 't2', url: 'https://example.com' })], 
         savedAt: Date.now(), 
         originalId: 2 
       };
