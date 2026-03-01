@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isAppearanceSettings, isVaultItems, defaultAppearanceSettings } from '../useStore';
-import { VaultItem, Tab, Island } from '../../types';
+import { VaultItem, VaultTab, Tab, Island } from '../../types';
 
 describe('Type Guards', () => {
   describe('isAppearanceSettings', () => {
@@ -47,13 +47,29 @@ describe('Type Guards', () => {
     };
 
     const validVaultTab: VaultItem = {
-      ...validTab,
+      id: 'vault-tab-1',
+      title: 'Test Tab',
+      url: 'https://test.com',
+      favicon: '',
       savedAt: Date.now(),
       originalId: 1
     };
 
+    const validVaultTab2: VaultTab = {
+      id: 'vault-tab-2',
+      title: 'Test Tab 2',
+      url: 'https://test2.com',
+      favicon: '',
+      savedAt: Date.now(),
+      originalId: 2
+    };
+
     const validVaultIsland: VaultItem = {
-      ...validIsland,
+      id: 'vault-group-1',
+      title: 'Test Group',
+      color: 'blue',
+      collapsed: false,
+      tabs: [validVaultTab2],
       savedAt: Date.now(),
       originalId: 1
     };
@@ -77,7 +93,7 @@ describe('Type Guards', () => {
     });
 
     it('should return false if any nested tab is invalid', () => {
-      const invalidIsland = { ...validVaultIsland, tabs: [{ ...validTab, url: 123 } as any] };
+      const invalidIsland = { ...validVaultIsland, tabs: [{ ...validVaultTab, url: 123 } as any] };
       expect(isVaultItems([invalidIsland])).toBe(false);
     });
   });
