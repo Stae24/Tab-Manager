@@ -6,6 +6,7 @@ import { SearchBar } from './SearchBar';
 import { SearchHelp } from './SearchBar/SearchHelp';
 import { SearchResultList } from './SearchResultList';
 import { VirtualizedLiveList } from './VirtualizedLiveList';
+import { useDynamicRowHeight } from '../hooks/useDynamicRowHeight';
 import { cn } from '../utils/cn';
 import { logger } from '../utils/logger';
 import { needsCompanionTabForSingleTabGroup, detectSidebarContext } from '../utils/browser';
@@ -233,10 +234,12 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     return rows;
   }, [islands, searchQuery]);
 
+  const measuredHeightsRef = useRef<Map<number, number>>(new Map());
+
   const virtualizer = useVirtualizer({
     count: rowItems.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => VIRTUAL_ROW_ESTIMATE_SIZE,
+    estimateSize: (index) => measuredHeightsRef.current.get(index) ?? VIRTUAL_ROW_ESTIMATE_SIZE,
     getItemKey: (index) => rowItems[index].id,
     overscan: VIRTUAL_ROW_OVERSCAN,
   });
@@ -244,7 +247,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const searchVirtualizer = useVirtualizer({
     count: searchQuery ? displayTabs.length : 0,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => VIRTUAL_ROW_ESTIMATE_SIZE,
+    estimateSize: (index) => measuredHeightsRef.current.get(index) ?? VIRTUAL_ROW_ESTIMATE_SIZE,
     getItemKey: (index) => displayTabs[index].id,
     overscan: VIRTUAL_ROW_OVERSCAN,
   });

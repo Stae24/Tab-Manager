@@ -129,10 +129,12 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
     return rows;
   }, [vault]);
 
+  const measuredHeightsRef = useRef<Map<number, number>>(new Map());
+
   const virtualizer = useVirtualizer({
     count: rowItems.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => VIRTUAL_ROW_ESTIMATE_SIZE,
+    estimateSize: (index) => measuredHeightsRef.current.get(index) ?? VIRTUAL_ROW_ESTIMATE_SIZE,
     getItemKey: (index) => rowItems[index].id,
     overscan: VIRTUAL_ROW_OVERSCAN,
   });
