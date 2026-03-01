@@ -20,7 +20,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     children
 }) => {
     return (
-        <div className="border border-gx-border rounded-lg overflow-hidden bg-gx-gray/30">
+        <div className="shrink-0 border border-gx-border rounded-lg overflow-hidden bg-gx-gray/30">
             <button
                 type="button"
                 onClick={onToggle}
