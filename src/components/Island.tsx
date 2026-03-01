@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronRight, Trash2, Save, LogOut, ExternalLink, Edit3, X, Snowflake, Copy, Check } from 'lucide-react';
-import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useSortable, SortableContext } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TabCard } from './TabCard';
 import { ContextMenu } from './ContextMenu';
@@ -358,7 +358,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
           style={{ borderColor: `${borderColor}33`, borderBottomColor: borderColor }}
         >
           <div className="space-y-1 relative">
-            <SortableContext items={(island.tabs || []).map(t => t.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={(island.tabs || []).map(t => t.id)} strategy={() => null}>
               {(island.tabs || []).map((tab) => (
                 <TabCard
                   key={tab.id}
