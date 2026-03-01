@@ -156,10 +156,7 @@ export function applyOptimisticMove(
   const [movedItem] = sourceArr.splice(resolvedIndex, 1);
   if (!movedItem) return null;
 
-  let safeTargetIndex = Math.max(0, Math.min(Number(target.targetIndex), targetArr.length));
-  if (sourceArr === targetArr && resolvedIndex < safeTargetIndex) {
-    safeTargetIndex -= 1;
-  }
+  const safeTargetIndex = Math.max(0, Math.min(Number(target.targetIndex), targetArr.length));
   targetArr.splice(safeTargetIndex, 0, movedItem);
 
   return {
