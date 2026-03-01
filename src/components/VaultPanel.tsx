@@ -13,12 +13,12 @@ import { cn } from '../utils/cn';
 import { logger } from '../utils/logger';
 import { detectSidebarContext } from '../utils/browser';
 import { useStore } from '../store/useStore';
-import { Island as IslandType, Tab as TabType, UniversalId, VaultQuotaInfo, DashboardRow, CompressionTier } from '../types';
+import { VaultItem, Island as IslandType, Tab as TabType, UniversalId, VaultQuotaInfo, DashboardRow, CompressionTier } from '../types';
 import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS, SIDEBAR_PANEL_PADDING_DEFAULT, MANAGER_PANEL_PADDING_DEFAULT, PANEL_HEADER_PADDING_TOP_DEFAULT, PANEL_HEADER_PADDING_BOTTOM_DEFAULT, PANEL_HEADER_PADDING_LEFT_DEFAULT, PANEL_HEADER_PADDING_RIGHT_DEFAULT, PANEL_HEADER_ICON_TITLE_GAP_DEFAULT, PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT, PANEL_HEADER_ACTION_GAP_DEFAULT, PANEL_LIST_GAP_DEFAULT, PANEL_LIST_PADDING_TOP_DEFAULT, PANEL_LIST_PADDING_BOTTOM_DEFAULT } from '../constants';
 
 interface VaultPanelProps {
   dividerPosition: number;
-  vault: (IslandType | TabType)[];
+  vault: VaultItem[];
   removeFromVault: (id: UniversalId) => void;
   isDraggingLiveItem: boolean;
   isDraggingGroup?: boolean;
@@ -119,7 +119,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
 
   const rowItems = useMemo(() => {
     const rows: DashboardRow[] = [];
-    (vault || []).forEach((item: IslandType | TabType, index: number) => {
+    (vault || []).forEach((item: VaultItem, index: number) => {
       const isCurrentIsland = 'tabs' in item;
       const prevItem = vault?.[index - 1];
       const isPrevIsland = prevItem && 'tabs' in prevItem;
@@ -172,7 +172,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
                 ) : (
                   'tabs' in row.item ? (
                     <Island
-                      island={row.item as IslandType}
+                      island={row.item as unknown as IslandType}
                       isVault={true}
                       onRestore={() => restoreFromVault(row.item.id)}
                       onDelete={() => removeFromVault(row.item.id)}
@@ -183,7 +183,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
                     />
                   ) : (
                     <TabCard
-                      tab={row.item as TabType}
+                      tab={row.item as unknown as TabType}
                       isVault={true}
                       onRestore={() => restoreFromVault(row.item.id)}
                       onClose={() => removeFromVault(row.item.id)}
@@ -218,7 +218,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
         "flex flex-col h-full overflow-hidden bg-gx-gray/60 relative transition-all duration-300",
         isOver && isDraggingLiveItem && "bg-gx-red/5 ring-4 ring-inset ring-gx-red/10"
       )}
-      style={{ width: `${100 - dividerPosition}%` }}
+      style={{ width: `calc(${100 - dividerPosition}% - 0.125rem)` }}
     >
       <style>{`
         .vault-header-row {
