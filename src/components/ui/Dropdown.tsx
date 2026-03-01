@@ -108,6 +108,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
             case ' ':
                 if (isOpen && focusedIndex >= 0 && opts[focusedIndex]) {
                     e.preventDefault();
+                    e.stopPropagation();
                     onChange(opts[focusedIndex].value);
                     setIsOpen(false);
                     buttonRef.current?.focus();
@@ -171,11 +172,13 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
                     aria-haspopup="listbox"
                     aria-expanded={isOpen}
                     aria-labelledby={labelId}
-                    onClick={() => {
+                    onClick={(e) => {
+                        e.stopPropagation();
                         if (!disabled) {
                             setIsOpen(!isOpen);
                         }
                     }}
+                    onMouseDown={(e) => e.stopPropagation()}
                     onKeyDown={handleKeyDown}
                     className={cn(
                         "w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gx-gray border border-gx-border rounded-lg hover:border-gx-accent/30 transition-all",
@@ -193,6 +196,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
                     createPortal(
                         <div
                             ref={(el) => { dropdownRef.current = el; menuRef.current = el; }}
+                            data-dropdown-portal
                             role="listbox"
                             aria-activedescendant={focusedIndex >= 0 ? `${id}-option-${options[focusedIndex]?.value}` : undefined}
                             className="fixed z-[9999] bg-gx-gray border border-gx-accent/20 rounded-lg shadow-xl"
@@ -212,10 +216,12 @@ export const Dropdown: React.FC<DropdownProps> = ({ value, onChange, options, la
                                     id={`${id}-option-${option.value}`}
                                     key={option.value}
                                     aria-selected={index === focusedIndex}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         onChange(option.value);
                                         setIsOpen(false);
                                     }}
+                                    onMouseDown={(e) => e.stopPropagation()}
                                     onMouseEnter={() => setFocusedIndex(index)}
                                     className={cn(
                                         "w-full flex items-center gap-2 px-3 py-2.5 text-left transition-all",
