@@ -8,7 +8,7 @@ import { cn, getIslandBorderColor, getBorderRadiusClass, getBottomBorderRadiusCl
 import { Island as IslandType, Tab, UniversalId } from '../types/index';
 import { ungroupTab, discardTabs, duplicateIsland } from '../utils/chromeApi';
 import { useStore, parseNumericId } from '../store/useStore';
-import { VIRTUAL_ROW_ESTIMATE_SIZE } from '../constants';
+import { VIRTUAL_ROW_ESTIMATE_SIZE, Z_INDEX_SCALE } from '../constants';
 
 interface IslandProps {
   island: IslandType;
@@ -81,7 +81,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging && !isOverlay ? appearanceSettings.dragOpacity : 1,
-    zIndex: isOverlay ? 9999 : undefined,
+    zIndex: isOverlay ? Z_INDEX_SCALE.dragOverlay : undefined,
   };
 
   const handleRename = () => {
@@ -141,14 +141,14 @@ export const Island: React.FC<IslandProps> = React.memo(({
 
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "relative group transition-all duration-300",
-        isOverlay && "z-[9999] scale-105"
-      )}
-    >
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={cn(
+          "relative group transition-all duration-300",
+          isOverlay && "z-[9999] scale-105"
+        )}
+      >
       <div
         {...attributes}
         {...listeners}
