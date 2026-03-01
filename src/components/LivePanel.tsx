@@ -18,8 +18,12 @@ import {
   SEARCH_DEBOUNCE_MS,
   SIDEBAR_PANEL_PADDING_DEFAULT,
   MANAGER_PANEL_PADDING_DEFAULT,
-  PANEL_HEADER_PADDING_Y_DEFAULT,
-  PANEL_HEADER_PADDING_X_DEFAULT,
+  PANEL_HEADER_PADDING_TOP_DEFAULT,
+  PANEL_HEADER_PADDING_BOTTOM_DEFAULT,
+  PANEL_HEADER_PADDING_LEFT_DEFAULT,
+  PANEL_HEADER_PADDING_RIGHT_DEFAULT,
+  PANEL_HEADER_ICON_TITLE_GAP_DEFAULT,
+  PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT,
   PANEL_HEADER_ACTION_GAP_DEFAULT,
   PANEL_LIST_GAP_DEFAULT,
   PANEL_LIST_PADDING_TOP_DEFAULT,
@@ -108,12 +112,17 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
   const showPanelName = useStore((s) => s.appearanceSettings.showPanelName);
   const showPanelIcon = useStore((s) => s.appearanceSettings.showPanelIcon);
-  const panelHeaderPaddingY = useStore((s) => s.appearanceSettings.panelHeaderPaddingY);
-  const panelHeaderPaddingX = useStore((s) => s.appearanceSettings.panelHeaderPaddingX);
+  const panelHeaderPaddingTop = useStore((s) => s.appearanceSettings.panelHeaderPaddingTop);
+  const panelHeaderPaddingBottom = useStore((s) => s.appearanceSettings.panelHeaderPaddingBottom);
+  const panelHeaderPaddingLeft = useStore((s) => s.appearanceSettings.panelHeaderPaddingLeft);
+  const panelHeaderPaddingRight = useStore((s) => s.appearanceSettings.panelHeaderPaddingRight);
+  const panelHeaderIconTitleGap = useStore((s) => s.appearanceSettings.panelHeaderIconTitleGap);
+  const panelHeaderTitleActionGap = useStore((s) => s.appearanceSettings.panelHeaderTitleActionGap);
   const panelHeaderActionGap = useStore((s) => s.appearanceSettings.panelHeaderActionGap);
   const panelListGap = useStore((s) => s.appearanceSettings.panelListGap);
   const panelListPaddingTop = useStore((s) => s.appearanceSettings.panelListPaddingTop);
   const panelListPaddingBottom = useStore((s) => s.appearanceSettings.panelListPaddingBottom);
+  const collapseExpandLayout = useStore((s) => s.appearanceSettings.collapseExpandLayout);
 
   const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
 
@@ -333,16 +342,17 @@ export const LivePanel: React.FC<LivePanelProps> = ({
         `}</style>
         <div
           className="live-header-row flex items-center"
-          style={{ 
-            paddingTop: panelHeaderPaddingY ?? PANEL_HEADER_PADDING_Y_DEFAULT, 
-            paddingBottom: panelHeaderPaddingY ?? PANEL_HEADER_PADDING_Y_DEFAULT,
-            paddingRight: panelHeaderPaddingX ?? PANEL_HEADER_PADDING_X_DEFAULT,
-            paddingLeft: (showPanelIcon || showPanelName) ? (panelHeaderPaddingX ?? PANEL_HEADER_PADDING_X_DEFAULT) : 0
+          style={{
+            paddingTop: panelHeaderPaddingTop ?? PANEL_HEADER_PADDING_TOP_DEFAULT,
+            paddingBottom: panelHeaderPaddingBottom ?? PANEL_HEADER_PADDING_BOTTOM_DEFAULT,
+            paddingRight: panelHeaderPaddingRight ?? PANEL_HEADER_PADDING_RIGHT_DEFAULT,
+            paddingLeft: (showPanelIcon || showPanelName) ? (panelHeaderPaddingLeft ?? PANEL_HEADER_PADDING_LEFT_DEFAULT) : 0
           }}
         >
           {(showPanelIcon || showPanelName) && (
             <div
               className="live-panel-title flex items-center min-w-0 overflow-hidden transition-all duration-200"
+              style={{ gap: panelHeaderIconTitleGap ?? PANEL_HEADER_ICON_TITLE_GAP_DEFAULT }}
             >
               {showPanelIcon && (
                 <FolderOpen className="w-4 h-4 text-gx-accent drop-shadow-[0_0_4px_rgba(127,34,254,0.6)] flex-shrink-0" />
@@ -352,9 +362,9 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               )}
             </div>
           )}
-          <div 
-            className="live-panel-actions flex items-center justify-end flex-1" 
-            style={{ gap: panelHeaderActionGap ?? PANEL_HEADER_ACTION_GAP_DEFAULT, marginLeft: (showPanelIcon || showPanelName) ? (panelHeaderActionGap ?? PANEL_HEADER_ACTION_GAP_DEFAULT) : 0 }}
+          <div
+            className="live-panel-actions flex items-center justify-end flex-1"
+            style={{ gap: panelHeaderActionGap ?? PANEL_HEADER_ACTION_GAP_DEFAULT, marginLeft: (showPanelIcon || showPanelName) ? (panelHeaderTitleActionGap ?? PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT) : 0 }}
           >
             <SearchBar
               ref={searchInputRef}
@@ -370,7 +380,10 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             />
 
             {!searchQuery && (
-              <div className="flex items-center bg-gx-gray/80 rounded-lg p-0.5 border border-gx-border shadow-inner">
+              <div className={cn(
+                "bg-gx-gray/80 rounded-lg p-0.5 border border-gx-border shadow-inner",
+                collapseExpandLayout === 'vertical' ? "flex flex-col" : "flex items-center"
+              )}>
                 <button
                   onClick={() => handleToggleAll(true)}
                   title="Collapse All"
@@ -378,7 +391,8 @@ export const LivePanel: React.FC<LivePanelProps> = ({
                 >
                   <ChevronUp size={14} className="group-hover:scale-110 transition-transform" />
                 </button>
-                <div className="w-[1px] h-3 bg-gx-border mx-0.5" />
+                {collapseExpandLayout === 'horizontal' && <div className="w-[1px] h-3 bg-gx-border mx-0.5" />}
+                {collapseExpandLayout === 'vertical' && <div className="h-[1px] w-3 bg-gx-border my-0.5" />}
                 <button
                   onClick={() => handleToggleAll(false)}
                   title="Expand All"
