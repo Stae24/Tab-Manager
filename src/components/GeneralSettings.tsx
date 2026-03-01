@@ -83,6 +83,15 @@ export const SETTING_SECTIONS: SettingSection[] = [
             { id: 'search-debounce', label: 'Search Debounce', keywords: ['search', 'debounce', 'delay'] },
         ],
     },
+    {
+        id: 'background-blur',
+        title: 'Background Blur',
+        category: 'general',
+        icon: Sparkles,
+        controls: [
+            { id: 'settings-blur', label: 'Settings Background Blur', keywords: ['blur', 'background', 'settings', 'overlay'] },
+        ],
+    },
 ];
 
 interface GeneralSettingsProps {
@@ -273,6 +282,33 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                     step={SEARCH_DEBOUNCE_STEP}
                     label="Search Debounce"
                     displayValue={`${appearanceSettings.searchDebounce ?? SEARCH_DEBOUNCE_MS}ms`}
+                />
+            </CollapsibleSection>
+
+            <CollapsibleSection
+                id="background-blur"
+                title="Background Blur"
+                icon={Sparkles}
+                isExpanded={expandedSections.has('background-blur')}
+                onToggle={() => toggleSection('background-blur')}
+            >
+                <Slider
+                    value={appearanceSettings.settingsBackgroundBlur ?? 0}
+                    onChange={(value) => setAppearanceSettings({ settingsBackgroundBlur: value })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    label="Settings Background Blur"
+                    displayValue={appearanceSettings.settingsBackgroundBlur === 0 ? 'None' : appearanceSettings.settingsBackgroundBlur === 100 ? 'Maximum' : `${appearanceSettings.settingsBackgroundBlur}px`}
+                />
+                <Slider
+                    value={appearanceSettings.settingsBackgroundOpacity ?? 0}
+                    onChange={(value) => setAppearanceSettings({ settingsBackgroundOpacity: value })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    label="Settings Overlay Opacity"
+                    displayValue={appearanceSettings.settingsBackgroundOpacity === 0 ? 'None' : `${appearanceSettings.settingsBackgroundOpacity}%`}
                 />
             </CollapsibleSection>
         </>
