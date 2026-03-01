@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import LZString from 'lz-string';
-import type { Tab } from '../../types/index';
+import type { Tab, VaultTab } from '../../types/index';
 
 const syncStore: Record<string, any> = {};
 const localStore: Record<string, any> = {};
@@ -173,7 +173,7 @@ describe('vaultService - Advanced Logic', () => {
 
             const loaded = await vaultService.loadVault({ syncEnabled: true });
             expect(loaded.vault).toHaveLength(3);
-            expect((loaded.vault[0] as Tab).url).toBe('https://a.com');
+            expect((loaded.vault[0] as VaultTab).url).toBe('https://a.com');
         });
     });
 

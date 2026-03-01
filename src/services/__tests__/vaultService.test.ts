@@ -107,11 +107,6 @@ const createMockVaultItem = (overrides: Partial<any> = {}): any => ({
     title: 'Test Title',
     url: 'https://example.com',
     favicon: 'https://example.com/favicon.ico',
-    active: false,
-    discarded: false,
-    windowId: 1,
-    index: 0,
-    groupId: -1,
     savedAt: Date.now(),
     originalId: 'original-id',
     ...overrides
