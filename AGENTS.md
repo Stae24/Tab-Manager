@@ -16,9 +16,8 @@ npm run test:fail-only
 ```
 It will output nothing if there are no failing tests.
 Never run the full test command unless you have to.
-If tests fail, fix the code and re-run until passing.
+If tests related to your changes fail, fix the code and re-run until passing.
 Then run `npm run build` to ensure the code compiles.
-Commit all of the changes when you are done.
 
 ## UI
 
