@@ -9,6 +9,8 @@ import { cn } from '../utils/cn';
 import { VIRTUAL_ROW_GAP_PX } from '../constants';
 import { Island as IslandType, Tab as TabType, LiveItem, UniversalId, DashboardRow } from '../types';
 
+const isDebugMode = process.env.NODE_ENV === 'development';
+
 interface VirtualizedLiveListProps {
     islands: (IslandType | TabType)[];
     rowItems: DashboardRow[];
@@ -53,23 +55,31 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
     isBottomOver,
 }) => {
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const bottomElementRef = useRef<HTMLElement | null>(null);
     const [isShortContent, setIsShortContent] = useState(false);
     const [dropzoneRect, setDropzoneRect] = useState<DOMRect | null>(null);
 
-    const bottomRefWithDebug = useCallback((node: HTMLElement | null) => {
+    const setBottomRefWithTracking = useCallback((node: HTMLElement | null) => {
+        bottomElementRef.current = node;
         setBottomRef(node);
-        if (node) {
-            const updateRect = () => setDropzoneRect(node.getBoundingClientRect());
-            updateRect();
-            const observer = new ResizeObserver(updateRect);
-            observer.observe(node);
-            window.addEventListener('scroll', updateRect, true);
-            return () => {
-                observer.disconnect();
-                window.removeEventListener('scroll', updateRect, true);
-            };
-        }
     }, [setBottomRef]);
+
+    useEffect(() => {
+        const node = bottomElementRef.current;
+        if (!node) return;
+
+        const updateRect = () => setDropzoneRect(node.getBoundingClientRect());
+        updateRect();
+
+        const observer = new ResizeObserver(updateRect);
+        observer.observe(node);
+        window.addEventListener('scroll', updateRect, true);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('scroll', updateRect, true);
+        };
+    }, []);
 
     useEffect(() => {
         const checkContentHeight = () => {
@@ -167,7 +177,7 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
             >
                 {/* Actual dnd-kit dropzone - inner element */}
                 <div
-                    ref={bottomRefWithDebug}
+                    ref={setBottomRefWithTracking}
                     className={cn(
                         "w-full h-full border-2 border-dashed transition-colors",
                         isBottomOver
@@ -178,7 +188,7 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
             </div>
 
             {/* Debug overlay showing actual dnd-kit detection area */}
-            {dropzoneRect && (
+            {isDebugMode && dropzoneRect && (
                 <div
                     className={cn(
                         "fixed border-2 pointer-events-none z-[9999] transition-colors",
