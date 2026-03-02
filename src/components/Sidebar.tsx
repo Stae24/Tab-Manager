@@ -44,17 +44,14 @@ export const Sidebar: React.FC = () => {
       if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
         setShowExportDropdown(false);
       }
-      if (showAppearancePanel && appearancePanelRef.current && !appearancePanelRef.current.contains(event.target as Node)) {
-        setShowAppearancePanel(false);
-      }
     };
-    if (showExportDropdown || showAppearancePanel) {
+    if (showExportDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showExportDropdown, showAppearancePanel]);
+  }, [showExportDropdown]);
 
   const handleExport = (format: 'json' | 'csv' | 'md') => {
     const data = { islands, vault };
