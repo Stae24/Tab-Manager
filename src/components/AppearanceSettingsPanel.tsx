@@ -167,6 +167,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
     e.preventDefault();
     setIsResizing(true);
     isResizingRef.current = true;
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!isResizingRef.current) return;
@@ -185,6 +187,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
     const handleMouseUp = () => {
       setIsResizing(false);
       isResizingRef.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
       setSettingsPanelWidth(panelWidthRef.current);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
@@ -206,10 +210,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
   const handleClose = () => {
     setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, PANEL_CLOSE_DELAY_MS);
+    onClose();
+    setIsClosing(false);
   };
 
   const filterSettings = (category: string) => {
@@ -296,7 +298,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         style={backdropStyle}
-        onClick={(e) => {
+        onMouseDown={(e) => {
           if (panelRef.current?.contains(e.target as Node)) {
             return;
           }

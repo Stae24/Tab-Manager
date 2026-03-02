@@ -156,8 +156,14 @@ export const Dashboard: React.FC = () => {
        const percentage = ((e.clientX - rect.left) / rect.width) * 100;
        setDividerPosition(Math.max(DIVIDER_POSITION_MIN, Math.min(DIVIDER_POSITION_MAX, percentage)));
      };
-     const handleMouseUp = () => setIsResizing(false);
+     const handleMouseUp = () => {
+       setIsResizing(false);
+       document.body.style.cursor = '';
+       document.body.style.userSelect = '';
+     };
      if (isResizing) {
+       document.body.style.cursor = 'ew-resize';
+       document.body.style.userSelect = 'none';
        window.addEventListener('mousemove', handleMouseMove);
        window.addEventListener('mouseup', handleMouseUp);
      }
