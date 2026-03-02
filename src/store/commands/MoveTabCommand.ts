@@ -21,10 +21,10 @@ export class MoveTabCommand implements Command {
   async execute() {
     await tabService.moveTab(this.params.tabId, this.params.toIndex, this.params.toWindowId);
     if (this.params.toGroupId !== -1) {
-      await chrome.tabs.group({ tabIds: this.params.tabId, groupId: this.params.toGroupId });
+      await tabService.groupTab(this.params.tabId, this.params.toGroupId);
     } else {
       try {
-        await chrome.tabs.ungroup(this.params.tabId);
+        await tabService.ungroupTab(this.params.tabId);
       } catch (e) {
         logger.warn('MoveTabCommand', 'Failed to ungroup tab:', e);
       }
@@ -34,10 +34,10 @@ export class MoveTabCommand implements Command {
   async undo() {
     await tabService.moveTab(this.params.tabId, this.params.fromIndex, this.params.fromWindowId);
     if (this.params.fromGroupId !== -1) {
-      await chrome.tabs.group({ tabIds: this.params.tabId, groupId: this.params.fromGroupId });
+      await tabService.groupTab(this.params.tabId, this.params.fromGroupId);
     } else {
       try {
-        await chrome.tabs.ungroup(this.params.tabId);
+        await tabService.ungroupTab(this.params.tabId);
       } catch (e) {
         logger.warn('MoveTabCommand', 'Failed to ungroup tab in undo:', e);
       }

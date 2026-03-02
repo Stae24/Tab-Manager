@@ -114,6 +114,36 @@ export const tabService = {
     }
   },
 
+  groupTab: async (tabId: number, groupId: number) => {
+    try {
+      return await withRetry(
+        () => chrome.tabs.group({ tabIds: tabId, groupId }),
+        'groupTab'
+      );
+    } catch (error) {
+      logger.error('TabService', `groupTab: Failed to group tab ${tabId} to group ${groupId}:`, error);
+      throw error;
+    }
+  },
+
+  getTab: async (tabId: number) => {
+    try {
+      return await chrome.tabs.get(tabId);
+    } catch (error) {
+      logger.error('TabService', `getTab: Failed to get tab ${tabId}:`, error);
+      throw error;
+    }
+  },
+
+  activateTab: async (tabId: number) => {
+    try {
+      return await chrome.tabs.update(tabId, { active: true });
+    } catch (error) {
+      logger.error('TabService', `activateTab: Failed to activate tab ${tabId}:`, error);
+      throw error;
+    }
+  },
+
   createIsland: async (tabIds: number[], title?: string, color?: chrome.tabGroups.Color, windowId?: number): Promise<number | null> => {
     try {
       const tabs = await Promise.all(

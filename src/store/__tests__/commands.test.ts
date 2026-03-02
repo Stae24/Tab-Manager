@@ -9,6 +9,8 @@ vi.mock('../../services/tabService', () => ({
     moveTab: vi.fn(),
     moveIsland: vi.fn(),
     getLiveTabsAndGroups: vi.fn().mockResolvedValue([]),
+    groupTab: vi.fn(),
+    ungroupTab: vi.fn(),
   }
 }));
 
@@ -66,11 +68,11 @@ describe('Command Pattern Tests', () => {
 
       await command.execute();
       expect(tabService.moveTab).toHaveBeenCalledWith(1, 5, 1);
-      expect(mockChrome.tabs.group).toHaveBeenCalledWith({ tabIds: 1, groupId: 10 });
+      expect(tabService.groupTab).toHaveBeenCalledWith(1, 10);
 
       await command.undo();
       expect(tabService.moveTab).toHaveBeenCalledWith(1, 0, 1);
-      expect(mockChrome.tabs.ungroup).toHaveBeenCalledWith(1);
+      expect(tabService.ungroupTab).toHaveBeenCalledWith(1);
     });
 
     it('handles ungrouping correctly during execute and undo', async () => {
@@ -88,11 +90,11 @@ describe('Command Pattern Tests', () => {
   
         await command.execute();
         expect(tabService.moveTab).toHaveBeenCalledWith(1, 5, 1);
-        expect(mockChrome.tabs.ungroup).toHaveBeenCalledWith(1);
+        expect(tabService.ungroupTab).toHaveBeenCalledWith(1);
   
         await command.undo();
         expect(tabService.moveTab).toHaveBeenCalledWith(1, 0, 1);
-        expect(mockChrome.tabs.group).toHaveBeenCalledWith({ tabIds: 1, groupId: 10 });
+        expect(tabService.groupTab).toHaveBeenCalledWith(1, 10);
       });
 
     it('handles moving between two different groups', async () => {
@@ -110,11 +112,11 @@ describe('Command Pattern Tests', () => {
 
       await command.execute();
       expect(tabService.moveTab).toHaveBeenCalledWith(1, 5, 1);
-      expect(mockChrome.tabs.group).toHaveBeenCalledWith({ tabIds: 1, groupId: 20 });
+      expect(tabService.groupTab).toHaveBeenCalledWith(1, 20);
 
       await command.undo();
       expect(tabService.moveTab).toHaveBeenCalledWith(1, 0, 1);
-      expect(mockChrome.tabs.group).toHaveBeenCalledWith({ tabIds: 1, groupId: 10 });
+      expect(tabService.groupTab).toHaveBeenCalledWith(1, 10);
     });
   });
 
