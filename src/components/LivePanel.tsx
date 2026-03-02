@@ -83,7 +83,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
     id: 'create-island-dropzone',
   });
 
-  const { setNodeRef: setBottomRef } = useDroppable({
+  const { setNodeRef: setBottomRef, isOver: isBottomOver } = useDroppable({
     id: 'live-bottom',
   });
 
@@ -539,6 +539,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             setCreateRef={setCreateRef}
             setBottomRef={setBottomRef}
             isCreateOver={isCreateOver}
+            isBottomOver={isBottomOver}
           />
         )}
       </div>

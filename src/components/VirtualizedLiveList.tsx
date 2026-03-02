@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Virtualizer } from '@tanstack/react-virtual';
@@ -28,6 +28,7 @@ interface VirtualizedLiveListProps {
     setCreateRef: (element: HTMLElement | null) => void;
     setBottomRef: (element: HTMLElement | null) => void;
     isCreateOver: boolean;
+    isBottomOver?: boolean;
 }
 
 export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
@@ -49,9 +50,55 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
     setCreateRef,
     setBottomRef,
     isCreateOver,
+    isBottomOver,
 }) => {
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const [isShortContent, setIsShortContent] = useState(false);
+    const [dropzoneRect, setDropzoneRect] = useState<DOMRect | null>(null);
+
+    const bottomRefWithDebug = useCallback((node: HTMLElement | null) => {
+        setBottomRef(node);
+        if (node) {
+            const updateRect = () => setDropzoneRect(node.getBoundingClientRect());
+            updateRect();
+            const observer = new ResizeObserver(updateRect);
+            observer.observe(node);
+            window.addEventListener('scroll', updateRect, true);
+            return () => {
+                observer.disconnect();
+                window.removeEventListener('scroll', updateRect, true);
+            };
+        }
+    }, [setBottomRef]);
+
+    useEffect(() => {
+        const checkContentHeight = () => {
+            const wrapper = wrapperRef.current;
+            if (!wrapper) return;
+
+            const parent = wrapper.parentElement;
+            if (!parent) return;
+
+            const containerHeight = parent.clientHeight;
+            const contentHeight = virtualizer.getTotalSize();
+            const dropzoneHeight = 120;
+
+            setIsShortContent(contentHeight + dropzoneHeight < containerHeight);
+        };
+
+        checkContentHeight();
+
+        const resizeObserver = new ResizeObserver(checkContentHeight);
+        const wrapper = wrapperRef.current;
+        if (wrapper?.parentElement) {
+            resizeObserver.observe(wrapper.parentElement);
+        }
+
+        return () => resizeObserver.disconnect();
+    }, [virtualizer, rowItems.length]);
+
     return (
-        <>
+        <div ref={wrapperRef} className="flex flex-col min-h-full">
             <SortableContext items={(islands || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
                 <div
                     className="relative shrink-0"
@@ -108,16 +155,59 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
                 </div>
             </SortableContext>
 
+            {/* Visual spacer - outer wrapper */}
             <div
-                ref={setBottomRef}
-                className="h-24 w-full"
-            />
+                className={cn(
+                    "w-full border-2 border-dashed flex items-center justify-center transition-colors",
+                    isBottomOver
+                        ? "border-yellow-500 bg-yellow-500/30"
+                        : "border-red-500/50 bg-red-500/10",
+                    isShortContent ? "flex-1 min-h-24" : "h-24"
+                )}
+            >
+                {/* Actual dnd-kit dropzone - inner element */}
+                <div
+                    ref={bottomRefWithDebug}
+                    className={cn(
+                        "w-full h-full border-2 border-dashed transition-colors",
+                        isBottomOver
+                            ? "border-yellow-400 bg-yellow-400/20"
+                            : "border-blue-500/50 bg-blue-500/10"
+                    )}
+                />
+            </div>
+
+            {/* Debug overlay showing actual dnd-kit detection area */}
+            {dropzoneRect && (
+                <div
+                    className={cn(
+                        "fixed border-2 pointer-events-none z-[9999] transition-colors",
+                        isBottomOver
+                            ? "border-yellow-500 bg-yellow-500/30"
+                            : "border-green-500 bg-green-500/20"
+                    )}
+                    style={{
+                        top: dropzoneRect.top,
+                        left: dropzoneRect.left,
+                        width: dropzoneRect.width,
+                        height: dropzoneRect.height,
+                    }}
+                >
+                    <span className={cn(
+                        "absolute top-0 left-0 text-black text-[10px] px-1 font-bold transition-colors",
+                        isBottomOver ? "bg-yellow-500" : "bg-green-500"
+                    )}>
+                        {isBottomOver ? "HOVERED!" : "dnd-kit area"}
+                    </span>
+                </div>
+            )}
 
             <div
                 ref={setCreateRef}
                 id="new-island-dropzone"
                 className={cn(
                     "p-10 border-2 border-dashed border-gx-gray/50 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group flex-shrink-0 cursor-pointer",
+                    isShortContent && "mt-auto",
                     isCreatingIsland && "border-gx-cyan bg-gx-cyan/5 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse-glow",
                     !isCreatingIsland && isCreateOver && !isDraggingGroup && !isDraggingVaultItem && "border-gx-accent bg-gx-accent/10",
                     !isCreatingIsland && !isCreateOver && !(isDraggingGroup || isDraggingVaultItem) && "hover:border-gx-accent/50 hover:bg-gx-accent/5",
@@ -145,6 +235,6 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
                     {isCreatingIsland ? "Creating Island..." : "Tactical Island creation"}
                 </span>
             </div>
-        </>
+        </div>
     );
 };

@@ -215,7 +215,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
       ref={setNodeRef}
       id="vault-dropzone"
       className={cn(
-        "flex flex-col h-full overflow-hidden bg-gx-gray/60 relative transition-all duration-300",
+        "flex flex-col h-full overflow-hidden bg-gx-gray/60 relative transition-[background-color,ring-color] duration-300",
         isOver && isDraggingLiveItem && "bg-gx-red/5 ring-4 ring-inset ring-gx-red/10"
       )}
       style={{ width: `calc(${100 - dividerPosition}% - 0.125rem)` }}
