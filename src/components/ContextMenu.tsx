@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ContextMenuProps {
@@ -15,6 +15,25 @@ interface ContextMenuProps {
  */
 export const ContextMenu: React.FC<ContextMenuProps> = ({ show, x, y, onClose, children }) => {
     const menuRef = useRef<HTMLDivElement>(null);
+    const [position, setPosition] = useState<{ left: number; top?: number; bottom?: number }>({ left: x, top: y });
+
+    useLayoutEffect(() => {
+        if (!show || !menuRef.current) return;
+
+        const menu = menuRef.current;
+        const { width, height } = menu.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        const clampedLeft = Math.min(x, viewportWidth - width);
+        const wouldOverflowBottom = y + height > viewportHeight;
+
+        setPosition({
+            left: wouldOverflowBottom ? x : clampedLeft,
+            top: wouldOverflowBottom ? undefined : y,
+            bottom: wouldOverflowBottom ? viewportHeight - y : undefined,
+        });
+    }, [show, x, y]);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -53,7 +72,11 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ show, x, y, onClose, c
         <div
             ref={menuRef}
             className="fixed w-36 bg-gx-gray border border-gx-accent/20 rounded shadow-xl z-[10000] p-1 flex flex-col gap-1"
-            style={{ left: x, top: y }}
+            style={{
+                left: position.left,
+                ...(position.top !== undefined ? { top: position.top } : {}),
+                ...(position.bottom !== undefined ? { bottom: position.bottom } : {}),
+            }}
         >
             {children}
         </div>,
