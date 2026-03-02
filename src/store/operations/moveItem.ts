@@ -97,6 +97,23 @@ export function calculateMoveTarget(
     }
   }
 
+  // Cross-container fix: when a root tab moves upward into a group,
+  // insert AFTER the over item, not before it.
+  if (
+    !isActiveGroup &&
+    active.containerId === 'root' &&
+    over.containerId !== 'root' &&
+    targetContainerId !== 'root'
+  ) {
+    const currentRoot = activeInLive ? islands : vault;
+    const groupRootIndex = currentRoot.findIndex(
+      (i) => String(i.id) === String(targetContainerId)
+    );
+    if (groupRootIndex !== -1 && active.index > groupRootIndex) {
+      targetIndex = over.index + 1;
+    }
+  }
+
   if (isActiveGroup && targetContainerId !== 'root') {
     const currentRoot = activeInLive ? islands : vault;
     const parentGroupIndex = currentRoot.findIndex(

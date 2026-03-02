@@ -533,6 +533,55 @@ describe('useTabSlice', () => {
 
       expect(store.getState().islands).toHaveLength(1);
     });
+
+    it('move tab from below group into group places tab after over item (last slot)', () => {
+      const groupTab1 = createMockTab({ id: 'live-tab-10', groupId: 1 });
+      const groupTab2 = createMockTab({ id: 'live-tab-11', groupId: 1 });
+      const groupTab3 = createMockTab({ id: 'live-tab-12', groupId: 1 });
+      const island = createMockIsland({
+        id: 'live-group-1',
+        collapsed: false,
+        tabs: [groupTab1, groupTab2, groupTab3],
+      });
+      const tabBelow = createMockTab({ id: 'live-tab-20', index: 1 });
+      // Root: [Group(tabs: [10, 11, 12]), Tab20]
+      store = createTestStore({ islands: [island, tabBelow] });
+
+      // Drag Tab20 over the last tab in the group (Tab12)
+      store.getState().moveItemOptimistically('live-tab-20', 'live-tab-12');
+      advanceTime(150);
+
+      const islands = store.getState().islands;
+      const updatedIsland = islands.find(i => String(i.id) === 'live-group-1') as Island;
+      expect(updatedIsland.tabs).toHaveLength(4);
+      // Tab20 should be LAST (after Tab12), not second-to-last
+      expect(String(updatedIsland.tabs[3].id)).toBe('live-tab-20');
+      expect(String(updatedIsland.tabs[2].id)).toBe('live-tab-12');
+    });
+
+    it('move tab from above group into group places tab before over item', () => {
+      const tabAbove = createMockTab({ id: 'live-tab-20', index: 0 });
+      const groupTab1 = createMockTab({ id: 'live-tab-10', groupId: 1 });
+      const groupTab2 = createMockTab({ id: 'live-tab-11', groupId: 1 });
+      const island = createMockIsland({
+        id: 'live-group-1',
+        collapsed: false,
+        tabs: [groupTab1, groupTab2],
+      });
+      // Root: [Tab20, Group(tabs: [10, 11])]
+      store = createTestStore({ islands: [tabAbove, island] });
+
+      // Drag Tab20 over the first tab in the group (Tab10)
+      store.getState().moveItemOptimistically('live-tab-20', 'live-tab-10');
+      advanceTime(150);
+
+      const islands = store.getState().islands;
+      const updatedIsland = islands.find(i => String(i.id) === 'live-group-1') as Island;
+      expect(updatedIsland.tabs).toHaveLength(3);
+      // Tab20 should be FIRST (before Tab10)
+      expect(String(updatedIsland.tabs[0].id)).toBe('live-tab-20');
+      expect(String(updatedIsland.tabs[1].id)).toBe('live-tab-10');
+    });
   });
 
   describe('deleteDuplicateTabs', () => {
