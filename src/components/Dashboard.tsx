@@ -15,7 +15,8 @@ import {
   DragCancelEvent,
   UniqueIdentifier,
   MeasuringStrategy,
-  defaultDropAnimationSideEffects
+  defaultDropAnimationSideEffects,
+  Modifier
 } from '@dnd-kit/core';
 
 import {
@@ -30,6 +31,7 @@ import { QuotaExceededModal, QuotaExceededAction } from './QuotaExceededModal';
 import { useStore, parseNumericId, findItemInList, isVaultId } from '../store/useStore';
 import { cn } from '../utils/cn';
 import { closeTab, closeTabs, createIsland } from '../utils/chromeApi';
+import { tabService } from '../services/tabService';
 import { Island as IslandType, Tab as TabType, UniversalId, LiveItem, VaultItem } from '../types/index';
 import { ErrorBoundary } from './ErrorBoundary';
 import { logger } from '../utils/logger';
@@ -76,6 +78,21 @@ export const Dashboard: React.FC = () => {
   const showVault = useStore(state => state.showVault);
   const isRenaming = useStore(state => state.isRenaming);
   const appearanceSettings = useStore(state => state.appearanceSettings);
+
+  const scaleModifier = useMemo<Modifier>(() => {
+    return ({ transform }) => {
+      const uiScale = appearanceSettings?.uiScale ?? 1;
+      if (uiScale === 1) {
+        return transform;
+      }
+      return {
+        ...transform,
+        x: transform.x / uiScale,
+        y: transform.y / uiScale,
+      };
+    };
+  }, [appearanceSettings?.uiScale]);
+
   const effectiveSyncEnabled = useStore(state => state.effectiveSyncEnabled);
   const syncRecovered = useStore(state => state.syncRecovered);
   const clearSyncRecovered = useStore(state => state.clearSyncRecovered);
@@ -187,7 +204,7 @@ export const Dashboard: React.FC = () => {
     const numericId = parseNumericId(tabId);
     if (numericId !== null) {
       try {
-        await chrome.tabs.update(numericId, { active: true });
+        await tabService.activateTab(numericId);
       } catch (e) {
         logger.error('Dashboard', 'Failed to activate tab:', e);
       }
@@ -255,7 +272,7 @@ export const Dashboard: React.FC = () => {
     if (!over) return;
     const activeId = active.id;
     const overId = over.id;
-    if (activeId === overId) return;
+    if (String(activeId) === String(overId)) return;
 
     if (overId === 'create-island-dropzone') return;
 
@@ -344,28 +361,24 @@ export const Dashboard: React.FC = () => {
 
 
     if (overIdStr === 'create-island-dropzone' && !isVaultSource) {
-      const resolveTabId = (): number | null => {
-        if (typeof activeId === 'number' && activeId > 0) return activeId;
-        if (typeof activeId === 'string') {
-          const numeric = parseNumericId(activeId);
-          if (numeric !== null) return numeric;
-        }
-        const data = event.active.data?.current as DragData | undefined;
-        if (data?.type === 'tab' && data.tab?.id) return parseNumericId(data.tab.id);
-        if (activeItem?.type === 'tab' && activeItem.tab?.id) return parseNumericId(activeItem.tab.id);
-        return null;
-      };
+      const dragData = event.active.data?.current as DragData | undefined;
 
-      const tabId = resolveTabId();
+      if (!dragData || dragData.type !== 'tab') {
+        logger.warn('[Dashboard] Create-island dropzone only accepts tab drags. Received:', dragData?.type ?? 'unknown');
+        cleanupPendingOperation();
+        return;
+      }
 
-      if (!tabId) {
-        logger.error('Dashboard', `Could not resolve Tab ID. Received ID: ${activeId}, Data:`, event.active.data?.current);
+      const tabId = parseNumericId(dragData.tab.id);
+
+      if (tabId === null) {
+        logger.error('[Dashboard] Could not resolve Tab ID from tab payload:', dragData.tab.id);
         cleanupPendingOperation();
         return;
       }
 
       try {
-        const tab = await chrome.tabs.get(tabId);
+        const tab = await tabService.getTab(tabId);
         if (tab.pinned) {
           logger.warn('Dashboard', 'Cannot create island from pinned tab');
           cleanupPendingOperation();
@@ -515,6 +528,7 @@ export const Dashboard: React.FC = () => {
           sensors={isRenaming ? [] : sensors}
           collisionDetection={closestCorners}
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+          modifiers={[scaleModifier]}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
