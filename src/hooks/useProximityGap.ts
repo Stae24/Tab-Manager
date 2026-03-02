@@ -40,6 +40,25 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
       };
       lastDragIdRef.current = activeId;
     }
+
+    const handleScrollOrResize = () => {
+      if (gapRef.current && active) {
+        const rect = gapRef.current.getBoundingClientRect();
+        cachedPositionRef.current = {
+          top: rect.top,
+          left: rect.left,
+          right: rect.right
+        };
+      }
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
   }, [active, isDraggingGroup]);
 
   useEffect(() => {
