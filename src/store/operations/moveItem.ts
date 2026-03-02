@@ -85,7 +85,7 @@ export function calculateMoveTarget(
   targetIndex = over.index;
 
   if (over.item && 'tabs' in over.item && !isActiveGroup) {
-    if (active.containerId === over.item.id) {
+    if (String(active.containerId) === String(over.item.id)) {
       targetContainerId = 'root';
       targetIndex = over.index;
     } else if ((over.item as Island).collapsed) {
@@ -189,7 +189,7 @@ export function prepareOptimisticMove(
   activeId: UniqueIdentifier,
   overId: UniqueIdentifier,
 ): { result: MoveResult; active: FoundItem } | null {
-  if (activeId === overId) return null;
+  if (String(activeId) === String(overId)) return null;
 
   const active = findItemInList(islands, activeId) || findItemInList(vault, activeId);
   const over = findItemInList(islands, overId) || findItemInList(vault, overId);
