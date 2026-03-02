@@ -333,7 +333,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
         <div
           onMouseDown={handleResizeStart}
           className={cn(
-            "absolute -left-1 top-0 bottom-0 w-3 cursor-ew-resize z-[60] transition-all flex items-center justify-center",
+            "absolute -left-1 top-0 bottom-0 w-3 cursor-ew-resize z-[60] transition-colors flex items-center justify-center",
             isResizing && "bg-gx-accent"
           )}
         >

@@ -548,7 +548,7 @@ export const Dashboard: React.FC = () => {
                   <div
                     onMouseDown={showAppearancePanel ? undefined : handleMouseDown}
                     className={cn(
-                      "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-ew-resize transition-all flex items-center justify-center z-50 flex-shrink-0 relative",
+                      "w-1 bg-gx-gray/30 hover:bg-gx-accent cursor-ew-resize transition-[background-color,opacity] flex items-center justify-center z-50 flex-shrink-0 relative",
                       showAppearancePanel && "pointer-events-none opacity-0",
                       isResizing && "bg-gx-accent"
                     )}
