@@ -151,14 +151,14 @@ describe('useVaultSlice', () => {
     it('sets compression tier', async () => {
       const vault: VaultItem[] = [createMockVaultItem()];
       vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota());
-      vi.mocked(vaultService.saveVault).mockResolvedValue({ 
-        success: true, 
-        compressionTier: 'no_favicons' 
+      vi.mocked(vaultService.saveVault).mockResolvedValue({
+        success: true,
+        compressionTier: 'minimal'
       });
 
       await store.getState().persistVault(vault, true);
 
-      expect(store.getState().compressionTier).toBe('no_favicons');
+      expect(store.getState().compressionTier).toBe('minimal');
     });
 
     it('shows compression warning when tier is not full', async () => {

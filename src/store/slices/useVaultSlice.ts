@@ -81,6 +81,7 @@ export interface VaultSlice {
   toggleVaultGroupCollapse: (id: UniversalId) => Promise<void>;
   sortVaultGroupsToTop: () => Promise<void>;
   deleteVaultDuplicates: () => Promise<void>;
+  deleteEmptyVaultGroups: () => Promise<void>;
   refreshVaultQuota: () => Promise<void>;
   clearQuotaExceeded: () => void;
   setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
@@ -548,6 +549,24 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
     const totalRemoved = duplicateLooseTabIds.size + Array.from(duplicateIslandTabs.values()).reduce((sum, set) => sum + set.size, 0);
     logger.info('VaultSlice', `Deleted ${totalRemoved} duplicate tabs from vault`);
+  },
+
+  deleteEmptyVaultGroups: async () => {
+    const { vault, appearanceSettings, persistVault } = get();
+
+    const newVault = vault.filter((item: VaultItem) => {
+      if ('tabs' in item && Array.isArray(item.tabs)) {
+        return item.tabs.length > 0;
+      }
+      return true;
+    });
+
+    const removedCount = vault.length - newVault.length;
+    if (removedCount === 0) return;
+
+    set({ vault: newVault });
+    await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
+    logger.info('VaultSlice', `Deleted ${removedCount} empty groups from vault`);
   },
 
   removeFromVault: async (id) => {

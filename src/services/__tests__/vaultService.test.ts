@@ -149,7 +149,7 @@ describe('vaultService - Core Storage', () => {
     describe('loadVault', () => {
         it('loads from local storage when sync is disabled', async () => {
             const mockVault = [createMockVaultItem({ title: 'Local Tab' })];
-            localStore['vault'] = mockVault;
+            localStore['vault_local'] = mockVault;
 
             const result = await vaultService.loadVault({ syncEnabled: false });
 
@@ -157,8 +157,10 @@ describe('vaultService - Core Storage', () => {
         });
 
         it('loads from sync storage when sync is enabled', async () => {
-            const mockVault = [createMockVaultItem({ title: 'Sync Tab' })];
-            const compressed = LZString.compressToUTF16(JSON.stringify(mockVault));
+            const mockVault = [createMockVaultItem({ title: 'Sync Tab', favicon: 'https://example.com/favicon.ico' })];
+            // Vault stored in sync has favicons stripped
+            const vaultForSync = [{ ...mockVault[0], favicon: '' }];
+            const compressed = LZString.compressToUTF16(JSON.stringify(vaultForSync));
 
             const mockDigest = new Uint8Array(32).fill(0);
             const expectedHash = Array.from(mockDigest).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -173,17 +175,23 @@ describe('vaultService - Core Storage', () => {
             };
             syncStore['vault_chunk_0'] = compressed;
 
+            // Favicons are stored separately in local storage
+            localStore['vault_favicons'] = {
+                [String(mockVault[0].id)]: 'https://example.com/favicon.ico'
+            };
+
             vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(mockDigest.buffer);
 
             const result = await vaultService.loadVault({ syncEnabled: true });
 
+            // Should merge favicons back from local storage
             expect(result.vault).toEqual(mockVault);
             expect(result.timestamp).toBe(123456789);
         });
 
         it('falls back to local backup if meta is missing', async () => {
             const mockBackup = [createMockVaultItem({ id: 'backup-1' })];
-            localStore['vault_backup'] = mockBackup;
+            localStore['vault_local'] = mockBackup;
 
             const result = await vaultService.loadVault({ syncEnabled: true });
 
@@ -196,8 +204,7 @@ describe('vaultService - Core Storage', () => {
             const vault = [createMockVaultItem()];
             await vaultService.saveVault(vault, { syncEnabled: false });
 
-            expect(localStore['vault']).toEqual(vault);
-            expect(localStore['vault_backup']).toEqual(vault);
+            expect(localStore['vault_local']).toEqual(vault);
         });
 
         it('saves to sync storage when sync is enabled and fits', async () => {
@@ -216,7 +223,7 @@ describe('vaultService - Core Storage', () => {
             const result = await vaultService.saveVault(vault, { syncEnabled: true });
 
             expect(result.fallbackToLocal).toBe(true);
-            expect(localStore['vault_backup']).toEqual(vault);
+            expect(localStore['vault_local']).toEqual(vault);
         });
     });
 
@@ -236,8 +243,7 @@ describe('vaultService - Core Storage', () => {
     describe('loadVault - Edge Cases', () => {
         it('should handle corrupted sync data', async () => {
             const mockBackup = [createMockVaultItem({ id: 'backup-1' })];
-            localStore['vault'] = mockBackup;
-            localStore['vault_backup'] = mockBackup;
+            localStore['vault_local'] = mockBackup;
 
             // Simulate corrupted sync data
             syncStore['vault_meta'] = { corrupted: true };
@@ -250,8 +256,7 @@ describe('vaultService - Core Storage', () => {
 
         it('should handle checksum mismatch', async () => {
             const mockBackup = [createMockVaultItem({ id: 'backup-1' })];
-            localStore['vault'] = mockBackup;
-            localStore['vault_backup'] = mockBackup;
+            localStore['vault_local'] = mockBackup;
 
             // Set up sync with wrong checksum
             const compressed = LZString.compressToUTF16(JSON.stringify([createMockVaultItem({ id: 'sync-item' })]));
@@ -321,8 +326,8 @@ describe('vaultService - Core Storage', () => {
             // Check that local storage was called with the vault
             expect(mockStorageLocalSet).toHaveBeenCalled();
             const setCalls = mockStorageLocalSet.mock.calls;
-            // Should have at least 2 calls: one for LEGACY_VAULT_KEY ('vault') and one for 'vault_backup'
-            expect(setCalls.length).toBeGreaterThanOrEqual(2);
+            // Should have 1 call for vault_local
+            expect(setCalls.length).toBeGreaterThanOrEqual(1);
         });
 
         it('should handle partial chunk save failure', async () => {
@@ -386,7 +391,7 @@ describe('vaultService - Core Storage', () => {
         it('should handle version 1 legacy format', async () => {
             // Legacy format: direct vault array without metadata
             const legacyVault = [createMockVaultItem({ id: 'legacy-1' })];
-            localStore['vault'] = legacyVault;
+            localStore['vault_local'] = legacyVault;
             // No vault_meta means it's pre-metadata format
 
             const result = await vaultService.loadVault({ syncEnabled: false });

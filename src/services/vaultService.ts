@@ -20,9 +20,10 @@ import {
   VAULT_CHUNK_SIZE,
   CHROME_SYNC_ITEM_MAX_BYTES,
   VAULT_QUOTA_SAFETY_MARGIN_BYTES,
-  COMPRESSION_TIERS
+  COMPRESSION_TIERS,
+  VAULT_FAVICONS_KEY
 } from '../constants';
-import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, VAULT_DIFF_KEY, LEGACY_VAULT_KEY, getVaultChunkKeys } from './storageKeys';
+import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, VAULT_DIFF_KEY, VAULT_LOCAL_KEY, LEGACY_VAULT_KEY, LEGACY_VAULT_BACKUP_KEY, getVaultChunkKeys } from './storageKeys';
 import { logger } from '../utils/logger';
 
 const getByteLength = (str: string): number => new TextEncoder().encode(str).length;
@@ -479,20 +480,8 @@ function applyCompressionTier(item: VaultItem, tier: CompressionTier): VaultItem
 
   const stripped = JSON.parse(JSON.stringify(item)) as VaultItem;
 
-  if (tier === 'no_favicons' || tier === 'minimal') {
-    if ('favicon' in stripped) {
-      const tabItem = stripped as Tab & VaultItem;
-      tabItem.favicon = '';
-    }
-    if ('tabs' in stripped && Array.isArray(stripped.tabs)) {
-      stripped.tabs = stripped.tabs.map(t => {
-        const tab = { ...t };
-        tab.favicon = '';
-        return tab;
-      });
-    }
-  }
-
+  // Note: favicons are already stripped before syncing (stored locally only)
+  // This tier only handles minimal compression (color/collapsed state)
   if (tier === 'minimal') {
     if ('color' in stripped) {
       (stripped as VaultIsland).color = 'grey';
@@ -509,6 +498,96 @@ function applyCompressionTierToVault(vault: VaultItem[], tier: CompressionTier):
   return vault.map(item => applyCompressionTier(item, tier));
 }
 
+// Favicon extraction/merge helpers for local-only storage
+type FaviconMap = Record<string, string>;
+
+function extractFavicons(vault: VaultItem[]): FaviconMap {
+  const favicons: FaviconMap = {};
+
+  for (const item of vault) {
+    if ('tabs' in item && Array.isArray(item.tabs)) {
+      // VaultIsland
+      for (const tab of item.tabs) {
+        if (tab.favicon) {
+          favicons[String(tab.id)] = tab.favicon;
+        }
+      }
+    } else {
+      // VaultTab
+      const tab = item as VaultTab;
+      if (tab.favicon) {
+        favicons[String(tab.id)] = tab.favicon;
+      }
+    }
+  }
+
+  return favicons;
+}
+
+function stripFaviconsFromVault(vault: VaultItem[]): VaultItem[] {
+  return vault.map(item => {
+    if ('tabs' in item && Array.isArray(item.tabs)) {
+      // VaultIsland
+      const island = item as VaultIsland;
+      return {
+        ...island,
+        tabs: island.tabs.map(tab => ({
+          ...tab,
+          favicon: ''
+        }))
+      };
+    } else {
+      // VaultTab
+      const tab = item as VaultTab;
+      return {
+        ...tab,
+        favicon: ''
+      };
+    }
+  });
+}
+
+function mergeFaviconsIntoVault(vault: VaultItem[], favicons: FaviconMap): VaultItem[] {
+  return vault.map(item => {
+    if ('tabs' in item && Array.isArray(item.tabs)) {
+      // VaultIsland
+      const island = item as VaultIsland;
+      return {
+        ...island,
+        tabs: island.tabs.map(tab => ({
+          ...tab,
+          favicon: favicons[String(tab.id)] || ''
+        }))
+      };
+    } else {
+      // VaultTab
+      const tab = item as VaultTab;
+      return {
+        ...tab,
+        favicon: favicons[String(tab.id)] || ''
+      };
+    }
+  });
+}
+
+async function saveFaviconsLocally(favicons: FaviconMap): Promise<void> {
+  try {
+    await chrome.storage.local.set({ [VAULT_FAVICONS_KEY]: favicons });
+  } catch (error) {
+    logger.error('VaultService', 'Failed to save favicons to local storage:', error);
+  }
+}
+
+async function loadFaviconsFromLocal(): Promise<FaviconMap> {
+  try {
+    const result = await chrome.storage.local.get([VAULT_FAVICONS_KEY]);
+    return (result[VAULT_FAVICONS_KEY] as FaviconMap) || {};
+  } catch (error) {
+    logger.error('VaultService', 'Failed to load favicons from local storage:', error);
+    return {};
+  }
+}
+
 let saveLock: Promise<VaultStorageResult> | null = null;
 
 async function computeChecksum(data: string): Promise<string> {
@@ -519,10 +598,33 @@ async function computeChecksum(data: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function migrateToLocalKey(): Promise<void> {
+  const local = await chrome.storage.local.get([LEGACY_VAULT_KEY, LEGACY_VAULT_BACKUP_KEY, VAULT_LOCAL_KEY]);
+  
+  if (local[VAULT_LOCAL_KEY]) {
+    const keysToRemove: string[] = [];
+    if (local[LEGACY_VAULT_KEY]) keysToRemove.push(LEGACY_VAULT_KEY);
+    if (local[LEGACY_VAULT_BACKUP_KEY]) keysToRemove.push(LEGACY_VAULT_BACKUP_KEY);
+    if (keysToRemove.length > 0) {
+      await chrome.storage.local.remove(keysToRemove);
+      logger.info('VaultService', `Cleaned up legacy keys: ${keysToRemove.join(', ')}`);
+    }
+    return;
+  }
+  
+  const sourceData = local[LEGACY_VAULT_KEY] || local[LEGACY_VAULT_BACKUP_KEY];
+  if (sourceData) {
+    await chrome.storage.local.set({ [VAULT_LOCAL_KEY]: sourceData });
+    await chrome.storage.local.remove([LEGACY_VAULT_KEY, LEGACY_VAULT_BACKUP_KEY]);
+    logger.info('VaultService', 'Migrated vault data to vault_local');
+  }
+}
+
 async function loadFromBackup(): Promise<VaultItem[]> {
-  logger.warn('VaultService', 'Attempting to load from local backup');
-  const local = await chrome.storage.local.get(['vault_backup']);
-  return (local.vault_backup as VaultItem[]) || [];
+  logger.warn('VaultService', 'Attempting to load from local storage');
+  await migrateToLocalKey();
+  const local = await chrome.storage.local.get([VAULT_LOCAL_KEY]);
+  return (local[VAULT_LOCAL_KEY] as VaultItem[]) || [];
 }
 
 async function clearAllVaultChunks(): Promise<void> {
@@ -669,10 +771,12 @@ function migrateLegacyVaultTab(tab: unknown): VaultTab | null {
 
 export const vaultService = {
   loadVault: async (config: VaultStorageConfig): Promise<VaultLoadResult> => {
+    await migrateToLocalKey();
+    
     if (!config.syncEnabled) {
-      const local = await chrome.storage.local.get([LEGACY_VAULT_KEY]);
+      const local = await chrome.storage.local.get([VAULT_LOCAL_KEY]);
       return {
-        vault: (local[LEGACY_VAULT_KEY] as VaultItem[]) || [],
+        vault: (local[VAULT_LOCAL_KEY] as VaultItem[]) || [],
         timestamp: 0
       };
     }
@@ -788,9 +892,13 @@ export const vaultService = {
         return { vault: await loadFromBackup(), timestamp: meta.timestamp };
       }
 
-      logger.info('VaultService', `✅ Load successful: ${parsed.length} items`);
+      // Load favicons from local storage and merge into vault
+      const favicons = await loadFaviconsFromLocal();
+      const vaultWithFavicons = mergeFaviconsIntoVault(parsed, favicons);
+
+      logger.info('VaultService', `✅ Load successful: ${vaultWithFavicons.length} items`);
       return {
-        vault: parsed,
+        vault: vaultWithFavicons,
         timestamp: meta.timestamp
       };
     } catch (error) {
@@ -803,6 +911,13 @@ export const vaultService = {
     vault: VaultItem[],
     config: VaultStorageConfig
   ): Promise<VaultStorageResult> => {
+    // Extract favicons and save them locally (never synced)
+    const favicons = extractFavicons(vault);
+    await saveFaviconsLocally(favicons);
+
+    // Create stripped vault (without favicons) for syncing
+    const vaultForSync = stripFaviconsFromVault(vault);
+
     const doSaveWithRetry = async (
       isRetryAttempt: boolean,
       availableBytes: number
@@ -824,18 +939,18 @@ export const vaultService = {
           logger.info('VaultService', `  - Available: ${effectiveAvailableBytes} bytes (with safety margin)`);
         }
 
-        const { tier, compressed, minified, domainDedup } = await tryCompressionTiers(vault, effectiveAvailableBytes);
+        const { tier, compressed, minified, domainDedup } = await tryCompressionTiers(vaultForSync, effectiveAvailableBytes);
         logger.debug('VaultService', `saveVault: using tier=${tier}, size=${compressed.length * 2} bytes`);
         const compressedBytes = compressed.length * 2;
 
         logger.info('VaultService', `Using compression tier: ${tier}, minified: ${minified}, domainDedup: ${domainDedup}, size: ${compressedBytes} bytes`);
 
         const minifiedData = minified
-          ? minifyVault(applyCompressionTierToVault(vault, tier))
+          ? minifyVault(applyCompressionTierToVault(vaultForSync, tier))
           : null;
         const checksumData = minified
           ? JSON.stringify(minifiedData)
-          : JSON.stringify(applyCompressionTierToVault(vault, tier));
+          : JSON.stringify(applyCompressionTierToVault(vaultForSync, tier));
         const checksum = await computeChecksum(checksumData);
 
         // Use reduced max bytes for chunks on retry (doubled safety buffer)
@@ -925,7 +1040,7 @@ export const vaultService = {
         await chrome.storage.sync.remove(VAULT_DIFF_KEY).catch(() => { });
 
         await quotaService.cleanupOrphanedChunks();
-        await chrome.storage.local.set({ vault_backup: vault });
+        await chrome.storage.local.set({ [VAULT_LOCAL_KEY]: vault });
 
         const newQuota = await quotaService.getVaultQuota();
 
@@ -969,11 +1084,8 @@ export const vaultService = {
           logger.error('VaultService', '🔴 FALLBACK TRIGGERED: Quota error');
         }
 
-        await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault }).catch((e) => {
+        await chrome.storage.local.set({ [VAULT_LOCAL_KEY]: vault }).catch((e) => {
           logger.error('VaultService', 'Failed to save to local storage:', e);
-        });
-        await chrome.storage.local.set({ vault_backup: vault }).catch((e) => {
-          logger.error('VaultService', 'Failed to save backup:', e);
         });
 
         const newQuota = await quotaService.getVaultQuota();
@@ -990,8 +1102,7 @@ export const vaultService = {
 
     const doSave = async (): Promise<VaultStorageResult> => {
       if (!config.syncEnabled) {
-        await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault });
-        await chrome.storage.local.set({ vault_backup: vault });
+        await chrome.storage.local.set({ [VAULT_LOCAL_KEY]: vault });
         return { success: true };
       }
 
@@ -1068,16 +1179,17 @@ export const vaultService = {
 
       const localLegacyVault = localData[LEGACY_VAULT_KEY] as VaultItem[] | undefined;
       if (localLegacyVault && Array.isArray(localLegacyVault) && localLegacyVault.length > 0) {
+        await chrome.storage.local.set({ [VAULT_LOCAL_KEY]: localLegacyVault });
+        await chrome.storage.local.remove(LEGACY_VAULT_KEY);
         if (config.syncEnabled) {
           const result = await vaultService.saveVault(localLegacyVault, config);
           if (!result.fallbackToLocal) {
-            await chrome.storage.local.remove(LEGACY_VAULT_KEY);
             return { migrated: true, itemCount: localLegacyVault.length, from: 'local_legacy' };
           }
           await vaultService.disableVaultSync(localLegacyVault);
           return { migrated: false, itemCount: localLegacyVault.length, from: 'local_legacy', fallbackToLocal: true };
         }
-        return { migrated: false, itemCount: localLegacyVault.length, from: 'local_legacy' };
+        return { migrated: true, itemCount: localLegacyVault.length, from: 'local_legacy' };
       }
 
       return { migrated: false, itemCount: 0, from: 'none' };
@@ -1099,9 +1211,6 @@ export const vaultService = {
         return result;
       }
 
-      if (result.success) {
-        await chrome.storage.local.remove(LEGACY_VAULT_KEY);
-      }
       return result;
     } else {
       return vaultService.disableVaultSync(currentVault);
@@ -1112,20 +1221,10 @@ export const vaultService = {
     try {
       logger.info('VaultService', 'Disabling vault sync, clearing chunks...');
 
-      let localSaveFailed = false;
-      await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault }).catch((e) => {
-        logger.error('VaultService', 'Failed to save legacy vault to local storage:', e);
-        localSaveFailed = true;
-      });
-      await chrome.storage.local.set({ vault_backup: vault }).catch((e) => {
-        logger.error('VaultService', 'Failed to save backup to local storage:', e);
-        localSaveFailed = true;
-      });
-
-      if (localSaveFailed) {
-        logger.error('VaultService', 'Local storage writes failed during disableVaultSync');
+      await chrome.storage.local.set({ [VAULT_LOCAL_KEY]: vault }).catch((e) => {
+        logger.error('VaultService', 'Failed to save vault to local storage:', e);
         throw new Error('Local storage write failed');
-      }
+      });
 
       const keys = await getVaultChunkKeys();
       if (keys.length > 0) {

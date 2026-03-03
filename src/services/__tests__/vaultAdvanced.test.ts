@@ -257,7 +257,7 @@ describe('vaultService - Advanced Logic', () => {
             const result = await vaultService.toggleSyncMode(vault, false);
 
             expect(result.success).toBe(true);
-            expect(localStore['vault']).toEqual(vault);
+            expect(localStore['vault_local']).toEqual(vault);
             expect(syncStore['v1']).toBeUndefined();
         });
 
