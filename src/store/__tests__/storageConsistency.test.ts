@@ -67,10 +67,9 @@ describe('disableVaultSync', () => {
 
     await vaultService.disableVaultSync(vault);
 
-    expect(chrome.storage.local.set).toHaveBeenCalledTimes(2);
+    expect(chrome.storage.local.set).toHaveBeenCalledTimes(1);
     const localSetCalls = (chrome.storage.local.set as any).mock.calls;
-    expect(localSetCalls[0][0]).toHaveProperty('vault');
-    expect(localSetCalls[1][0]).toHaveProperty('vault_backup');
+    expect(localSetCalls[0][0]).toHaveProperty('vault_local');
   });
 
   it('returns success: true when complete', async () => {
@@ -175,7 +174,7 @@ describe('data preservation during fallback', () => {
     expect(callOrder[callOrder.length - 1]).toBe('sync.remove');
   });
 
-  it('vault_backup created alongside primary save', async () => {
+  it('vault_local saved to local storage', async () => {
     const { vaultService } = await import('../../services/vaultService');
     const vault = [createMockVaultItem(1, 'Test Tab')];
 
@@ -184,10 +183,10 @@ describe('data preservation during fallback', () => {
 
     await vaultService.disableVaultSync(vault);
 
-    expect(chrome.storage.local.set).toHaveBeenCalledTimes(2);
+    expect(chrome.storage.local.set).toHaveBeenCalledTimes(1);
   });
 
-  it('continues even if one local key fails', async () => {
+  it('continues even if local storage fails', async () => {
     const { vaultService } = await import('../../services/vaultService');
     const vault = [createMockVaultItem(1, 'Test Tab')];
 

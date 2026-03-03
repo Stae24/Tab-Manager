@@ -39,7 +39,8 @@ import {
   SETTINGS_SECTION_GAP_DEFAULT,
   DEFAULT_RESTORE_PINNED_STATE,
   DEFAULT_RESTORE_MUTED_STATE,
-  DEFAULT_RESTORE_FROZEN_STATE
+  DEFAULT_RESTORE_FROZEN_STATE,
+  LOCAL_UI_SETTINGS_KEY
 } from '../constants';
 
 export const VALID_THEMES = ['dark', 'light', 'system', 'dark-pro', 'ocean', 'forest', 'sunset', 'dracula', 'nord', 'monokai', 'solarized-light', 'solarized-dark', 'midnight', 'cyberpunk', 'coffee'] as const;
@@ -443,6 +444,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   settingsBackgroundOpacity: 0,
   debugMode: false,
   showDebugOverlays: false,
+  disableProximityGap: false,
   restorePinnedState: DEFAULT_RESTORE_PINNED_STATE,
   restoreMutedState: DEFAULT_RESTORE_MUTED_STATE,
   restoreFrozenState: DEFAULT_RESTORE_FROZEN_STATE,
@@ -474,5 +476,27 @@ export const performSync = async (settings: SyncState, retryCount = 0) => {
 
 export const syncSettings = debounce((settings: SyncState) => {
   performSync(settings);
+}, SYNC_SETTINGS_DEBOUNCE_MS);
+
+// Local-only UI settings (not synced across devices)
+export type LocalSettingsState = Partial<{
+  dividerPosition: number;
+  showVault: boolean;
+  settingsPanelWidth: number;
+}>;
+
+export const performLocalSync = async (settings: LocalSettingsState) => {
+  try {
+    const current = await chrome.storage.local.get([LOCAL_UI_SETTINGS_KEY]);
+    const existing = (current[LOCAL_UI_SETTINGS_KEY] as LocalSettingsState) || {};
+    const merged = { ...existing, ...settings };
+    await chrome.storage.local.set({ [LOCAL_UI_SETTINGS_KEY]: merged });
+  } catch (error: unknown) {
+    logger.error('LocalSyncSettings', 'Failed to save local settings:', error);
+  }
+};
+
+export const syncLocalSettings = debounce((settings: LocalSettingsState) => {
+  performLocalSync(settings);
 }, SYNC_SETTINGS_DEBOUNCE_MS);
 

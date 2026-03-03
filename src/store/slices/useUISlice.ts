@@ -45,12 +45,12 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   setDividerPosition: (dividerPosition) => {
     set({ dividerPosition });
-    settingsService.saveSettings({ dividerPosition });
+    settingsService.saveLocalSettings({ dividerPosition });
   },
 
   setShowVault: (showVault) => {
     set({ showVault });
-    settingsService.saveSettings({ showVault });
+    settingsService.saveLocalSettings({ showVault });
   },
 
   setIsRenaming: (isRenaming) => set({ isRenaming }),
@@ -60,7 +60,7 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
   setSettingsPanelWidth: (width) => {
     const clampedWidth = Math.max(SETTINGS_PANEL_MIN_WIDTH, Math.min(SETTINGS_PANEL_MAX_WIDTH, width));
     set({ settingsPanelWidth: clampedWidth });
-    settingsService.saveSettings({ settingsPanelWidth: clampedWidth });
+    settingsService.saveLocalSettings({ settingsPanelWidth: clampedWidth });
   },
 
   setShowSearchHelp: (showSearchHelp) => set({ showSearchHelp }),

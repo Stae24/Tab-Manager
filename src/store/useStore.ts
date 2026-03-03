@@ -93,7 +93,10 @@ async function attemptSelfHealing(vault: VaultItem[], syncEnabled: boolean): Pro
 }
 
 const init = async () => {
-  const sync = await settingsService.loadSettings();
+  const [sync, local] = await Promise.all([
+    settingsService.loadSettings(),
+    settingsService.loadLocalSettings()
+  ]);
 
   const state = useStore.getState();
 
@@ -103,9 +106,17 @@ const init = async () => {
   } else {
     state.setAppearanceSettings(defaultAppearanceSettings);
   }
-  if (sync.dividerPosition) state.setDividerPosition(Number(sync.dividerPosition));
-  if (sync.showVault !== undefined) state.setShowVault(Boolean(sync.showVault));
-  if (sync.settingsPanelWidth !== undefined) state.setSettingsPanelWidth(Number(sync.settingsPanelWidth));
+
+  // Load local-only UI settings (not synced)
+  if (local.dividerPosition !== undefined) {
+    state.setDividerPosition(Number(local.dividerPosition));
+  }
+  if (local.showVault !== undefined) {
+    state.setShowVault(Boolean(local.showVault));
+  }
+  if (local.settingsPanelWidth !== undefined) {
+    state.setSettingsPanelWidth(Number(local.settingsPanelWidth));
+  }
 
   const debugMode = sync.appearanceSettings
     ? mergeAppearanceSettings(sync.appearanceSettings).debugMode
@@ -213,9 +224,6 @@ const init = async () => {
       if (changes.appearanceSettings?.newValue) {
         setAppearanceSettings(mergeAppearanceSettings(changes.appearanceSettings.newValue));
       }
-      if (changes.showVault) setShowVault(Boolean(changes.showVault.newValue));
-      if (changes.dividerPosition) setDividerPosition(Number(changes.dividerPosition.newValue));
-      if (changes.settingsPanelWidth) setSettingsPanelWidth(Number(changes.settingsPanelWidth.newValue));
 
       if (changes.vault_meta) {
         const incomingTimestamp = (changes.vault_meta.newValue as { timestamp?: number })?.timestamp ?? 0;
@@ -255,6 +263,13 @@ const init = async () => {
           const quota = await quotaService.getVaultQuota();
           useStore.setState({ vaultQuota: quota });
         }
+      }
+      // Handle local-only UI settings changes
+      if (changes.ui_settings_local?.newValue) {
+        const localSettings = changes.ui_settings_local.newValue as { dividerPosition?: number; showVault?: boolean; settingsPanelWidth?: number };
+        if (localSettings.dividerPosition !== undefined) setDividerPosition(Number(localSettings.dividerPosition));
+        if (localSettings.showVault !== undefined) setShowVault(Boolean(localSettings.showVault));
+        if (localSettings.settingsPanelWidth !== undefined) setSettingsPanelWidth(Number(localSettings.settingsPanelWidth));
       }
     }
   });

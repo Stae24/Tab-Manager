@@ -38,12 +38,15 @@ vi.mock('../../services/settingsService', () => ({
         showCounts: true,
         compactTabs: false,
       },
+    }),
+    loadLocalSettings: vi.fn().mockResolvedValue({
       showVault: true,
       dividerPosition: 50,
       settingsPanelWidth: 300
     }),
     watchSettings: vi.fn(() => vi.fn()),
     saveSettings: vi.fn(),
+    saveLocalSettings: vi.fn(),
   }
 }));
 

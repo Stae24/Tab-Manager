@@ -3,7 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../services/settingsService', () => ({
   settingsService: {
     saveSettings: vi.fn().mockResolvedValue(undefined),
+    saveLocalSettings: vi.fn().mockResolvedValue(undefined),
     loadSettings: vi.fn().mockResolvedValue({}),
+    loadLocalSettings: vi.fn().mockResolvedValue({}),
     watchSettings: vi.fn(() => vi.fn()),
   },
 }));
@@ -140,9 +142,9 @@ describe('useUISlice', () => {
       expect(useStore.getState().settingsPanelWidth).toBe(500);
     });
 
-    it('should save to settings service', () => {
+    it('should save to local settings service', () => {
       useStore.getState().setSettingsPanelWidth(500);
-      expect(settingsService.saveSettings).toHaveBeenCalledWith({ settingsPanelWidth: 500 });
+      expect(settingsService.saveLocalSettings).toHaveBeenCalledWith({ settingsPanelWidth: 500 });
     });
   });
 

@@ -10,7 +10,7 @@ vi.stubGlobal('chrome', {
       getBytesInUse: vi.fn(),
     },
     local: {
-      get: vi.fn().mockResolvedValue({ vault_backup: [] }),
+      get: vi.fn().mockResolvedValue({ vault_local: [] }),
       set: vi.fn(),
       remove: vi.fn(),
     },
@@ -37,7 +37,7 @@ describe('loadVaultWithRetry', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_backup: [] });
+    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_local: [] });
   });
 
   afterEach(() => {
@@ -48,7 +48,7 @@ describe('loadVaultWithRetry', () => {
     const mockVault = [createMockVaultItem(1, 'Test Tab')];
     
     (chrome.storage.sync.get as ReturnType<typeof vi.fn>).mockResolvedValue({});
-    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_backup: mockVault });
+    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_local: mockVault });
 
     const { vaultService } = await import('../../services/vaultService');
     const result = await vaultService.loadVault({ syncEnabled: false });
@@ -77,7 +77,7 @@ describe('loadVaultWithRetry', () => {
     });
 
     (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-      vault_backup: [createMockVaultItem(1, 'Backup Tab')]
+      vault_local: [createMockVaultItem(1, 'Backup Tab')]
     });
 
     const { VAULT_LOAD_MAX_RETRIES } = await import('../../constants');
@@ -92,7 +92,7 @@ describe('loadVaultWithRetry', () => {
     });
 
     (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-      vault_backup: [createMockVaultItem(1, 'Backup Tab')]
+      vault_local: [createMockVaultItem(1, 'Backup Tab')]
     });
 
     const { vaultService } = await import('../../services/vaultService');
@@ -106,7 +106,7 @@ describe('loadVaultWithRetry', () => {
 describe('recoverVaultSync', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_backup: [] });
+    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_local: [] });
   });
 
   it('clears all existing chunks before recovery', async () => {
@@ -171,7 +171,7 @@ describe('recoverVaultSync', () => {
 describe('attemptSelfHealing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_backup: [] });
+    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_local: [] });
   });
 
   it('returns early if sync is disabled', async () => {
