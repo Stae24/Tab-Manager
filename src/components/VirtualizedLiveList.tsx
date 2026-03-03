@@ -9,8 +9,6 @@ import { cn } from '../utils/cn';
 import { VIRTUAL_ROW_GAP_PX } from '../constants';
 import { Island as IslandType, Tab as TabType, LiveItem, UniversalId, DashboardRow } from '../types';
 
-const isDebugMode = process.env.NODE_ENV === 'development';
-
 interface VirtualizedLiveListProps {
     islands: (IslandType | TabType)[];
     rowItems: DashboardRow[];
@@ -31,6 +29,7 @@ interface VirtualizedLiveListProps {
     setBottomRef: (element: HTMLElement | null) => void;
     isCreateOver: boolean;
     isBottomOver?: boolean;
+    showDebugOverlays?: boolean;
 }
 
 export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
@@ -53,33 +52,33 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
     setBottomRef,
     isCreateOver,
     isBottomOver,
+    showDebugOverlays,
 }) => {
     const wrapperRef = useRef<HTMLDivElement>(null);
-    const bottomElementRef = useRef<HTMLElement | null>(null);
+    const [bottomNode, setBottomNode] = useState<HTMLElement | null>(null);
     const [isShortContent, setIsShortContent] = useState(false);
     const [dropzoneRect, setDropzoneRect] = useState<DOMRect | null>(null);
 
     const setBottomRefWithTracking = useCallback((node: HTMLElement | null) => {
-        bottomElementRef.current = node;
+        setBottomNode(node);
         setBottomRef(node);
     }, [setBottomRef]);
 
     useEffect(() => {
-        const node = bottomElementRef.current;
-        if (!node) return;
+        if (!bottomNode) return;
 
-        const updateRect = () => setDropzoneRect(node.getBoundingClientRect());
+        const updateRect = () => setDropzoneRect(bottomNode.getBoundingClientRect());
         updateRect();
 
         const observer = new ResizeObserver(updateRect);
-        observer.observe(node);
+        observer.observe(bottomNode);
         window.addEventListener('scroll', updateRect, true);
 
         return () => {
             observer.disconnect();
             window.removeEventListener('scroll', updateRect, true);
         };
-    }, []);
+    }, [bottomNode]);
 
     useEffect(() => {
         const checkContentHeight = () => {
@@ -188,7 +187,7 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
             </div>
 
             {/* Debug overlay showing actual dnd-kit detection area */}
-            {isDebugMode && dropzoneRect && (
+            {showDebugOverlays && dropzoneRect && (
                 <div
                     className={cn(
                         "fixed border-2 pointer-events-none z-[9999] transition-colors",

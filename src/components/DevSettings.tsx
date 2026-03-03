@@ -13,6 +13,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
         icon: Terminal,
         controls: [
             { id: 'debug-mode-toggle', label: 'Enable Debug Logs', description: 'Show detailed logs in the browser console for troubleshooting', keywords: ['debug', 'logs', 'troubleshooting', 'console'] },
+            { id: 'debug-overlays-toggle', label: 'Show Debug Overlays', description: 'Visual debug overlays for dropzones and UI components', keywords: ['debug', 'overlays', 'visual', 'dropzone', 'ui'] },
         ],
     },
 ];
@@ -32,7 +33,8 @@ export const DevSettings: React.FC<DevSettingsProps> = ({
     toggleSection,
     highlightedControl
 }) => {
-    const isHighlighted = highlightedControl?.sectionId === 'debug-mode' && highlightedControl?.controlId === 'debug-mode-toggle';
+    const isDebugLogsHighlighted = highlightedControl?.sectionId === 'debug-mode' && highlightedControl?.controlId === 'debug-mode-toggle';
+    const isDebugOverlaysHighlighted = highlightedControl?.sectionId === 'debug-mode' && highlightedControl?.controlId === 'debug-overlays-toggle';
 
     return (
         <CollapsibleSection
@@ -42,13 +44,23 @@ export const DevSettings: React.FC<DevSettingsProps> = ({
             isExpanded={expandedSections.has('debug-mode')}
             onToggle={() => toggleSection('debug-mode')}
         >
-            <div id="debug-mode-toggle" className={isHighlighted ? 'animate-pulse rounded-lg ring-2 ring-gx-accent -m-1 p-1' : ''}>
-                <Toggle
-                    checked={appearanceSettings.debugMode}
-                    onChange={(checked) => setAppearanceSettings({ debugMode: checked })}
-                    label="Enable Debug Logs"
-                    description="Show detailed logs in the browser console for troubleshooting"
-                />
+            <div className="space-y-4">
+                <div id="debug-mode-toggle" className={isDebugLogsHighlighted ? 'animate-pulse rounded-lg ring-2 ring-gx-accent -m-1 p-1' : ''}>
+                    <Toggle
+                        checked={appearanceSettings.debugMode}
+                        onChange={(checked) => setAppearanceSettings({ debugMode: checked })}
+                        label="Enable Debug Logs"
+                        description="Show detailed logs in the browser console for troubleshooting"
+                    />
+                </div>
+                <div id="debug-overlays-toggle" className={isDebugOverlaysHighlighted ? 'animate-pulse rounded-lg ring-2 ring-gx-accent -m-1 p-1' : ''}>
+                    <Toggle
+                        checked={appearanceSettings.showDebugOverlays}
+                        onChange={(checked) => setAppearanceSettings({ showDebugOverlays: checked })}
+                        label="Show Debug Overlays"
+                        description="Visual debug overlays for dropzones and UI components"
+                    />
+                </div>
             </div>
         </CollapsibleSection>
     );

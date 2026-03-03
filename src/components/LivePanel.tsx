@@ -52,6 +52,7 @@ interface LivePanelProps {
   isCreatingIsland: boolean;
   creatingTabId: UniversalId | null;
   vaultItems?: ReturnType<typeof useStore.getState>['vault'];
+  showDebugOverlays?: boolean;
 }
 
 export const LivePanel: React.FC<LivePanelProps> = ({
@@ -74,6 +75,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   isCreatingIsland,
   creatingTabId,
   vaultItems = [],
+  showDebugOverlays,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'live-panel-dropzone',
@@ -377,6 +379,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
               resultCount={displayTabs.length}
               isSearching={isSearching}
               compact={!(showPanelIcon || showPanelName)}
+              showDebugOverlays={showDebugOverlays}
             />
 
             {!searchQuery && (
@@ -540,6 +543,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
             setBottomRef={setBottomRef}
             isCreateOver={isCreateOver}
             isBottomOver={isBottomOver}
+            showDebugOverlays={showDebugOverlays}
           />
         )}
       </div>

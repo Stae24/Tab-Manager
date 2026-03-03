@@ -121,11 +121,11 @@ export const VaultSettings: React.FC<VaultSettingsProps> = ({
                                     "absolute h-full transition-all duration-300",
                                     warningColor(vaultQuota.warningLevel, 'bg')
                                 )}
-                                style={{ width: `${Math.min(vaultQuota.percentage, 100)}%` }}
+                                style={{ width: `${Math.min(vaultQuota.percentage * 100, 100)}%` }}
                             />
                         </div>
                         <div className="text-[10px] text-gray-500">
-                            {Math.round(vaultQuota.percentage)}% used
+                            {Math.round(vaultQuota.percentage * 100)}% used
                             {vaultQuota.warningLevel !== 'none' && (
                                 <span className={cn(
                                     "ml-2 font-bold uppercase",

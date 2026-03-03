@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Plus, Save, LayoutGrid, X, CopyX } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
@@ -37,6 +37,9 @@ interface VaultPanelProps {
   compressionTier?: CompressionTier;
   showCompressionWarning?: boolean;
   onDismissCompressionWarning?: () => void;
+  showSyncDisabledWarning?: boolean;
+  onDismissSyncDisabledWarning?: () => void;
+  showDebugOverlays?: boolean;
 }
 
 export const VaultPanel: React.FC<VaultPanelProps> = ({
@@ -59,7 +62,10 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   onManageStorage,
   compressionTier = 'full',
   showCompressionWarning = false,
-  onDismissCompressionWarning
+  onDismissCompressionWarning,
+  showSyncDisabledWarning = false,
+  onDismissSyncDisabledWarning,
+  showDebugOverlays
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'vault-dropzone',
@@ -71,11 +77,12 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
-  const [showLocalStorageWarning, setShowLocalStorageWarning] = useState(true);
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(true);
   const [isCleaning, setIsCleaning] = useState(false);
   const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
   const [isShortContent, setIsShortContent] = useState(false);
+  const [bottomNode, setBottomNode] = useState<HTMLElement | null>(null);
+  const [dropzoneRect, setDropzoneRect] = useState<DOMRect | null>(null);
 
   const sidebarPanelPadding = useStore((s) => s.appearanceSettings.sidebarPanelPadding);
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
@@ -107,18 +114,6 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
     await deleteVaultDuplicates();
     setTimeout(() => setIsCleaning(false), CLEANUP_ANIMATION_DELAY_MS);
   };
-
-  useEffect(() => {
-    logger.debug('VaultPanel', 'Banner state:', {
-      effectiveSyncEnabled,
-      vaultTabCount,
-      showLocalStorageWarning,
-      bannerWouldShow: effectiveSyncEnabled === false && (vaultTabCount || 0) > 0 && showLocalStorageWarning,
-      condition1: effectiveSyncEnabled === false,
-      condition2: (vaultTabCount || 0) > 0,
-      condition3: showLocalStorageWarning
-    });
-  }, [effectiveSyncEnabled, vaultTabCount, showLocalStorageWarning]);
 
   const rowItems = useMemo(() => {
     const rows: DashboardRow[] = [];
@@ -171,6 +166,27 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
 
     return () => resizeObserver.disconnect();
   }, [virtualizer, rowItems.length]);
+
+  useEffect(() => {
+    if (!bottomNode) return;
+
+    const updateRect = () => setDropzoneRect(bottomNode.getBoundingClientRect());
+    updateRect();
+
+    const observer = new ResizeObserver(updateRect);
+    observer.observe(bottomNode);
+    window.addEventListener('scroll', updateRect, true);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [bottomNode]);
+
+  const setBottomRefWithTracking = useCallback((node: HTMLElement | null) => {
+    setBottomNode(node);
+    setBottomRef(node);
+  }, [setBottomRef]);
 
   const renderVaultList = () => {
     return (
@@ -314,13 +330,13 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
         </div>
       </div>
 
-      {effectiveSyncEnabled === false && (vaultTabCount || 0) > 0 && showLocalStorageWarning && (
+      {showSyncDisabledWarning && (
         <div className="bg-gx-red/20 border-b border-gx-red/30 px-4 py-2 flex items-center justify-between flex-shrink-0">
           <span className="text-xs text-gx-red">
             ⚠️ Vault too large for sync. Using local storage. Clear vault and re-enable sync in settings to retry.
           </span>
           <button
-            onClick={() => setShowLocalStorageWarning(false)}
+            onClick={onDismissSyncDisabledWarning}
             className="text-gx-red hover:text-gx-text transition-colors p-1"
             title="Dismiss"
           >
@@ -362,11 +378,11 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
       >
         <ScrollContainerProvider containerRef={scrollRef}>
           <div ref={contentWrapperRef} className="flex flex-col min-h-full">
-            {vaultQuota && (
+            {vaultQuota && effectiveSyncEnabled && (
             <QuotaWarningBanner
               warningLevel={vaultQuota.warningLevel}
               percentage={vaultQuota.percentage}
-              syncEnabled={!!effectiveSyncEnabled}
+              syncEnabled={true}
               onManageStorage={onManageStorage}
             />
           )}
@@ -389,7 +405,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
             )}
           >
             <div
-              ref={setBottomRef}
+              ref={setBottomRefWithTracking}
               id="vault-bottom"
               className={cn(
                 "w-full h-full border-2 border-dashed transition-colors",
@@ -397,6 +413,31 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
               )}
             />
           </div>
+
+          {/* Debug overlay showing actual dnd-kit detection area */}
+          {showDebugOverlays && dropzoneRect && (
+            <div
+              className={cn(
+                "fixed border-2 pointer-events-none z-[9999] transition-colors",
+                isBottomOver
+                  ? "border-yellow-500 bg-yellow-500/30"
+                  : "border-green-500 bg-green-500/20"
+              )}
+              style={{
+                top: dropzoneRect.top,
+                left: dropzoneRect.left,
+                width: dropzoneRect.width,
+                height: dropzoneRect.height,
+              }}
+            >
+              <span className={cn(
+                "absolute top-0 left-0 text-black text-[10px] px-1 font-bold transition-colors",
+                isBottomOver ? "bg-yellow-500" : "bg-green-500"
+              )}>
+                {isBottomOver ? "HOVERED!" : "vault-bottom"}
+              </span>
+            </div>
+          )}
           </div>
         </ScrollContainerProvider>
       </div>

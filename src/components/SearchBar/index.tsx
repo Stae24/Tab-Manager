@@ -16,6 +16,7 @@ interface SearchBarProps {
   isSearching?: boolean;
   className?: string;
   compact?: boolean;
+  showDebugOverlays?: boolean;
 }
 
 const buildAutocompleteSuggestions = (input: string, cursorPos: number): AutocompleteSuggestion[] => {
@@ -79,6 +80,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
     isSearching = false,
     className,
     compact = false,
+    showDebugOverlays,
   },
   forwardedRef
 ) => {
@@ -202,7 +204,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
   }, [onQueryChange]);
 
   return (
-    <div className={cn('relative flex items-center gap-2 w-full flex-1 border-2 border-green-500', className)}>
+    <div className={cn('relative flex items-center gap-2 w-full flex-1', showDebugOverlays && 'border-2 border-green-500', className)}>
       <div
         className={cn(
           'flex-1 flex items-center gap-2 py-1.5 rounded-lg border transition-all',
