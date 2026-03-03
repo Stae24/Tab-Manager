@@ -97,7 +97,7 @@ export interface VaultQuotaInfo {
   orphanedChunks?: number;
 }
 
-export type CompressionTier = 'full' | 'no_favicons' | 'minimal';
+export type CompressionTier = 'full' | 'minimal';
 
 export interface VaultMeta {
   version: number;
@@ -258,6 +258,7 @@ export interface AppearanceSettings {
 
   debugMode: boolean;
   showDebugOverlays: boolean;
+  disableProximityGap?: boolean;
   settingsBackgroundBlur: number;
   settingsBackgroundOpacity: number;
 

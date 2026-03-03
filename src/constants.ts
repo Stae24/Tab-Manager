@@ -12,7 +12,7 @@ export const VAULT_QUOTA_SAFETY_MARGIN_BYTES = 2048;
 export const VAULT_LOAD_MAX_RETRIES = 3;
 export const VAULT_LOAD_RETRY_BASE_DELAY_MS = 100;
 
-export const COMPRESSION_TIERS: readonly ('full' | 'no_favicons' | 'minimal')[] = ['full', 'no_favicons', 'minimal'];
+export const COMPRESSION_TIERS: readonly ('full' | 'minimal')[] = ['full', 'minimal'];
 
 export const SETTINGS_PANEL_MIN_WIDTH = 320;
 export const SETTINGS_PANEL_MAX_WIDTH = 800;
@@ -82,7 +82,13 @@ export const GX_GREEN_COLOR = '#00ff88';
 export const VAULT_META_KEY = 'vault_meta';
 export const VAULT_CHUNK_PREFIX = 'vault_chunk_';
 export const VAULT_DIFF_KEY = 'vault_diff';
+export const VAULT_LOCAL_KEY = 'vault_local';
+export const VAULT_FAVICONS_KEY = 'vault_favicons';
 export const LEGACY_VAULT_KEY = 'vault';
+export const LEGACY_VAULT_BACKUP_KEY = 'vault_backup';
+
+// Local-only UI settings key
+export const LOCAL_UI_SETTINGS_KEY = 'ui_settings_local';
 
 export const SIDEBAR_MIN_WIDTH = 300;
 export const SIDEBAR_MAX_WIDTH_PCT_MIN = 10;

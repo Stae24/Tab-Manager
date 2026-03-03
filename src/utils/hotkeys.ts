@@ -1,14 +1,10 @@
-import { HotkeyBinding } from '../types/index';
-
-export const normalizeHotkeyFromEvent = (event: KeyboardEvent): HotkeyBinding => {
-  return {
-    code: event.code,
-    ctrl: event.ctrlKey || event.metaKey,
-    meta: event.metaKey,
-    alt: event.altKey,
-    shift: event.shiftKey
-  };
-};
+export interface HotkeyBinding {
+  code: string;
+  ctrl: boolean;
+  meta: boolean;
+  alt: boolean;
+  shift: boolean;
+}
 
 export const matchesHotkey = (event: KeyboardEvent, binding: HotkeyBinding): boolean => {
   const codeMatches = event.code === binding.code;
@@ -20,58 +16,55 @@ export const matchesHotkey = (event: KeyboardEvent, binding: HotkeyBinding): boo
   return codeMatches && ctrlMatches && metaMatches && altMatches && shiftMatches;
 };
 
+export const DEFAULT_SIDEBAR_TOGGLE_HOTKEY: HotkeyBinding = {
+  code: 'Space', ctrl: true, meta: true, alt: false, shift: true
+};
+
+export const normalizeHotkeyFromEvent = (event: KeyboardEvent): HotkeyBinding => ({
+  code: event.code,
+  ctrl: event.ctrlKey || event.metaKey,
+  meta: event.metaKey,
+  alt: event.altKey,
+  shift: event.shiftKey,
+});
+
 export const formatHotkey = (binding: HotkeyBinding): string => {
+  const isMac = typeof navigator !== 'undefined' && navigator.platform?.startsWith('Mac');
   const parts: string[] = [];
 
   if (binding.ctrl || binding.meta) {
-    parts.push(navigator.platform.includes('Mac') ? '⌘' : 'Ctrl');
+    parts.push(isMac ? '⌘' : 'Ctrl');
   }
   if (binding.alt) {
-    parts.push(navigator.platform.includes('Mac') ? '⌥' : 'Alt');
+    parts.push(isMac ? '⌥' : 'Alt');
   }
   if (binding.shift) {
-    parts.push(navigator.platform.includes('Mac') ? '⇧' : 'Shift');
+    parts.push(isMac ? '⇧' : 'Shift');
   }
 
-  let key = binding.code;
-  if (key.startsWith('Key')) {
-    key = key.slice(3);
-  } else if (key.startsWith('Digit')) {
-    key = key.slice(5);
-  } else if (key === 'Space') {
-    key = 'Space';
-  } else if (key === 'ArrowUp') {
-    key = '↑';
-  } else if (key === 'ArrowDown') {
-    key = '↓';
-  } else if (key === 'ArrowLeft') {
-    key = '←';
-  } else if (key === 'ArrowRight') {
-    key = '→';
+  const keyMap: Record<string, string> = {
+    ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+    Space: 'Space', Backspace: '⌫', Enter: '↵', Escape: 'Esc',
+  };
+  const code = binding.code;
+  let key = keyMap[code];
+  if (!key) {
+    if (code.startsWith('Key')) key = code.slice(3);
+    else if (code.startsWith('Digit')) key = code.slice(5);
+    else key = code;
   }
-
   parts.push(key);
 
   return parts.join('+');
 };
 
 export const isValidHotkey = (binding: HotkeyBinding): boolean => {
-  return !!binding.code && (binding.ctrl || binding.meta || binding.alt || binding.shift);
+  if (!binding.code) return false;
+  return binding.ctrl || binding.meta || binding.alt || binding.shift;
 };
 
-export const hotkeysEqual = (a: HotkeyBinding, b: HotkeyBinding): boolean => {
-  return (
-    a.code === b.code &&
-    a.ctrl === b.ctrl &&
-    a.meta === b.meta &&
-    a.alt === b.alt &&
-    a.shift === b.shift
-  );
-};
+export const hotkeysEqual = (a: HotkeyBinding, b: HotkeyBinding): boolean =>
+  a.code === b.code && a.ctrl === b.ctrl && a.meta === b.meta && a.alt === b.alt && a.shift === b.shift;
 
-export const hasDuplicateHotkey = (
-  newBinding: HotkeyBinding,
-  existingBindings: HotkeyBinding[]
-): boolean => {
-  return existingBindings.some(existing => hotkeysEqual(newBinding, existing));
-};
+export const hasDuplicateHotkey = (hotkey: HotkeyBinding, list: HotkeyBinding[]): boolean =>
+  list.some((h) => hotkeysEqual(h, hotkey));

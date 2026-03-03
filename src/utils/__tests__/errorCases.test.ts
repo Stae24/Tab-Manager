@@ -174,7 +174,7 @@ describe('Error Cases - tabService', () => {
 describe('Error Cases - vaultService.loadVault', () => {
   it('falls back to backup when decompression fails', async () => {
     const backup = [createMockVaultItem(1, 'Backup Tab')];
-    mockLocalStorage['vault_backup'] = backup;
+    mockLocalStorage['vault_local'] = backup;
     
     mockSyncStorage[VAULT_META_KEY] = {
       version: STORAGE_VERSION,
@@ -196,7 +196,7 @@ describe('Error Cases - vaultService.loadVault', () => {
 
   it('falls back to backup when checksum mismatches', async () => {
     const backup = [createMockVaultItem(1, 'Backup Tab')];
-    mockLocalStorage['vault_backup'] = backup;
+    mockLocalStorage['vault_local'] = backup;
     
     const vault = [createMockVaultItem(2, 'Original Tab')];
     const jsonData = JSON.stringify(vault);
@@ -219,7 +219,7 @@ describe('Error Cases - vaultService.loadVault', () => {
 
   it('falls back to backup when a chunk is missing', async () => {
     const backup = [createMockVaultItem(1, 'Backup Tab')];
-    mockLocalStorage['vault_backup'] = backup;
+    mockLocalStorage['vault_local'] = backup;
     
     mockSyncStorage[VAULT_META_KEY] = {
       version: STORAGE_VERSION,

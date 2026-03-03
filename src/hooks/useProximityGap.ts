@@ -3,9 +3,11 @@ import { useDroppable, Active } from '@dnd-kit/core';
 import { usePointerPosition } from '../contexts/PointerPositionContext';
 import { BASE_FONT_SIZE, VIRTUAL_ROW_GAP_PX, PROXIMITY_THRESHOLD_UP_REM, PROXIMITY_THRESHOLD_DOWN_REM } from '../constants';
 import { isVaultId, isLiveId } from '../store/utils';
+import { useStore } from '../store/useStore';
 
 export const useProximityGap = (gapId: string, active: Active | null, isDraggingGroup?: boolean, panelType?: 'live' | 'vault') => {
   const { pointerPosition } = usePointerPosition();
+  const disableProximityGap = useStore(state => state.appearanceSettings.disableProximityGap);
   const { setNodeRef, isOver } = useDroppable({ id: gapId });
   const gapRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -63,6 +65,12 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
 
   useEffect(() => {
     if (!active || !gapRef.current || isDraggingGroup) {
+      setExpanded(false);
+      setExpandedHeight(0);
+      return;
+    }
+
+    if (disableProximityGap) {
       setExpanded(false);
       setExpandedHeight(0);
       return;
@@ -136,7 +144,7 @@ export const useProximityGap = (gapId: string, active: Active | null, isDragging
       // Reset cached calculation on unmount or before next effect run
       // Note: we don't reset expanded state here as it's handled by dependencies
     };
-  }, [active, isDraggingGroup, pointerPosition, panelType]);
+  }, [active, isDraggingGroup, pointerPosition, panelType, disableProximityGap]);
 
   return { ref, isOver, expanded, expandedHeight };
 };

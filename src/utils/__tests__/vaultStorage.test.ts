@@ -3,6 +3,7 @@ import LZString from 'lz-string';
 
 const VAULT_META_KEY = 'vault_meta';
 const VAULT_CHUNK_PREFIX = 'vault_chunk_';
+const VAULT_LOCAL_KEY = 'vault_local';
 const LEGACY_VAULT_KEY = 'vault';
 
 const mockSyncStorage: Record<string, unknown> = {};
@@ -94,8 +95,7 @@ describe('vaultStorage - saveVault', () => {
     const result = await saveVault(vault, { syncEnabled: false });
     
     expect(result.success).toBe(true);
-    expect(mockLocalStorage[LEGACY_VAULT_KEY]).toEqual(vault);
-    expect(mockLocalStorage['vault_backup']).toEqual(vault);
+    expect(mockLocalStorage[VAULT_LOCAL_KEY]).toEqual(vault);
   });
 
   it('saves compressed chunks to sync storage when enabled', async () => {
@@ -118,14 +118,14 @@ describe('vaultStorage - saveVault', () => {
     
     await saveVault(vault, { syncEnabled: true });
     
-    expect(mockLocalStorage['vault_backup']).toEqual(vault);
+    expect(mockLocalStorage[VAULT_LOCAL_KEY]).toEqual(vault);
   });
 });
 
 describe('vaultStorage - loadVault', () => {
   it('loads from local storage when sync is disabled', async () => {
     const vault = [createMockVaultItem(1, 'Test Tab')];
-    mockLocalStorage[LEGACY_VAULT_KEY] = vault;
+    mockLocalStorage[VAULT_LOCAL_KEY] = vault;
     
     const { vault: loaded } = await loadVault({ syncEnabled: false });
     
@@ -152,7 +152,7 @@ describe('vaultStorage - loadVault', () => {
 
   it('falls back to backup when sync data is corrupted', async () => {
     const backup = [createMockVaultItem(1, 'Backup Tab')];
-    mockLocalStorage['vault_backup'] = backup;
+    mockLocalStorage[VAULT_LOCAL_KEY] = backup;
     
     mockSyncStorage[VAULT_META_KEY] = {
       version: 2,
@@ -207,7 +207,7 @@ describe('vaultStorage - toggleSyncMode', () => {
     const result = await toggleSyncMode(vault, false);
     
     expect(result.success).toBe(true);
-    expect(mockLocalStorage[LEGACY_VAULT_KEY]).toEqual(vault);
+    expect(mockLocalStorage[VAULT_LOCAL_KEY]).toEqual(vault);
     expect(mockSyncStorage[VAULT_META_KEY]).toBeUndefined();
   });
 });
@@ -241,7 +241,7 @@ describe('vaultStorage - migrateFromLegacy', () => {
     
     const result = await migrateFromLegacy({ syncEnabled: false });
     
-    expect(result.migrated).toBe(false);
+    expect(result.migrated).toBe(true);
     expect(result.from).toBe('local_legacy');
   });
 });
@@ -249,7 +249,7 @@ describe('vaultStorage - migrateFromLegacy', () => {
 describe('vaultStorage - getStorageStats', () => {
   it('returns storage statistics', async () => {
     const vault = [createMockVaultItem(1, 'Test')];
-    mockLocalStorage[LEGACY_VAULT_KEY] = vault;
+    mockLocalStorage[VAULT_LOCAL_KEY] = vault;
     
     const stats = await getStorageStats();
     
@@ -393,7 +393,7 @@ describe('vaultStorage - quota fallback', () => {
     expect(result.success).toBe(true);
     expect(result.fallbackToLocal).toBe(true);
     expect(result.warningLevel).toBe('critical');
-    expect(mockLocalStorageLocal[LEGACY_VAULT_KEY]).toEqual(vault);
+    expect(mockLocalStorageLocal[VAULT_LOCAL_KEY]).toEqual(vault);
   });
   
   it('falls back to local storage when sync write fails with generic error', async () => {
@@ -429,7 +429,7 @@ describe('vaultStorage - quota fallback', () => {
     
     expect(result.success).toBe(true);
     expect(result.fallbackToLocal).toBe(true);
-    expect(mockLocalStorageLocal[LEGACY_VAULT_KEY]).toEqual(vault);
+    expect(mockLocalStorageLocal[VAULT_LOCAL_KEY]).toEqual(vault);
   });
 });
 
