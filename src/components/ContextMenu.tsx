@@ -64,6 +64,18 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ show, x, y, onClose, c
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [show, onClose]);
 
+    // Close menu when window loses focus
+    useEffect(() => {
+        const handleWindowBlur = () => {
+            if (show) {
+                onClose();
+            }
+        };
+
+        window.addEventListener('blur', handleWindowBlur);
+        return () => window.removeEventListener('blur', handleWindowBlur);
+    }, [show, onClose]);
+
     if (!show) return null;
 
     // Render the menu using React Portal to document.body
