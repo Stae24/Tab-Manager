@@ -7,6 +7,7 @@ vi.mock('../../../services/vaultService', () => ({
     saveVault: vi.fn(),
     toggleSyncMode: vi.fn(),
     disableVaultSync: vi.fn(),
+    estimateBytesInUse: vi.fn().mockReturnValue(100),
   }
 }));
 
@@ -126,17 +127,6 @@ describe('useVaultSlice', () => {
   });
 
   describe('persistVault', () => {
-    it('checks quota at 100%', async () => {
-      const vault: VaultItem[] = [createMockVaultItem()];
-      vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota({ percentage: 1.0 }));
-      vi.mocked(vaultService.saveVault).mockResolvedValue({ success: true });
-      vi.mocked(vaultService.disableVaultSync).mockResolvedValue({ success: true });
-
-      await store.getState().persistVault(vault, true);
-
-      expect(vaultService.disableVaultSync).toHaveBeenCalled();
-    });
-
     it('calls vaultService.saveVault', async () => {
       const vault: VaultItem[] = [createMockVaultItem()];
       vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota());
@@ -914,13 +904,14 @@ describe('useVaultSlice', () => {
     it('auto-switches to local on quota exceeded', async () => {
       const tab = createMockTab({ id: 'live-tab-1' });
       const existingVaultItem: VaultItem = { ...createMockTab({ id: 'vault-existing' }), savedAt: Date.now(), originalId: 99 };
-      store = createTestStore({ 
+      store = createTestStore({
         islands: [tab],
         vault: [existingVaultItem],
         effectiveSyncEnabled: true,
         appearanceSettings: { ...defaultAppearanceSettings, vaultSyncEnabled: true },
       });
-      vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota({ available: 0, percentage: 1.0 }));
+      // Set total to a very small value so the vault won't fit
+      vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota({ total: 100, available: 0, percentage: 1.0 }));
       vi.mocked(vaultService.saveVault).mockResolvedValue({ success: true });
       vi.mocked(tabService.closeTab).mockResolvedValue(undefined);
 
@@ -931,9 +922,10 @@ describe('useVaultSlice', () => {
   });
 
   describe('error handling', () => {
-    it('handles settingsService errors in persistVault', async () => {
+    it('handles fallbackToLocal from saveVault in persistVault', async () => {
       const vault: VaultItem[] = [createMockVaultItem()];
-      vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota({ percentage: 1.0 }));
+      vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota());
+      vi.mocked(vaultService.saveVault).mockResolvedValue({ success: true, fallbackToLocal: true });
       vi.mocked(vaultService.disableVaultSync).mockResolvedValue({ success: true });
 
       await store.getState().persistVault(vault, true);

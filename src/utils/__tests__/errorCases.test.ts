@@ -117,17 +117,18 @@ const createMockVaultItem = (id: number, title: string): VaultItem => ({
 describe('Error Cases - vaultService.saveVault', () => {
   it('returns QUOTA_EXCEEDED when quota is insufficient', async () => {
     const vault = [createMockVaultItem(1, 'Tab 1')];
-    
+
     vi.spyOn(quotaService, 'getVaultQuota').mockResolvedValue({
       used: 5000,
       available: 10,
-      total: 5010,
+      total: 100,  // Small total capacity that can't fit the compressed vault
       percentage: 0.99,
-      warningLevel: 'critical'
+      warningLevel: 'critical',
+      orphanedChunks: 0
     });
 
     const result = await vaultService.saveVault(vault, { syncEnabled: true });
-    
+
     expect(result.success).toBe(true);
     expect(result.fallbackToLocal).toBe(true);
   });

@@ -369,21 +369,25 @@ describe('useProximityGap cross-panel suppression', () => {
   });
 });
 
+function createScaleModifier(uiScale: number) {
+  return ({ transform }: any) => {
+    if (uiScale === 1) {
+      return transform;
+    }
+    return {
+      ...transform,
+      x: transform.x / uiScale,
+      y: transform.y / uiScale,
+    };
+  };
+}
+
 describe('DnD Scale Modifier logic', () => {
   it('correctly scales transform coordinates based on uiScale', () => {
     const uiScale: number = 1.5;
     const transform = { x: 150, y: 150, scaleX: 1, scaleY: 1 };
 
-    const scaleModifier = ({ transform }: any) => {
-      if (uiScale === 1) {
-        return transform;
-      }
-      return {
-        ...transform,
-        x: transform.x / uiScale,
-        y: transform.y / uiScale,
-      };
-    };
+    const scaleModifier = createScaleModifier(uiScale);
 
     const result = scaleModifier({ transform });
     expect(result.x).toBe(100);
@@ -394,16 +398,7 @@ describe('DnD Scale Modifier logic', () => {
     const uiScale: number = 1.0;
     const transform = { x: 100, y: 100, scaleX: 1, scaleY: 1 };
 
-    const scaleModifier = ({ transform }: any) => {
-      if (uiScale === 1) {
-        return transform;
-      }
-      return {
-        ...transform,
-        x: transform.x / uiScale,
-        y: transform.y / uiScale,
-      };
-    };
+    const scaleModifier = createScaleModifier(uiScale);
 
     const result = scaleModifier({ transform });
     expect(result.x).toBe(100);
@@ -414,16 +409,7 @@ describe('DnD Scale Modifier logic', () => {
     const uiScale: number = 2;
     const transform = { x: 200, y: 100, scaleX: 1, scaleY: 1 };
 
-    const scaleModifier = ({ transform }: any) => {
-      if (uiScale === 1) {
-        return transform;
-      }
-      return {
-        ...transform,
-        x: transform.x / uiScale,
-        y: transform.y / uiScale,
-      };
-    };
+    const scaleModifier = createScaleModifier(uiScale);
 
     const result = scaleModifier({ transform });
     expect(result.x).toBe(100);
@@ -434,16 +420,7 @@ describe('DnD Scale Modifier logic', () => {
     const uiScale: number = 0.5;
     const transform = { x: 50, y: 50, scaleX: 1, scaleY: 1 };
 
-    const scaleModifier = ({ transform }: any) => {
-      if (uiScale === 1) {
-        return transform;
-      }
-      return {
-        ...transform,
-        x: transform.x / uiScale,
-        y: transform.y / uiScale,
-      };
-    };
+    const scaleModifier = createScaleModifier(uiScale);
 
     const result = scaleModifier({ transform });
     expect(result.x).toBe(100);

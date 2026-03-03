@@ -32,6 +32,7 @@ vi.mock('../../../services/vaultService', () => ({
     loadVault: vi.fn(),
     toggleSyncMode: vi.fn(),
     disableVaultSync: vi.fn(),
+    estimateBytesInUse: vi.fn().mockReturnValue(100),
   }
 }));
 

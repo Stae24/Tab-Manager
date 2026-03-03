@@ -99,26 +99,28 @@ describe('VaultPanel Component', () => {
     expect(createVaultGroup).toHaveBeenCalled();
   });
 
-  it('shows local storage warning when sync is disabled and vault has items', () => {
+  it('shows local storage warning when showSyncDisabledWarning is true', () => {
     render(
       <VaultPanel
         {...defaultProps}
         vault={[{ id: 'vault-tab-1', title: 'Test', url: 'https://example.com' }]}
         effectiveSyncEnabled={false}
         vaultTabCount={1}
+        showSyncDisabledWarning={true}
       />
     );
 
     expect(screen.getByText(/Vault too large for sync/)).toBeInTheDocument();
   });
 
-  it('hides local storage warning when sync is enabled', () => {
+  it('hides local storage warning when showSyncDisabledWarning is false', () => {
     render(
       <VaultPanel
         {...defaultProps}
         vault={[{ id: 'vault-tab-1', title: 'Test', url: 'https://example.com' }]}
-        effectiveSyncEnabled={true}
+        effectiveSyncEnabled={false}
         vaultTabCount={1}
+        showSyncDisabledWarning={false}
       />
     );
 
@@ -173,20 +175,23 @@ describe('VaultPanel Component', () => {
     expect(sortVaultGroupsToTop).toHaveBeenCalled();
   });
 
-  it('dismisses local storage warning when X clicked', () => {
+  it('calls onDismissSyncDisabledWarning when dismiss button clicked', () => {
+    const onDismissSyncDisabledWarning = vi.fn();
     render(
       <VaultPanel
         {...defaultProps}
         vault={[{ id: 'vault-tab-1', title: 'Test', url: 'https://example.com' }]}
         effectiveSyncEnabled={false}
         vaultTabCount={1}
+        showSyncDisabledWarning={true}
+        onDismissSyncDisabledWarning={onDismissSyncDisabledWarning}
       />
     );
 
     const dismissButton = screen.getByTitle('Dismiss');
     fireEvent.click(dismissButton);
 
-    expect(screen.queryByText(/Vault too large for sync/)).not.toBeInTheDocument();
+    expect(onDismissSyncDisabledWarning).toHaveBeenCalled();
   });
 
   it('applies correct width from dividerPosition', () => {
@@ -352,26 +357,28 @@ describe('VaultPanel Component', () => {
   });
 
   describe('VaultPanel - Sync Toggle', () => {
-    it('shows sync disabled warning when sync is off', () => {
+    it('shows sync disabled warning when showSyncDisabledWarning is true', () => {
       render(
         <VaultPanel
           {...defaultProps}
           vault={[{ id: 'vault-tab-1', title: 'Test', url: 'https://example.com' }]}
           effectiveSyncEnabled={false}
           vaultTabCount={1}
+          showSyncDisabledWarning={true}
         />
       );
 
       expect(screen.getByText(/Vault too large for sync/)).toBeInTheDocument();
     });
 
-    it('hides sync disabled warning when sync is on', () => {
+    it('hides sync disabled warning when showSyncDisabledWarning is false', () => {
       render(
         <VaultPanel
           {...defaultProps}
           vault={[{ id: 'vault-tab-1', title: 'Test', url: 'https://example.com' }]}
           effectiveSyncEnabled={true}
           vaultTabCount={1}
+          showSyncDisabledWarning={false}
         />
       );
 

@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
+import { tabService } from '../../services/tabService';
 
 vi.mock('@dnd-kit/core', () => ({
-  DndContext: ({ children, onDragStart, onDragEnd, onDragOver, sensors, ...props }: any) => {
+  DndContext: ({ children, onDragStart, onDragEnd, onDragOver, onDragCancel, sensors, ...props }: any) => {
     return (
       <div
         data-testid="dnd-context"
@@ -15,6 +16,7 @@ vi.mock('@dnd-kit/core', () => ({
             (context as any)._onDragStart = onDragStart;
             (context as any)._onDragEnd = onDragEnd;
             (context as any)._onDragOver = onDragOver;
+            (context as any)._onDragCancel = onDragCancel;
           }
         }}
       >
@@ -77,101 +79,118 @@ vi.mock('../CreateZone', () => ({
   CreateZone: () => <div data-testid="create-zone">Create Zone</div>,
 }));
 
-const createMockStore = () => ({
-  islands: [] as any[],
-  vault: [] as any[],
-  isUpdating: false,
-  setIsUpdating: vi.fn(),
-  moveItemOptimistically: vi.fn().mockImplementation((activeId: string, overId: string) => {
-    // Mock implementation that simulates moving items
-    return { activeId, overId };
-  }),
-  syncLiveTabs: vi.fn().mockResolvedValue(undefined),
-  moveToVault: vi.fn().mockResolvedValue(undefined),
-  restoreFromVault: vi.fn().mockResolvedValue(undefined),
-  createIsland: vi.fn().mockResolvedValue(123),
-  showVault: true,
-  isDraggingGroup: false,
-  setIsDraggingGroup: vi.fn(),
-  appearanceSettings: {
-    tabDensity: 'normal' as const,
-    borderRadius: 'medium' as const,
-    dragOpacity: 0.5,
-    showFavicons: true,
-    showAudioIndicators: 'both' as const,
-    showFrozenIndicators: true,
-    showActiveIndicator: true,
-    showTabCount: true,
-    compactGroupHeaders: false,
-    buttonSize: 'medium' as const,
-    uiScale: 1,
-  },
-  setIsCreatingIsland: vi.fn(),
-  dividerPosition: 50,
-  setDividerPosition: vi.fn(),
-  isRenaming: false,
-  setIsRenaming: vi.fn(),
-  setVaultSyncEnabled: vi.fn(),
-  clearQuotaExceeded: vi.fn(),
-  groupSearchResults: vi.fn(),
-  groupUngroupedTabs: vi.fn(),
-  showAppearancePanel: false,
-  executeCommand: vi.fn(),
-  addPendingOperation: vi.fn(),
-  removePendingOperation: vi.fn(),
-  clearPendingOperations: vi.fn(),
-  vaultQuota: null,
-  quotaExceededPending: false,
-  searchQuery: '',
-  setSearchQuery: vi.fn(),
-  sortOption: 'browser-order',
-  setSortOption: vi.fn(),
-  isCreatingIsland: false,
-  creatingTabId: null,
-  setCreatingTabId: vi.fn(),
-  setIsDraggingVaultItem: vi.fn(),
-  isDraggingVaultItem: false,
-  setIsLoading: vi.fn(),
-  setIsResizing: vi.fn(),
-  saveToVault: vi.fn(),
-  removeFromVault: vi.fn(),
-  renameGroup: vi.fn(),
-  createVaultGroup: vi.fn(),
-  toggleVaultGroupCollapse: vi.fn(),
-  toggleLiveGroupCollapse: vi.fn(),
-  deleteDuplicateTabs: vi.fn(),
-  sortGroupsToTop: vi.fn(),
-  sortVaultGroupsToTop: vi.fn(),
-  isDarkMode: false,
-  undoStack: [] as any[],
-  redoStack: [] as any[],
-  undo: vi.fn(),
-  redo: vi.fn(),
-  canUndo: false,
-  canRedo: false,
-  effectiveSyncEnabled: true,
-  syncRecovered: false,
-  clearSyncRecovered: vi.fn(),
-  compressionTier: null,
-  showCompressionWarning: false,
-  dismissCompressionWarning: vi.fn(),
-});
-
-vi.mock('../../store/useStore', () => ({
-  useStore: vi.fn((selector?: any) => {
-    if (typeof selector === 'function') {
-      return selector(mockStore);
-    }
-    return mockStore;
-  }),
-  parseNumericId: vi.fn((id: string) => {
-    const match = id.match(/live-tab-(\d+)/) || id.match(/live-group-(\d+)/);
-    return match ? parseInt(match[1], 10) : null;
-  }),
-  findItemInList: vi.fn(),
-}));
+const createMockStore = () => {
+  const store = {
+    islands: [] as any[],
+    vault: [] as any[],
+    isUpdating: false,
+    setIsUpdating: vi.fn(),
+    moveItemOptimistically: vi.fn().mockImplementation((activeId: string, overId: string) => {
+      return { activeId, overId };
+    }),
+    syncLiveTabs: vi.fn().mockResolvedValue(undefined),
+    moveToVault: vi.fn().mockResolvedValue(undefined),
+    restoreFromVault: vi.fn().mockResolvedValue(undefined),
+    createIsland: vi.fn().mockResolvedValue(123),
+    reorderVault: vi.fn().mockResolvedValue(undefined),
+    showVault: true,
+    isDraggingGroup: false,
+    setIsDraggingGroup: vi.fn(),
+    appearanceSettings: {
+      tabDensity: 'normal' as const,
+      borderRadius: 'medium' as const,
+      dragOpacity: 0.5,
+      showFavicons: true,
+      showAudioIndicators: 'both' as const,
+      showFrozenIndicators: true,
+      showActiveIndicator: true,
+      showTabCount: true,
+      compactGroupHeaders: false,
+      buttonSize: 'medium' as const,
+      uiScale: 1,
+    },
+    setIsCreatingIsland: vi.fn(),
+    dividerPosition: 50,
+    setDividerPosition: vi.fn(),
+    isRenaming: false,
+    setIsRenaming: vi.fn(),
+    setVaultSyncEnabled: vi.fn(),
+    clearQuotaExceeded: vi.fn(),
+    groupSearchResults: vi.fn(),
+    groupUngroupedTabs: vi.fn(),
+    showAppearancePanel: false,
+    executeCommand: vi.fn(),
+    addPendingOperation: vi.fn(),
+    removePendingOperation: vi.fn(),
+    clearPendingOperations: vi.fn(),
+    vaultQuota: null,
+    quotaExceededPending: false,
+    searchQuery: '',
+    setSearchQuery: vi.fn(),
+    sortOption: 'browser-order',
+    setSortOption: vi.fn(),
+    isCreatingIsland: false,
+    creatingTabId: null,
+    setCreatingTabId: vi.fn(),
+    setIsDraggingVaultItem: vi.fn(),
+    isDraggingVaultItem: false,
+    setIsLoading: vi.fn(),
+    setIsResizing: vi.fn(),
+    saveToVault: vi.fn(),
+    removeFromVault: vi.fn(),
+    renameGroup: vi.fn(),
+    createVaultGroup: vi.fn(),
+    toggleVaultGroupCollapse: vi.fn(),
+    toggleLiveGroupCollapse: vi.fn(),
+    deleteDuplicateTabs: vi.fn(),
+    sortGroupsToTop: vi.fn(),
+    sortVaultGroupsToTop: vi.fn(),
+    isDarkMode: false,
+    undoStack: [] as any[],
+    redoStack: [] as any[],
+    undo: vi.fn(),
+    redo: vi.fn(),
+    canUndo: false,
+    canRedo: false,
+    effectiveSyncEnabled: true,
+    syncRecovered: false,
+    clearSyncRecovered: vi.fn(),
+    compressionTier: null,
+    showCompressionWarning: false,
+    dismissCompressionWarning: vi.fn(),
+  };
+  return store;
+};
 
 let mockStore = createMockStore();
+
+vi.mock('../../store/useStore', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../store/useStore')>();
+  return {
+    ...actual,
+    useStore: Object.assign(
+      vi.fn((selector?: any) => {
+        if (typeof selector === 'function') {
+          return selector(mockStore);
+        }
+        return mockStore;
+      }),
+      { getState: () => mockStore }
+    ),
+    parseNumericId: vi.fn((id: string) => {
+      const match = id.match(/live-tab-(\d+)/) || id.match(/live-group-(\d+)/);
+      return match ? parseInt(match[1], 10) : null;
+    }),
+    isVaultId: vi.fn((id: string) => id.startsWith('vault-')),
+  };
+});
+
+vi.mock('../../services/tabService', () => ({
+  tabService: {
+    getTab: vi.fn().mockResolvedValue({ id: 1, pinned: false }),
+    createIsland: vi.fn().mockResolvedValue(123),
+  },
+}));
 
 describe('Dashboard DnD Integration', () => {
   let Dashboard: React.FC<any>;
@@ -374,6 +393,25 @@ describe('Dashboard DnD Integration', () => {
 
       const onDragEnd = (dndContext as any)._onDragEnd;
       expect(typeof onDragEnd).toBe('function');
+
+      // Simulate drag end with live tab dropped on create-island-dropzone
+      const mockDragEndEvent = {
+        active: { id: 'live-tab-1', data: { current: { type: 'tab', tab: { id: 'live-tab-1' } } } },
+        over: { id: 'create-island-dropzone' },
+      };
+
+      await onDragEnd(mockDragEndEvent);
+
+      // Verify the tabService.getTab function was called (via mocked tabService)
+      await waitFor(() => {
+        expect(tabService.getTab).toHaveBeenCalledWith(1);
+      });
+
+      // Verify island creation was triggered via chrome.runtime.sendMessage
+      await waitFor(() => {
+        expect(mockChromeRuntimeSendMessage).toHaveBeenCalledWith({ type: 'START_ISLAND_CREATION' });
+        expect(mockChromeRuntimeSendMessage).toHaveBeenCalledWith({ type: 'END_ISLAND_CREATION' });
+      });
     });
 
     it('negative: live group dropped on create-island-dropzone is a no-op (no create call)', async () => {
@@ -388,7 +426,23 @@ describe('Dashboard DnD Integration', () => {
       ];
 
       const { container } = render(<Dashboard />);
-      expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
+      const dndContext = container.querySelector('[data-testid="dnd-context"]');
+      expect(dndContext).toBeInTheDocument();
+      fireEvent.click(dndContext!);
+
+      const onDragEnd = (dndContext as any)._onDragEnd;
+
+      // Simulate drag end with live group dropped on create-island-dropzone
+      const mockDragEndEvent = {
+        active: { id: 'live-group-1', data: { current: { type: 'island', island: { id: 'live-group-1' } } } },
+        over: { id: 'create-island-dropzone' },
+      };
+
+      await onDragEnd(mockDragEndEvent);
+
+      // Verify island creation was NOT called
+      expect(tabService.getTab).not.toHaveBeenCalled();
+      expect(mockChromeRuntimeSendMessage).not.toHaveBeenCalledWith({ type: 'START_ISLAND_CREATION' });
     });
 
     it('negative: vault item dropped on create-island remains blocked', async () => {
@@ -398,15 +452,69 @@ describe('Dashboard DnD Integration', () => {
       ];
 
       const { container } = render(<Dashboard />);
-      expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
+      const dndContext = container.querySelector('[data-testid="dnd-context"]');
+      expect(dndContext).toBeInTheDocument();
+      fireEvent.click(dndContext!);
+
+      const onDragEnd = (dndContext as any)._onDragEnd;
+
+      // Simulate drag end with vault item dropped on create-island-dropzone
+      const mockDragEndEvent = {
+        active: { id: 'vault-tab-1-123', data: { current: { type: 'tab', tab: { id: 'vault-tab-1-123' } } } },
+        over: { id: 'create-island-dropzone' },
+      };
+
+      await onDragEnd(mockDragEndEvent);
+
+      // Verify island creation was NOT called (vault items are blocked from create-island-dropzone)
+      expect(tabService.getTab).not.toHaveBeenCalled();
+      expect(mockChromeRuntimeSendMessage).not.toHaveBeenCalledWith({ type: 'START_ISLAND_CREATION' });
     });
 
     it('cleanup: pending-operation tracking is released on all create-island exit paths', async () => {
       const removePendingOperation = vi.fn();
+      const addPendingOperation = vi.fn();
       mockStore.removePendingOperation = removePendingOperation;
+      mockStore.addPendingOperation = addPendingOperation;
 
       const { container } = render(<Dashboard />);
-      expect(container.querySelector('#dashboard-container')).toBeInTheDocument();
+      const dndContext = container.querySelector('[data-testid="dnd-context"]');
+      expect(dndContext).toBeInTheDocument();
+      fireEvent.click(dndContext!);
+
+      const onDragEnd = (dndContext as any)._onDragEnd;
+      const onDragCancel = (dndContext as any)._onDragCancel;
+
+      // Test 1: Cancel drag - should call removePendingOperation
+      removePendingOperation.mockClear();
+      const mockDragCancelEvent = {
+        active: { id: 'live-tab-1' },
+      };
+      await onDragCancel(mockDragCancelEvent);
+      expect(removePendingOperation).toHaveBeenCalledWith(1);
+
+      // Test 2: Successful drop on create-island-dropzone - should call removePendingOperation
+      removePendingOperation.mockClear();
+      const mockDragEndEvent = {
+        active: { id: 'live-tab-1', data: { current: { type: 'tab', tab: { id: 'live-tab-1' } } } },
+        over: { id: 'create-island-dropzone' },
+      };
+      await onDragEnd(mockDragEndEvent);
+      await waitFor(() => {
+        expect(removePendingOperation).toHaveBeenCalledWith(1);
+      });
+
+      // Test 3: Invalid drop (no over target) - should call removePendingOperation
+      removePendingOperation.mockClear();
+      const mockInvalidDragEndEvent = {
+        active: { id: 'live-tab-1', data: { current: { type: 'tab', tab: { id: 'live-tab-1' } } } },
+        over: null,
+      };
+      await onDragEnd(mockInvalidDragEndEvent);
+      expect(removePendingOperation).toHaveBeenCalledWith(1);
+
+      // Verify removePendingOperation was called the expected number of times across all paths
+      expect(removePendingOperation).toHaveBeenCalledTimes(1);
     });
   });
 });
