@@ -99,12 +99,6 @@ export interface VaultQuotaInfo {
 
 export type CompressionTier = 'full' | 'no_favicons' | 'minimal';
 
-export interface VaultDiff {
-  added: VaultItem[];
-  deleted: UniversalId[];
-  timestamp: number;
-}
-
 export interface VaultMeta {
   version: number;
   chunkCount: number;
@@ -114,7 +108,6 @@ export interface VaultMeta {
   compressed: boolean;
   compressionTier?: CompressionTier;
   minified?: boolean;
-  diffKey?: string;
   domainDedup?: boolean;
 }
 
