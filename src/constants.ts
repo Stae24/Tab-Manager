@@ -13,10 +13,6 @@ export const VAULT_QUOTA_SAFETY_MARGIN_BYTES = 2048;
 export const VAULT_LOAD_MAX_RETRIES = 3;
 export const VAULT_LOAD_RETRY_BASE_DELAY_MS = 100;
 
-export const VAULT_DIFF_KEY = 'vault_diff';
-export const DIFF_COMPACT_THRESHOLD = 0.3;
-export const COMPACT_IDLE_INTERVAL_MS = 900000;
-
 export const COMPRESSION_TIERS: readonly ('full' | 'no_favicons' | 'minimal')[] = ['full', 'no_favicons', 'minimal'];
 
 export const SETTINGS_PANEL_MIN_WIDTH = 320;

@@ -3,7 +3,6 @@ import { GripVertical } from 'lucide-react';
 
 import {
   DndContext,
-  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -22,6 +21,7 @@ import {
 import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable';
+import { createCollisionDetection } from './dnd/collisionDetection';
 import { Sidebar } from './Sidebar';
 import { LivePanel } from './LivePanel';
 import { VaultPanel } from './VaultPanel';
@@ -526,7 +526,7 @@ export const Dashboard: React.FC = () => {
       <ErrorBoundary name="Tactical Interface">
         <DndContext
           sensors={isRenaming ? [] : sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={createCollisionDetection(['live-bottom', 'vault-bottom'])}  
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
           modifiers={[scaleModifier]}
           onDragStart={handleDragStart}
