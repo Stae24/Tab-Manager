@@ -168,11 +168,11 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
             {/* Visual spacer - outer wrapper */}
             <div
                 className={cn(
-                    "w-full border-2 border-dashed flex items-center justify-center transition-colors",
+                    "w-full border-2 border-dashed flex items-center justify-center transition-colors min-h-24",
                     isBottomOver
                         ? "border-yellow-500 bg-yellow-500/30"
                         : "border-red-500/50 bg-red-500/10",
-                    isShortContent ? "flex-1 min-h-24" : "h-24"
+                    isShortContent ? "flex-1" : "h-24"
                 )}
             >
                 {/* Actual dnd-kit dropzone - inner element */}

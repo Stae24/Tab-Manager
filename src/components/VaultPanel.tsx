@@ -65,7 +65,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
     id: 'vault-dropzone',
   });
 
-  const { setNodeRef: setBottomRef } = useDroppable({
+  const { setNodeRef: setBottomRef, isOver: isBottomOver } = useDroppable({
     id: 'vault-bottom',
   });
 
@@ -75,6 +75,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(true);
   const [isCleaning, setIsCleaning] = useState(false);
   const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
+  const [isShortContent, setIsShortContent] = useState(false);
 
   const sidebarPanelPadding = useStore((s) => s.appearanceSettings.sidebarPanelPadding);
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
@@ -94,6 +95,8 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   useEffect(() => {
     detectSidebarContext().then(setIsSidebar);
   }, []);
+
+  const contentWrapperRef = useRef<HTMLDivElement>(null);
 
   const horizontalPadding = isSidebar === null
     ? SIDEBAR_PANEL_PADDING_DEFAULT
@@ -143,11 +146,37 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
     overscan: VIRTUAL_ROW_OVERSCAN,
   });
 
+  useEffect(() => {
+    const checkContentHeight = () => {
+      const wrapper = contentWrapperRef.current;
+      if (!wrapper) return;
+
+      const parent = wrapper.parentElement;
+      if (!parent) return;
+
+      const containerHeight = parent.clientHeight;
+      const contentHeight = virtualizer.getTotalSize();
+      const dropzoneHeight = 120;
+
+      setIsShortContent(contentHeight + dropzoneHeight < containerHeight);
+    };
+
+    checkContentHeight();
+
+    const resizeObserver = new ResizeObserver(checkContentHeight);
+    const wrapper = contentWrapperRef.current;
+    if (wrapper?.parentElement) {
+      resizeObserver.observe(wrapper.parentElement);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [virtualizer, rowItems.length]);
+
   const renderVaultList = () => {
     return (
       <SortableContext items={(vault || []).map(i => i.id)} strategy={verticalListSortingStrategy}>
         <div
-          className="relative"
+          className="relative shrink-0"
           style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%' }}
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
@@ -332,7 +361,8 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
         }}
       >
         <ScrollContainerProvider containerRef={scrollRef}>
-          {vaultQuota && (
+          <div ref={contentWrapperRef} className="flex flex-col min-h-full">
+            {vaultQuota && (
             <QuotaWarningBanner
               warningLevel={vaultQuota.warningLevel}
               percentage={vaultQuota.percentage}
@@ -352,9 +382,22 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
           {renderEmptyState()}
 
           <div
-            ref={setBottomRef}
-            className="h-24 w-full"
-          />
+            className={cn(
+              "w-full border-2 border-dashed flex items-center justify-center transition-colors min-h-24",
+              isBottomOver ? "border-yellow-500 bg-yellow-500/30" : "border-green-500/50 bg-green-500/10",
+              isShortContent ? "flex-1 min-h-24" : "h-24"
+            )}
+          >
+            <div
+              ref={setBottomRef}
+              id="vault-bottom"
+              className={cn(
+                "w-full h-full border-2 border-dashed transition-colors",
+                isBottomOver ? "border-yellow-400 bg-yellow-400/20" : "border-green-500/50 bg-green-500/10"
+              )}
+            />
+          </div>
+          </div>
         </ScrollContainerProvider>
       </div>
 
