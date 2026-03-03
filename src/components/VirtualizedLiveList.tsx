@@ -167,10 +167,13 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
             {/* Visual spacer - outer wrapper */}
             <div
                 className={cn(
-                    "w-full border-2 border-dashed flex items-center justify-center transition-colors min-h-24",
-                    isBottomOver
-                        ? "border-yellow-500 bg-yellow-500/30"
-                        : "border-red-500/50 bg-red-500/10",
+                    "w-full flex items-center justify-center transition-colors min-h-24",
+                    showDebugOverlays && [
+                        "border-2 border-dashed",
+                        isBottomOver
+                            ? "border-yellow-500 bg-yellow-500/30"
+                            : "border-red-500/50 bg-red-500/10"
+                    ],
                     isShortContent ? "flex-1" : "h-24"
                 )}
             >
@@ -178,10 +181,13 @@ export const VirtualizedLiveList: React.FC<VirtualizedLiveListProps> = ({
                 <div
                     ref={setBottomRefWithTracking}
                     className={cn(
-                        "w-full h-full border-2 border-dashed transition-colors",
-                        isBottomOver
-                            ? "border-yellow-400 bg-yellow-400/20"
-                            : "border-blue-500/50 bg-blue-500/10"
+                        "w-full h-full transition-colors",
+                        showDebugOverlays && [
+                            "border-2 border-dashed",
+                            isBottomOver
+                                ? "border-yellow-400 bg-yellow-400/20"
+                                : "border-blue-500/50 bg-blue-500/10"
+                        ]
                     )}
                 />
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Plus, Save, LayoutGrid, X, CopyX } from 'lucide-react';
+import { Plus, Save, LayoutGrid, X, CopyX, FolderX } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Island } from './Island';
@@ -27,6 +27,7 @@ interface VaultPanelProps {
   onToggleCollapse: (id: UniversalId) => void;
   sortVaultGroupsToTop: () => Promise<void>;
   deleteVaultDuplicates: () => Promise<void>;
+  deleteEmptyVaultGroups: () => Promise<void>;
   restoreFromVault: (id: UniversalId) => void;
   vaultQuota: VaultQuotaInfo | null;
   effectiveSyncEnabled: boolean;
@@ -53,6 +54,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   onToggleCollapse,
   sortVaultGroupsToTop,
   deleteVaultDuplicates,
+  deleteEmptyVaultGroups,
   restoreFromVault,
   vaultQuota,
   effectiveSyncEnabled,
@@ -78,7 +80,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(true);
-  const [isCleaning, setIsCleaning] = useState(false);
+  const [cleaningAction, setCleaningAction] = useState<'duplicates' | 'emptyGroups' | null>(null);
   const [isSidebar, setIsSidebar] = useState<boolean | null>(null);
   const [isShortContent, setIsShortContent] = useState(false);
   const [bottomNode, setBottomNode] = useState<HTMLElement | null>(null);
@@ -110,9 +112,15 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
     : (isSidebar ? (sidebarPanelPadding ?? SIDEBAR_PANEL_PADDING_DEFAULT) : (managerPanelPadding ?? MANAGER_PANEL_PADDING_DEFAULT));
 
   const handleDeleteDuplicates = async () => {
-    setIsCleaning(true);
+    setCleaningAction('duplicates');
     await deleteVaultDuplicates();
-    setTimeout(() => setIsCleaning(false), CLEANUP_ANIMATION_DELAY_MS);
+    setTimeout(() => setCleaningAction(null), CLEANUP_ANIMATION_DELAY_MS);
+  };
+
+  const handleDeleteEmptyGroups = async () => {
+    setCleaningAction('emptyGroups');
+    await deleteEmptyVaultGroups();
+    setTimeout(() => setCleaningAction(null), CLEANUP_ANIMATION_DELAY_MS);
   };
 
   const rowItems = useMemo(() => {
@@ -314,13 +322,27 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
             title="Delete Duplicates"
             className={cn(
               "p-1 rounded transition-all group",
-              isCleaning && "animate-pulse text-gx-red",
-              !isCleaning && "hover:bg-gx-red/20 hover:text-gx-red"
+              cleaningAction === 'duplicates' && "animate-pulse text-gx-red",
+              cleaningAction !== 'duplicates' && "hover:bg-gx-red/20 hover:text-gx-red"
             )}
           >
             <CopyX size={14} className={cn(
               "transition-transform",
-              !isCleaning && "group-hover:scale-110"
+              cleaningAction !== 'duplicates' && "group-hover:scale-110"
+            )} />
+          </button>
+          <button
+            onClick={handleDeleteEmptyGroups}
+            title="Delete Empty Groups"
+            className={cn(
+              "p-1 rounded transition-all group",
+              cleaningAction === 'emptyGroups' && "animate-pulse text-gx-red",
+              cleaningAction !== 'emptyGroups' && "hover:bg-gx-red/20 hover:text-gx-red"
+            )}
+          >
+            <FolderX size={14} className={cn(
+              "transition-transform",
+              cleaningAction !== 'emptyGroups' && "group-hover:scale-110"
             )} />
           </button>
           <button onClick={createVaultGroup} title="Add Group" className="p-1 hover:bg-gx-red/20 hover:text-gx-red rounded transition-all">
@@ -399,8 +421,11 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
 
           <div
             className={cn(
-              "w-full border-2 border-dashed flex items-center justify-center transition-colors min-h-24",
-              isBottomOver ? "border-yellow-500 bg-yellow-500/30" : "border-green-500/50 bg-green-500/10",
+              "w-full flex items-center justify-center transition-colors min-h-24",
+              showDebugOverlays && [
+                "border-2 border-dashed",
+                isBottomOver ? "border-yellow-500 bg-yellow-500/30" : "border-green-500/50 bg-green-500/10"
+              ],
               isShortContent ? "flex-1 min-h-24" : "h-24"
             )}
           >
@@ -408,8 +433,11 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
               ref={setBottomRefWithTracking}
               id="vault-bottom"
               className={cn(
-                "w-full h-full border-2 border-dashed transition-colors",
-                isBottomOver ? "border-yellow-400 bg-yellow-400/20" : "border-green-500/50 bg-green-500/10"
+                "w-full h-full transition-colors",
+                showDebugOverlays && [
+                  "border-2 border-dashed",
+                  isBottomOver ? "border-yellow-400 bg-yellow-400/20" : "border-green-500/50 bg-green-500/10"
+                ]
               )}
             />
           </div>

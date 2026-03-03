@@ -78,6 +78,7 @@ export const Dashboard: React.FC = () => {
   const sortGroupsToTop = useStore(state => state.sortGroupsToTop);
   const sortVaultGroupsToTop = useStore(state => state.sortVaultGroupsToTop);
   const deleteVaultDuplicates = useStore(state => state.deleteVaultDuplicates);
+  const deleteEmptyVaultGroups = useStore(state => state.deleteEmptyVaultGroups);
   const showVault = useStore(state => state.showVault);
   const isRenaming = useStore(state => state.isRenaming);
   const appearanceSettings = useStore(state => state.appearanceSettings);
@@ -589,6 +590,7 @@ export const Dashboard: React.FC = () => {
                     onToggleCollapse={toggleVaultGroupCollapse}
                     sortVaultGroupsToTop={sortVaultGroupsToTop}
                     deleteVaultDuplicates={deleteVaultDuplicates}
+                    deleteEmptyVaultGroups={deleteEmptyVaultGroups}
                     restoreFromVault={restoreFromVault}
                     vaultQuota={vaultQuota}
                     effectiveSyncEnabled={effectiveSyncEnabled}

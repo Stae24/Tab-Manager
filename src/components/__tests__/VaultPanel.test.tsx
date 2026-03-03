@@ -63,6 +63,7 @@ const defaultProps = {
   onToggleCollapse: vi.fn(),
   sortVaultGroupsToTop: vi.fn(),
   deleteVaultDuplicates: vi.fn(),
+  deleteEmptyVaultGroups: vi.fn(),
   restoreFromVault: vi.fn(),
   vaultQuota: null,
   effectiveSyncEnabled: true,
