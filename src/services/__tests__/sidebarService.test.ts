@@ -40,6 +40,7 @@ import { defaultAppearanceSettings } from '../../store/utils';
 describe('sidebarService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        sidebarService.resetSidePanelState();
         // Default mocks for chrome API
         (chrome.tabs.query as any).mockResolvedValue([]);
         (chrome.tabs.create as any).mockResolvedValue({ id: 99 });
@@ -49,6 +50,7 @@ describe('sidebarService', () => {
         (chrome.storage.session.get as any).mockResolvedValue({});
         (chrome.storage.session.set as any).mockResolvedValue(undefined);
         (chrome.sidePanel.open as any).mockResolvedValue(undefined);
+        (chrome.sidePanel.setOptions as any).mockResolvedValue(undefined);
         (chrome.contextMenus.create as any).mockResolvedValue(undefined);
         (chrome.contextMenus.removeAll as any).mockResolvedValue(undefined);
         (chrome.contextMenus.update as any).mockResolvedValue(undefined);
@@ -227,7 +229,7 @@ describe('sidebarService', () => {
 
             expect(handled).toBe(true);
             await vi.waitFor(() => expect(chrome.sidePanel.open).toHaveBeenCalledWith({ windowId: 10 }));
-            expect(sendResponse).toHaveBeenCalledWith({ success: true, isOpen: true });
+            await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ success: true, isOpen: true }));
         });
 
         it('should handle SIDEBAR_GET_STICKY_STATE', async () => {

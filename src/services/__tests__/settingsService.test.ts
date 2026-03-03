@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const mockStorageSyncGet = vi.fn();
 const mockStorageSyncSet = vi.fn();
+const mockStorageLocalGet = vi.fn();
+const mockStorageLocalSet = vi.fn();
 const mockStorageOnChangedAddListener = vi.fn();
 const mockStorageOnChangedRemoveListener = vi.fn();
 
@@ -10,6 +12,10 @@ vi.stubGlobal('chrome', {
     sync: {
       get: mockStorageSyncGet,
       set: mockStorageSyncSet,
+    },
+    local: {
+      get: mockStorageLocalGet,
+      set: mockStorageLocalSet,
     },
     onChanged: {
       addListener: mockStorageOnChangedAddListener,
@@ -20,6 +26,7 @@ vi.stubGlobal('chrome', {
 
 vi.mock('../../store/utils', () => ({
   syncSettings: vi.fn(),
+  syncLocalSettings: vi.fn(),
 }));
 
 describe('settingsService', () => {
@@ -36,23 +43,15 @@ describe('settingsService', () => {
   });
 
   describe('loadSettings', () => {
-    it('loads settings from chrome.storage.sync', async () => {
+    it('loads sync settings from chrome.storage.sync', async () => {
       const mockSettings = {
         appearanceSettings: { theme: 'dark' },
-        dividerPosition: 50,
-        showVault: true,
-        settingsPanelWidth: 300,
       };
       mockStorageSyncGet.mockResolvedValue(mockSettings);
 
       const result = await settingsService.loadSettings();
 
-      expect(mockStorageSyncGet).toHaveBeenCalledWith([
-        'appearanceSettings',
-        'dividerPosition',
-        'showVault',
-        'settingsPanelWidth',
-      ]);
+      expect(mockStorageSyncGet).toHaveBeenCalledWith(['appearanceSettings']);
       expect(result).toEqual(mockSettings);
     });
 
@@ -65,17 +64,54 @@ describe('settingsService', () => {
     });
   });
 
+  describe('loadLocalSettings', () => {
+    it('loads local UI settings from chrome.storage.local', async () => {
+      const mockLocalSettings = {
+        dividerPosition: 50,
+        showVault: true,
+        settingsPanelWidth: 300,
+      };
+      mockStorageLocalGet.mockResolvedValue({ ui_settings_local: mockLocalSettings });
+
+      const result = await settingsService.loadLocalSettings();
+
+      expect(mockStorageLocalGet).toHaveBeenCalledWith(['ui_settings_local']);
+      expect(result).toEqual(mockLocalSettings);
+    });
+
+    it('returns empty object when no local settings exist', async () => {
+      mockStorageLocalGet.mockResolvedValue({});
+
+      const result = await settingsService.loadLocalSettings();
+
+      expect(result).toEqual({});
+    });
+  });
+
   describe('saveSettings', () => {
     it('calls syncSettings with provided settings', async () => {
       const { syncSettings } = await import('../../store/utils');
       const settings = {
-        dividerPosition: 60,
-        showVault: false,
+        appearanceSettings: { theme: 'dark' } as any,
       };
 
       settingsService.saveSettings(settings);
 
       expect(syncSettings).toHaveBeenCalledWith(settings);
+    });
+  });
+
+  describe('saveLocalSettings', () => {
+    it('calls syncLocalSettings with provided local settings', async () => {
+      const { syncLocalSettings } = await import('../../store/utils');
+      const settings = {
+        dividerPosition: 60,
+        showVault: false,
+      };
+
+      settingsService.saveLocalSettings(settings);
+
+      expect(syncLocalSettings).toHaveBeenCalledWith(settings);
     });
   });
 
@@ -130,16 +166,12 @@ describe('settingsService', () => {
     it('handles malformed settings gracefully', async () => {
       mockStorageSyncGet.mockResolvedValue({
         appearanceSettings: 'not an object',
-        dividerPosition: 'not a number',
-        showVault: 'not a boolean',
       });
 
       const result = await settingsService.loadSettings();
 
       expect(result).toEqual({
         appearanceSettings: 'not an object',
-        dividerPosition: 'not a number',
-        showVault: 'not a boolean',
       });
     });
 
@@ -158,8 +190,6 @@ describe('settingsService', () => {
           borderRadius: 'default',
           vaultSyncEnabled: true,
         },
-        dividerPosition: 50,
-        showVault: true,
       };
       mockStorageSyncGet.mockResolvedValue(validSettings);
 
@@ -175,16 +205,17 @@ describe('settingsService', () => {
       const mockSyncSettings = vi.fn(() => {
         throw new Error('Sync failed');
       });
-      
+
       vi.doMock('../../store/utils', () => ({
         syncSettings: mockSyncSettings,
+        syncLocalSettings: vi.fn(),
       }));
 
       vi.resetModules();
       const { settingsService: newSettingsService } = await import('../settingsService');
 
       expect(() => {
-        newSettingsService.saveSettings({ dividerPosition: 60 });
+        newSettingsService.saveSettings({ appearanceSettings: { theme: 'dark' } as any });
       }).toThrow('Sync failed');
     });
   });

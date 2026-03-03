@@ -144,7 +144,7 @@ describe('quotaService', () => {
       mockStorageSyncGet.mockResolvedValue({
         vault_meta: { timestamp: 1234567890, chunkKeys: [] },
       });
-      mockLocalStorageGet.mockResolvedValue({ vault: [{ id: 'test' }] });
+      mockLocalStorageGet.mockResolvedValue({ vault_local: [{ id: 'test' }] });
       mockLocalStorageGetBytesInUse.mockResolvedValue(5000);
 
       const report = await quotaService.getStorageReport();

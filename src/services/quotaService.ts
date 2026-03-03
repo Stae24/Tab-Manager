@@ -9,7 +9,7 @@ import {
   QUOTA_WARNING_THRESHOLD,
   QUOTA_CRITICAL_THRESHOLD
 } from '../constants';
-import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY, getVaultChunkKeys, SETTINGS_KEYS } from './storageKeys';
+import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, VAULT_LOCAL_KEY, getVaultChunkKeys, SETTINGS_KEYS } from './storageKeys';
 import { logger } from '../utils/logger';
 
 export type StorageHealthStatus = 'healthy' | 'degraded' | 'critical';
@@ -82,10 +82,10 @@ export const quotaService = {
     const [syncBytes, localBytes, localData] = await Promise.all([
       chrome.storage.sync.getBytesInUse(null),
       chrome.storage.local.getBytesInUse(null),
-      chrome.storage.local.get([LEGACY_VAULT_KEY, 'vault_backup'])
+      chrome.storage.local.get([VAULT_LOCAL_KEY])
     ]);
 
-    const vault = (localData[LEGACY_VAULT_KEY] || localData.vault_backup || []) as VaultItem[];
+    const vault = (localData[VAULT_LOCAL_KEY] || []) as VaultItem[];
 
     return {
       syncUsed: syncBytes,
@@ -153,7 +153,7 @@ export const quotaService = {
         chrome.storage.sync.getBytesInUse(null),
         chrome.storage.local.getBytesInUse(null),
         chrome.storage.sync.get(VAULT_META_KEY),
-        chrome.storage.local.get([LEGACY_VAULT_KEY, 'vault_backup'])
+        chrome.storage.local.get([VAULT_LOCAL_KEY])
       ]);
 
       const syncAllData = await chrome.storage.sync.get(null);
@@ -166,7 +166,7 @@ export const quotaService = {
       const syncUsageRatio = syncBytesInUse / CHROME_SYNC_QUOTA_BYTES;
       const health = classifyStorageHealth(syncUsageRatio, orphanedChunks);
 
-      const vault = (localData[LEGACY_VAULT_KEY] || localData.vault_backup || []) as VaultItem[];
+      const vault = (localData[VAULT_LOCAL_KEY] || []) as VaultItem[];
 
       return {
         health,

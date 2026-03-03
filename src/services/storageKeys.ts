@@ -1,7 +1,7 @@
 import type { VaultMeta } from '../types/index';
-import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, VAULT_DIFF_KEY, LEGACY_VAULT_KEY } from '../constants';
+import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, VAULT_DIFF_KEY, VAULT_LOCAL_KEY, LEGACY_VAULT_KEY, LEGACY_VAULT_BACKUP_KEY } from '../constants';
 
-export { VAULT_META_KEY, VAULT_CHUNK_PREFIX, VAULT_DIFF_KEY, LEGACY_VAULT_KEY };
+export { VAULT_META_KEY, VAULT_CHUNK_PREFIX, VAULT_DIFF_KEY, VAULT_LOCAL_KEY, LEGACY_VAULT_KEY, LEGACY_VAULT_BACKUP_KEY };
 
 export const SETTINGS_KEYS = ['appearanceSettings', 'dividerPosition', 'showVault', 'vaultSyncEnabled', 'settingsPanelWidth'];
 

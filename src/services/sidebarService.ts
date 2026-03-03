@@ -3,6 +3,7 @@ import { mergeAppearanceSettings, defaultAppearanceSettings } from '../store/uti
 import { ToolbarClickAction } from '../types/index';
 
 const SIDEBAR_STICKY_STATE_KEY = 'sidebarStickyState';
+const sidePanelOpenWindows = new Set<number>();
 
 const getStickyStateStorage = async (): Promise<Record<number, boolean>> => {
   try {
@@ -64,24 +65,33 @@ export const sidebarService = {
       return;
     }
 
-    await chrome.sidePanel.open({ windowId }).catch((err) => {
-      logger.error('SidebarService', 'Failed to open sidePanel:', err);
-    });
+    // Must call toggleSidePanel before any async work (like loadSettings)
+    // because Chrome requires sidePanel.open() in the same user gesture context.
+    await this.toggleSidePanel(windowId);
 
     const settings = await this.loadSettings();
     if (settings.toolbarClickAction === 'open-manager-page') {
-      if (chrome.sidePanel && (chrome.sidePanel as any).close) {
-        try {
-          await (chrome.sidePanel as any).close({ windowId });
-        } catch (err) {
-          logger.warn('SidebarService', 'Failed to close sidePanel:', err);
-        }
+      // Close the panel we just opened, then open manager page instead
+      if (sidePanelOpenWindows.has(windowId)) {
+        await chrome.sidePanel.setOptions({ enabled: false });
+        sidePanelOpenWindows.delete(windowId);
+        await chrome.sidePanel.setOptions({ enabled: true });
       }
       await this.openManagerPage();
-      return;
     }
+  },
 
-    await this.setWindowStickyState(windowId, true);
+  async toggleSidePanel(windowId: number): Promise<void> {
+    if (sidePanelOpenWindows.has(windowId)) {
+      logger.info('SidebarService', 'Closing side panel for window', windowId);
+      await chrome.sidePanel.setOptions({ enabled: false });
+      sidePanelOpenWindows.delete(windowId);
+      await chrome.sidePanel.setOptions({ enabled: true });
+    } else {
+      logger.info('SidebarService', 'Opening side panel for window', windowId);
+      await chrome.sidePanel.open({ windowId });
+      sidePanelOpenWindows.add(windowId);
+    }
   },
 
   async openManagerPage(): Promise<void> {
@@ -252,6 +262,10 @@ export const sidebarService = {
     await this.setupWindowListeners();
     await this.setupContextMenus();
     logger.info('SidebarService', 'Initialized');
+  },
+
+  resetSidePanelState(): void {
+    sidePanelOpenWindows.clear();
   }
 };
 
@@ -261,12 +275,14 @@ export const setupSidebarMessageListener = (
   sendResponse: (response?: { success: boolean; isOpen?: boolean; isSticky?: boolean; error?: string }) => void
 ): boolean => {
   if (message.type === 'SIDEBAR_TOGGLE_WINDOW') {
-    if (message.windowId !== undefined) {
-      chrome.sidePanel.open({ windowId: message.windowId }).then(() => {
-        sendResponse({ success: true, isOpen: true });
-      }).catch((err) => {
-        logger.error('SidebarService', 'Failed to open sidePanel:', err);
-        sendResponse({ success: false, isOpen: false, error: 'Failed to open sidePanel' });
+    const windowId = message.windowId ?? _sender.tab?.windowId;
+    if (windowId !== undefined) {
+      sidebarService.toggleSidePanel(windowId).then(() => {
+        const isOpen = sidePanelOpenWindows.has(windowId);
+        sendResponse({ success: true, isOpen });
+      }).catch((err: unknown) => {
+        logger.error('SidebarService', 'Failed to toggle sidePanel:', err);
+        sendResponse({ success: false, isOpen: false, error: 'Failed to toggle sidePanel' });
       });
       return true;
     }
