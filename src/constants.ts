@@ -5,7 +5,6 @@ export const CHROME_SYNC_ITEM_MAX_BYTES = 8192;
 export const MAX_SYNC_RETRIES = 3;
 export const INITIAL_SYNC_BACKOFF = 1000;
 export const CHROME_SYNC_QUOTA_BYTES = 102400;
-export const SYNC_SETTINGS_RESERVE_BYTES = 10240;
 export const QUOTA_WARNING_THRESHOLD = 0.8;
 export const QUOTA_CRITICAL_THRESHOLD = 0.9;
 export const VAULT_QUOTA_SAFETY_MARGIN_BYTES = 2048;
@@ -82,6 +81,7 @@ export const GX_GREEN_COLOR = '#00ff88';
 
 export const VAULT_META_KEY = 'vault_meta';
 export const VAULT_CHUNK_PREFIX = 'vault_chunk_';
+export const VAULT_DIFF_KEY = 'vault_diff';
 export const LEGACY_VAULT_KEY = 'vault';
 
 export const SIDEBAR_MIN_WIDTH = 300;

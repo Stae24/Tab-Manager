@@ -442,6 +442,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   settingsBackgroundBlur: 0,
   settingsBackgroundOpacity: 0,
   debugMode: false,
+  showDebugOverlays: false,
   restorePinnedState: DEFAULT_RESTORE_PINNED_STATE,
   restoreMutedState: DEFAULT_RESTORE_MUTED_STATE,
   restoreFrozenState: DEFAULT_RESTORE_FROZEN_STATE,

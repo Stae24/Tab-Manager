@@ -143,7 +143,7 @@ const init = async () => {
       ? mergeAppearanceSettings(sync.appearanceSettings)
       : defaultAppearanceSettings;
     const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
-    useStore.setState({ appearanceSettings: updatedSettings });
+    useStore.setState({ appearanceSettings: updatedSettings, showSyncDisabledWarning: true });
     await settingsService.saveSettings({ appearanceSettings: updatedSettings });
   }
 
@@ -177,7 +177,8 @@ const init = async () => {
         vault: loadResult.vault,
         lastVaultTimestamp: loadResult.timestamp,
         effectiveSyncEnabled: false,
-        appearanceSettings: updatedSettings
+        appearanceSettings: updatedSettings,
+        showSyncDisabledWarning: true
       });
       await settingsService.saveSettings({ appearanceSettings: updatedSettings });
       logger.warn('Store', 'Sync disabled - using local storage');
@@ -192,33 +193,9 @@ const init = async () => {
 
   if (effectiveSyncEnabled) {
     const quota = await quotaService.getVaultQuota();
-    logger.info('Store', `Quota check: ${quota.used}/${quota.total} bytes (${Math.round(quota.percentage * 100)}%), available=${quota.available}`);
+    logger.info('Store', `Quota check: ${quota.used}/${quota.total} bytes (${Math.round(quota.percentage * 100)}%)`);
     useStore.setState({ vaultQuota: quota });
-
-    if (quota.percentage >= 1.0) {
-      logger.warn('Store', `Quota critical at ${Math.round(quota.percentage * 100)}%`);
-      const currentSettings = sync.appearanceSettings
-        ? mergeAppearanceSettings(sync.appearanceSettings)
-        : defaultAppearanceSettings;
-      const updatedSettings = { ...currentSettings, vaultSyncEnabled: false };
-
-      try {
-        await vaultService.disableVaultSync(loadResult.vault);
-      } catch (error) {
-        logger.error('Store', 'Failed to disable vault sync:', error);
-      }
-
-      useStore.setState({
-        appearanceSettings: updatedSettings,
-        effectiveSyncEnabled: false,
-        vaultQuota: quota
-      });
-      await settingsService.saveSettings({ appearanceSettings: updatedSettings });
-      logger.warn('Store', 'SYNC DISABLED. To re-enable: Settings → Vault → Enable Vault Sync');
-    } else {
-      logger.info('Store', `Quota check passed: ${Math.round(quota.percentage * 100)}% < 100%`);
-      await quotaService.logQuotaDetails();
-    }
+    // Warning banner will show automatically based on warningLevel
   } else {
     logger.info('Store', 'Sync disabled - using local storage');
     const orphanedCount = await quotaService.cleanupOrphanedChunks();
@@ -256,7 +233,7 @@ const init = async () => {
                 lastVaultTimestamp: incomingTimestamp,
                 effectiveSyncEnabled: false,
                 appearanceSettings: updatedSettings,
-                syncRecovered: false // Explicitly set to false on fallback
+                showSyncDisabledWarning: true
               });
               await settingsService.saveSettings({ appearanceSettings: updatedSettings });
             } else {

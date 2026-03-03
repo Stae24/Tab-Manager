@@ -27,11 +27,6 @@ async function applyRestorationHints(tabId: number, vaultTab: VaultTab, settings
   }
 }
 
-function estimateItemSize(item: LiveItem): number {
-  const json = JSON.stringify(item);
-  return new TextEncoder().encode(json).length * 2;
-}
-
 async function checkQuotaBeforeSave(
   item: LiveItem,
   currentVault: VaultItem[],
@@ -42,29 +37,28 @@ async function checkQuotaBeforeSave(
   }
 
   const quota = await quotaService.getVaultQuota();
-  const safetyMargin = VAULT_QUOTA_SAFETY_MARGIN_BYTES;
+  const maxBytes = quota.total - VAULT_QUOTA_SAFETY_MARGIN_BYTES;
 
-  if (!currentVault.length) {
-    const estimatedItemSize = estimateItemSize(item);
-    return {
-      allowed: quota.available - estimatedItemSize >= safetyMargin,
-      shouldSwitchToLocal: false
-    };
-  }
-
+  // Tier 1: Fast rough estimate (uncompressed JSON length as upper bound)
   const testVault = [...currentVault, { ...item, savedAt: Date.now(), originalId: item.id } as VaultItem];
-  const testJson = JSON.stringify(testVault);
-  const compressed = LZString.compressToUTF16(testJson);
-  const estimatedCompressedSize = compressed.length * 2;
+  const roughBytes = JSON.stringify(testVault).length;
 
-  const netNewBytes = estimatedCompressedSize - quota.used;
-  const estimatedRequiredBytes = netNewBytes + safetyMargin;
-
-  if (estimatedRequiredBytes > quota.available) {
-    return { allowed: false, shouldSwitchToLocal: true };
+  // If raw uncompressed easily fits, it'll definitely compress to fit
+  if (roughBytes <= maxBytes) {
+    return { allowed: true, shouldSwitchToLocal: false };
   }
 
-  return { allowed: true, shouldSwitchToLocal: false };
+  // Tier 2: Accurate check with actual compression and proper byte estimation
+  const compressed = LZString.compressToUTF16(JSON.stringify(testVault));
+  const compressedBytes = vaultService.estimateBytesInUse(compressed, 'full', false, false);
+
+  if (compressedBytes <= maxBytes) {
+    return { allowed: true, shouldSwitchToLocal: false };
+  }
+
+  // Tier 3: Try with minification + compression tiers (matches what saveVault does)
+  // Only reach here if standard compression doesn't fit
+  return { allowed: false, shouldSwitchToLocal: true };
 }
 
 export interface VaultSlice {
@@ -76,10 +70,11 @@ export interface VaultSlice {
   syncRecovered: boolean;
   compressionTier: CompressionTier;
   showCompressionWarning: boolean;
+  showSyncDisabledWarning: boolean;
 
   moveToVault: (id: UniversalId) => Promise<void>;
   saveToVault: (item: LiveItem) => Promise<void>;
-  restoreFromVault: (id: UniversalId) => Promise<void>;
+  restoreFromVault: (id: UniversalId) => void;
   removeFromVault: (id: UniversalId) => Promise<void>;
   createVaultGroup: () => Promise<void>;
   reorderVault: (newVault: VaultItem[]) => Promise<void>;
@@ -91,6 +86,7 @@ export interface VaultSlice {
   setVaultSyncEnabled: (enabled: boolean) => Promise<VaultStorageResult>;
   clearSyncRecovered: () => void;
   dismissCompressionWarning: () => void;
+  dismissSyncDisabledWarning: () => void;
   toggleVaultTabHint: (id: UniversalId, hint: 'wasPinned' | 'wasMuted' | 'wasFrozen') => Promise<void>;
 
   persistVault: (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]) => Promise<VaultStorageResult>;
@@ -105,10 +101,13 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   syncRecovered: false,
   compressionTier: 'full',
   showCompressionWarning: false,
+  showSyncDisabledWarning: false,
 
   clearSyncRecovered: () => set({ syncRecovered: false }),
 
   dismissCompressionWarning: () => set({ showCompressionWarning: false }),
+
+  dismissSyncDisabledWarning: () => set({ showSyncDisabledWarning: false }),
 
   persistVault: async (vault: VaultItem[], syncEnabled: boolean, previousVault?: VaultItem[]): Promise<VaultStorageResult> => {
     const capturedPreviousVault = previousVault ?? get().vault;
@@ -119,32 +118,6 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       effectiveSyncEnabled,
       vaultItemCount: vault.length
     });
-
-    if (effectiveSyncEnabled) {
-      const quota = await quotaService.getVaultQuota();
-      if (quota.percentage >= 1.0) {
-        logger.warn('VaultSlice', `Already at ${Math.round(quota.percentage * 100)}%, forcing local fallback`);
-
-        const { appearanceSettings } = get();
-        const updated = { ...appearanceSettings, vaultSyncEnabled: false };
-        set({ appearanceSettings: updated, effectiveSyncEnabled: false });
-        try {
-          await settingsService.saveSettings({ appearanceSettings: updated });
-        } catch (error) {
-          logger.error('VaultSlice', 'Failed to save settings before disabling sync chunks:', error);
-        }
-
-        const disableResult = await vaultService.disableVaultSync(vault);
-        if (!disableResult.success) {
-          return { success: false, error: disableResult.error || 'SYNC_FAILED' };
-        }
-
-        const newQuota = await quotaService.getVaultQuota();
-        set({ vaultQuota: newQuota, lastVaultTimestamp: Date.now() });
-
-        return { success: true, warningLevel: 'none' };
-      }
-    }
 
     const result = await vaultService.saveVault(vault, { syncEnabled: effectiveSyncEnabled });
 
@@ -170,7 +143,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       logger.warn('VaultSlice', 'Auto-disabling vault sync due to size limits');
 
       const updated = { ...appearanceSettings, vaultSyncEnabled: false };
-      set({ appearanceSettings: updated, effectiveSyncEnabled: false });
+      set({ appearanceSettings: updated, effectiveSyncEnabled: false, showSyncDisabledWarning: true });
       try {
         await settingsService.saveSettings({ appearanceSettings: updated });
       } catch (error) {
@@ -267,7 +240,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       if (quotaCheck.shouldSwitchToLocal && appearanceSettings.vaultSyncEnabled) {
         logger.info('VaultSlice', 'moveToVault: Auto-switching to local storage due to quota');
         const updated = { ...appearanceSettings, vaultSyncEnabled: false };
-        set({ appearanceSettings: updated, effectiveSyncEnabled: false });
+        set({ appearanceSettings: updated, effectiveSyncEnabled: false, showSyncDisabledWarning: true });
         try {
           await settingsService.saveSettings({ appearanceSettings: updated });
         } catch (error) {
@@ -341,7 +314,7 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       if (quotaCheck.shouldSwitchToLocal && appearanceSettings.vaultSyncEnabled) {
         logger.info('VaultSlice', 'saveToVault: Auto-switching to local storage due to quota');
         const updated = { ...appearanceSettings, vaultSyncEnabled: false };
-        set({ appearanceSettings: updated, effectiveSyncEnabled: false });
+        set({ appearanceSettings: updated, effectiveSyncEnabled: false, showSyncDisabledWarning: true });
         try {
           await settingsService.saveSettings({ appearanceSettings: updated });
         } catch (error) {

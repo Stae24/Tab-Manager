@@ -257,6 +257,7 @@ export interface AppearanceSettings {
   settingsSectionGap?: number;
 
   debugMode: boolean;
+  showDebugOverlays: boolean;
   settingsBackgroundBlur: number;
   settingsBackgroundOpacity: number;
 

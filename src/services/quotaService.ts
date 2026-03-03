@@ -6,7 +6,6 @@ import type {
 } from '../types/index';
 import {
   CHROME_SYNC_QUOTA_BYTES,
-  SYNC_SETTINGS_RESERVE_BYTES,
   QUOTA_WARNING_THRESHOLD,
   QUOTA_CRITICAL_THRESHOLD
 } from '../constants';
@@ -61,8 +60,7 @@ export const quotaService = {
       ? await chrome.storage.sync.getBytesInUse(vaultKeys)
       : 0;
 
-    const settingsTotal = Math.max(settingsBytes, SYNC_SETTINGS_RESERVE_BYTES);
-    const available = CHROME_SYNC_QUOTA_BYTES - settingsTotal;
+    const available = CHROME_SYNC_QUOTA_BYTES - settingsBytes;
     const percentage = available > 0 ? vaultBytes / available : 1;
 
     return {
@@ -196,7 +194,6 @@ export const quotaService = {
   logQuotaDetails: async (): Promise<VaultQuotaInfo> => {
     const quota = await quotaService.getVaultQuota();
     logger.info('QuotaService', 'QuotaService: Detailed quota status', {
-      settingsReserve: SYNC_SETTINGS_RESERVE_BYTES,
       totalSyncQuota: CHROME_SYNC_QUOTA_BYTES,
       totalVaultCapacity: quota.total,
       usedByVault: quota.used,

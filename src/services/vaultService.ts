@@ -20,13 +20,92 @@ import {
   VAULT_CHUNK_SIZE,
   CHROME_SYNC_ITEM_MAX_BYTES,
   VAULT_QUOTA_SAFETY_MARGIN_BYTES,
-  SYNC_SETTINGS_RESERVE_BYTES,
   COMPRESSION_TIERS
 } from '../constants';
-import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, LEGACY_VAULT_KEY, getVaultChunkKeys } from './storageKeys';
+import { VAULT_META_KEY, VAULT_CHUNK_PREFIX, VAULT_DIFF_KEY, LEGACY_VAULT_KEY, getVaultChunkKeys } from './storageKeys';
 import { logger } from '../utils/logger';
 
 const getByteLength = (str: string): number => new TextEncoder().encode(str).length;
+
+const PER_ITEM_SAFETY_BUFFER_BYTES = 16;
+
+/**
+ * Computes the storage size of a sync storage item as Chrome measures it.
+ * This is: byteLength(key) + byteLength(JSON.stringify(value))
+ * JSON.stringify is used because Chrome stringifies values for storage accounting.
+ */
+function getStorageItemBytes(key: string, value: unknown): number {
+  const keyBytes = new TextEncoder().encode(key).length;
+  const valueBytes = new TextEncoder().encode(JSON.stringify(value)).length;
+  return keyBytes + valueBytes;
+}
+
+/**
+ * Estimates the bytes that Chrome's getBytesInUse would report for vault data.
+ * This simulates the chunking process and sums UTF-8 encoded sizes (key + value + JSON quotes).
+ * Matches how Chrome actually measures quota for sync storage.
+ */
+function estimateBytesInUse(
+  compressed: string,
+  tier: CompressionTier = 'full',
+  minified: boolean = false,
+  domainDedup: boolean = false
+): number {
+  let total = 0;
+  let offset = 0;
+  let chunkIndex = 0;
+
+  // Simulate chunking (same logic as createPreciseChunks)
+  while (offset < compressed.length) {
+    const key = `${VAULT_CHUNK_PREFIX}${chunkIndex}`;
+    const maxBytes = CHROME_SYNC_ITEM_MAX_BYTES - PER_ITEM_SAFETY_BUFFER_BYTES;
+
+    // Binary search for chunk boundary (matching createPreciseChunks)
+    let low = offset;
+    let high = compressed.length;
+    let bestEnd = offset;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const chunk = compressed.slice(offset, mid);
+      const itemBytes = getStorageItemBytes(key, chunk);
+
+      if (itemBytes <= maxBytes) {
+        bestEnd = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    if (bestEnd === offset) {
+      bestEnd = offset + 1;
+    }
+
+    const chunk = compressed.slice(offset, bestEnd);
+    total += getStorageItemBytes(key, chunk);
+
+    offset = bestEnd;
+    chunkIndex++;
+  }
+
+  // Add meta key overhead
+  const chunkKeys = Array.from({ length: chunkIndex }, (_, i) => `${VAULT_CHUNK_PREFIX}${i}`);
+  const meta = {
+    version: STORAGE_VERSION,
+    chunkCount: chunkIndex,
+    chunkKeys,
+    checksum: 'a'.repeat(64), // SHA-256 hex is always 64 chars
+    timestamp: Date.now(),
+    compressed: true,
+    compressionTier: tier,
+    minified,
+    domainDedup
+  };
+  total += getStorageItemBytes(VAULT_META_KEY, meta);
+
+  return total;
+}
 
 const TRACKING_PARAMS = new Set([
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
@@ -450,7 +529,7 @@ async function clearAllVaultChunks(): Promise<void> {
   logger.info('VaultService', 'Clearing all vault sync chunks...');
   const allSyncData = await chrome.storage.sync.get(null);
   const vaultKeys = Object.keys(allSyncData).filter(
-    key => key === VAULT_META_KEY || key.startsWith(VAULT_CHUNK_PREFIX) || key === 'vault_diff'
+    key => key === VAULT_META_KEY || key.startsWith(VAULT_CHUNK_PREFIX) || key === VAULT_DIFF_KEY
   );
   if (vaultKeys.length > 0) {
     await chrome.storage.sync.remove(vaultKeys);
@@ -458,17 +537,19 @@ async function clearAllVaultChunks(): Promise<void> {
   }
 }
 
-function createPreciseChunks(compressed: string): { chunks: string[]; keys: string[] } {
+function createPreciseChunks(
+  compressed: string,
+  maxBytesOverride?: number
+): { chunks: string[]; keys: string[] } {
   const chunks: string[] = [];
   const keys: string[] = [];
-  const encoder = new TextEncoder();
 
   let offset = 0;
   let chunkIndex = 0;
 
   while (offset < compressed.length) {
     const key = `${VAULT_CHUNK_PREFIX}${chunkIndex}`;
-    const maxBytes = CHROME_SYNC_ITEM_MAX_BYTES - key.length - 2;
+    const maxBytes = (maxBytesOverride ?? CHROME_SYNC_ITEM_MAX_BYTES) - PER_ITEM_SAFETY_BUFFER_BYTES;
 
     let low = offset;
     let high = compressed.length;
@@ -477,9 +558,9 @@ function createPreciseChunks(compressed: string): { chunks: string[]; keys: stri
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
       const chunk = compressed.slice(offset, mid);
-      const bytes = encoder.encode(chunk).length;
+      const itemBytes = getStorageItemBytes(key, chunk);
 
-      if (bytes <= maxBytes) {
+      if (itemBytes <= maxBytes) {
         bestEnd = mid;
         low = mid + 1;
       } else {
@@ -488,7 +569,8 @@ function createPreciseChunks(compressed: string): { chunks: string[]; keys: stri
     }
 
     if (bestEnd === offset) {
-      const singleCharBytes = encoder.encode(compressed.slice(offset, offset + 1)).length;
+      const singleCharChunk = compressed.slice(offset, offset + 1);
+      const singleCharBytes = getStorageItemBytes(key, singleCharChunk);
       if (singleCharBytes > maxBytes) {
         throw new Error(`Single character at position ${offset} exceeds chunk size limit (${singleCharBytes} > ${maxBytes} bytes)`);
       }
@@ -516,7 +598,7 @@ async function tryCompressionTiers(
     const minified = minifyVault(tieredVault);
     const minifiedJson = JSON.stringify(minified);
     const minifiedCompressed = LZString.compressToUTF16(minifiedJson);
-    const minifiedBytes = minifiedCompressed.length * 2;
+    const minifiedBytes = estimateBytesInUse(minifiedCompressed, tier, true, !Array.isArray(minified) && 'domains' in minified);
 
     if (minifiedBytes <= availableBytes) {
       const domainDedup = !Array.isArray(minified) && 'domains' in minified;
@@ -526,7 +608,7 @@ async function tryCompressionTiers(
 
     const regularJson = JSON.stringify(tieredVault);
     const regularCompressed = LZString.compressToUTF16(regularJson);
-    const regularBytes = regularCompressed.length * 2;
+    const regularBytes = estimateBytesInUse(regularCompressed, tier, false, false);
 
     if (regularBytes <= availableBytes) {
       logger.info('VaultService', `Compression tier ${tier} without minification fits: ${regularBytes} <= ${availableBytes}`);
@@ -721,24 +803,28 @@ export const vaultService = {
     vault: VaultItem[],
     config: VaultStorageConfig
   ): Promise<VaultStorageResult> => {
-    const doSave = async (): Promise<VaultStorageResult> => {
-      if (!config.syncEnabled) {
-        await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault });
-        await chrome.storage.local.set({ vault_backup: vault });
-        return { success: true };
-      }
-
+    const doSaveWithRetry = async (
+      isRetryAttempt: boolean,
+      availableBytes: number
+    ): Promise<VaultStorageResult> => {
       const quota = await quotaService.getVaultQuota();
       const currentKeys = await getVaultChunkKeys();
+      let storageData: Record<string, unknown> = {};
 
       try {
-        const availableBytes = quota.available - VAULT_QUOTA_SAFETY_MARGIN_BYTES;
-        logger.debug('VaultService', `saveVault: availableBytes=${availableBytes}, syncEnabled=${config.syncEnabled}`);
+        if (isRetryAttempt) {
+          logger.info('VaultService', '🔄 RETRY: Using stricter chunk limits');
+        }
 
-        logger.info('VaultService', '📊 Quota state BEFORE save:');
-        logger.info('VaultService', `  - Available: ${availableBytes} bytes (with safety margin)`);
+        const effectiveAvailableBytes = isRetryAttempt ? availableBytes : quota.total - VAULT_QUOTA_SAFETY_MARGIN_BYTES;
 
-        const { tier, compressed, minified, domainDedup } = await tryCompressionTiers(vault, availableBytes);
+        if (!isRetryAttempt) {
+          logger.debug('VaultService', `saveVault: availableBytes=${effectiveAvailableBytes}, syncEnabled=${config.syncEnabled}`);
+          logger.info('VaultService', '📊 Quota state BEFORE save:');
+          logger.info('VaultService', `  - Available: ${effectiveAvailableBytes} bytes (with safety margin)`);
+        }
+
+        const { tier, compressed, minified, domainDedup } = await tryCompressionTiers(vault, effectiveAvailableBytes);
         logger.debug('VaultService', `saveVault: using tier=${tier}, size=${compressed.length * 2} bytes`);
         const compressedBytes = compressed.length * 2;
 
@@ -752,9 +838,17 @@ export const vaultService = {
           : JSON.stringify(applyCompressionTierToVault(vault, tier));
         const checksum = await computeChecksum(checksumData);
 
-        const { chunks, keys: chunkKeys } = createPreciseChunks(compressed);
+        // Use reduced max bytes for chunks on retry (doubled safety buffer)
+        const maxBytesOverride = isRetryAttempt
+          ? CHROME_SYNC_ITEM_MAX_BYTES - (PER_ITEM_SAFETY_BUFFER_BYTES * 2)
+          : undefined;
+        const { chunks, keys: chunkKeys } = createPreciseChunks(compressed, maxBytesOverride);
 
-        logger.info('VaultService', `Created ${chunks.length} chunks using precise byte boundaries`);
+        if (isRetryAttempt) {
+          logger.info('VaultService', `Retry created ${chunks.length} chunks with reduced limits`);
+        } else {
+          logger.info('VaultService', `Created ${chunks.length} chunks using precise byte boundaries`);
+        }
 
         const meta: VaultMeta = {
           version: STORAGE_VERSION,
@@ -768,13 +862,24 @@ export const vaultService = {
           domainDedup
         };
 
-        const storageData: Record<string, unknown> = {
+        storageData = {
           [VAULT_META_KEY]: meta
         };
 
         chunks.forEach((chunk, index) => {
           storageData[chunkKeys[index]] = chunk;
         });
+
+        // Log predicted sizes before write
+        const itemSizes = Object.entries(storageData).map(([key, value]) => ({
+          key,
+          bytes: getStorageItemBytes(key, value)
+        }));
+        const maxItemSize = Math.max(...itemSizes.map(i => i.bytes));
+        logger.info('VaultService', `${isRetryAttempt ? 'Retry ' : ''}Max predicted per-item size: ${maxItemSize} bytes (limit: ${CHROME_SYNC_ITEM_MAX_BYTES})`);
+        if (isRetryAttempt) {
+          logger.debug('VaultService', 'Retry predicted item sizes:', itemSizes);
+        }
 
         logger.info('VaultService', `Saving ${Object.keys(storageData).length} items to sync storage...`);
         await chrome.storage.sync.set(storageData);
@@ -817,7 +922,7 @@ export const vaultService = {
           await chrome.storage.sync.remove(oldKeys);
         }
 
-        await chrome.storage.sync.remove('vault_diff').catch(() => { });
+        await chrome.storage.sync.remove(VAULT_DIFF_KEY).catch(() => { });
 
         await quotaService.cleanupOrphanedChunks();
         await chrome.storage.local.set({ vault_backup: vault });
@@ -841,6 +946,24 @@ export const vaultService = {
 
         const errorMessage = error instanceof Error ? error.message : String(error);
         const isQuotaError = errorMessage.includes('quota') || errorMessage.includes('too large');
+        const isPerItemQuotaError = errorMessage.includes('QUOTA_BYTES_PER_ITEM') ||
+                                     errorMessage.includes('kQuotaBytesPerItem');
+
+        // Retry with stricter chunk limits on per-item quota error
+        if (isPerItemQuotaError && !isRetryAttempt) {
+          logger.warn('VaultService', 'Per-item quota exceeded, retrying with stricter chunk limits...');
+
+          // Log diagnostic info
+          const itemSizes = Object.entries(storageData).map(([key, value]) => ({
+            key,
+            bytes: getStorageItemBytes(key, value)
+          }));
+          const maxItemSize = Math.max(...itemSizes.map(i => i.bytes));
+          logger.info('VaultService', `Max predicted per-item size before failure: ${maxItemSize} bytes (limit: ${CHROME_SYNC_ITEM_MAX_BYTES})`);
+          logger.debug('VaultService', 'Predicted item sizes:', itemSizes);
+
+          return doSaveWithRetry(true, availableBytes);
+        }
 
         if (isQuotaError) {
           logger.error('VaultService', '🔴 FALLBACK TRIGGERED: Quota error');
@@ -865,14 +988,28 @@ export const vaultService = {
       }
     };
 
-    if (saveLock) {
-      await saveLock.catch(() => {});
-    }
-    saveLock = doSave();
+    const doSave = async (): Promise<VaultStorageResult> => {
+      if (!config.syncEnabled) {
+        await chrome.storage.local.set({ [LEGACY_VAULT_KEY]: vault });
+        await chrome.storage.local.set({ vault_backup: vault });
+        return { success: true };
+      }
+
+      const quota = await quotaService.getVaultQuota();
+      const availableBytes = quota.total - VAULT_QUOTA_SAFETY_MARGIN_BYTES;
+
+      return doSaveWithRetry(false, availableBytes);
+    };
+
+    const lockChain = (saveLock || Promise.resolve()).catch(() => {});
+    const newLock = lockChain.then(() => doSave());
+    saveLock = newLock;
     try {
-      return await saveLock;
+      return await newLock;
     } finally {
-      saveLock = null;
+      if (saveLock === newLock) {
+        saveLock = null;
+      }
     }
   },
 
@@ -1029,5 +1166,14 @@ export const vaultService = {
     }
 
     return result;
+  },
+
+  estimateBytesInUse: (
+    compressed: string,
+    tier: CompressionTier = 'full',
+    minified: boolean = false,
+    domainDedup: boolean = false
+  ): number => {
+    return estimateBytesInUse(compressed, tier, minified, domainDedup);
   }
 };
