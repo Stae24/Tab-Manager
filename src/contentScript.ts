@@ -1,12 +1,8 @@
 import { AppearanceSettings } from './types';
+import { HotkeyBinding, matchesHotkey, DEFAULT_SIDEBAR_TOGGLE_HOTKEY } from './utils/hotkeys';
 
-export interface HotkeyBinding {
-  code: string;
-  ctrl: boolean;
-  meta: boolean;
-  alt: boolean;
-  shift: boolean;
-}
+export type { HotkeyBinding };
+export { matchesHotkey };
 
 export interface SidebarSettings {
   sidebarToggleHotkey: HotkeyBinding;
@@ -14,18 +10,8 @@ export interface SidebarSettings {
 }
 
 export const settings: SidebarSettings = {
-  sidebarToggleHotkey: { code: 'Space', ctrl: true, meta: true, alt: false, shift: true },
+  sidebarToggleHotkey: { ...DEFAULT_SIDEBAR_TOGGLE_HOTKEY },
   managerPageHotkey: { code: 'KeyM', ctrl: true, meta: true, alt: false, shift: true }
-};
-
-export const matchesHotkey = (event: KeyboardEvent, binding: HotkeyBinding): boolean => {
-  const codeMatches = event.code === binding.code;
-  const ctrlMatches = (event.ctrlKey || event.metaKey) === (binding.ctrl || binding.meta);
-  const metaMatches = event.metaKey === binding.meta;
-  const altMatches = event.altKey === binding.alt;
-  const shiftMatches = event.shiftKey === binding.shift;
-
-  return codeMatches && ctrlMatches && metaMatches && altMatches && shiftMatches;
 };
 
 export const handleKeyDown = (event: KeyboardEvent): void => {

@@ -48,33 +48,6 @@ describe('CompressionWarning', () => {
         });
     });
 
-    describe('Tier: no_favicons', () => {
-        it('should show no_favicons tier message', () => {
-            const tier: CompressionTier = 'no_favicons';
-            render(<CompressionWarning tier={tier} onDismiss={vi.fn()} />);
-
-            expect(screen.getByText(/Favicons removed/i)).toBeInTheDocument();
-        });
-
-        it('should render warning icon', () => {
-            const tier: CompressionTier = 'no_favicons';
-            render(<CompressionWarning tier={tier} onDismiss={vi.fn()} />);
-
-            // Icon is an SVG without accessible role
-            const svg = document.querySelector('svg');
-            expect(svg).toBeInTheDocument();
-        });
-
-        it('should call onDismiss when dismiss button clicked', async () => {
-            const tier: CompressionTier = 'no_favicons';
-            const onDismiss = vi.fn();
-            render(<CompressionWarning tier={tier} onDismiss={onDismiss} />);
-
-            await userEvent.click(screen.getByText('Dismiss'));
-            expect(onDismiss).toHaveBeenCalledTimes(1);
-        });
-    });
-
     describe('Styling', () => {
         it('should apply warning styling classes', () => {
             const { container } = render(

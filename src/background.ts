@@ -71,16 +71,17 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'toggle-island-manager') {
-    logger.debug('Background', 'Keyboard shortcut triggered');
+    logger.debug('Background', 'Keyboard shortcut triggered: toggle-island-manager');
     try {
-      const windows = await chrome.windows.getCurrent();
-      if (windows.id !== undefined) {
-        await sidebarService.handleToolbarClick(windows.id);
-      }
+      // sidePanel.open() is not allowed from commands.onCommand (requires user gesture),
+      // so always open as a manager page tab when triggered via keyboard shortcut.
+      await sidebarService.openManagerPage();
     } catch (error) {
       logger.error('Background', 'Error in commands.onCommand listener:', error);
     }
   }
+
+
 });
 
 (async () => {
@@ -171,8 +172,7 @@ export function messageListener(
   }
 
   if (message.type === 'SIDEBAR_TOGGLE_WINDOW') {
-    // Note: Chrome's sidePanel API has no close/toggle method - only open() is available.
-    // To implement true toggle, we would need to track open state externally.
+    // Handled by setupSidebarMessageListener in sidebarService
     const windowId = message.windowId ?? sender.tab?.windowId;
     if (windowId !== undefined) {
       chrome.sidePanel.open({ windowId }).then(() => {

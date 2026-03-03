@@ -39,6 +39,10 @@
   },
 "commands": {
     "toggle-island-manager": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+M",
+        "mac": "Command+Shift+M"
+      },
       "description": "Open or focus Island Manager"
     }
   }
