@@ -177,19 +177,44 @@ describe('vaultService - Advanced Logic', () => {
         });
     });
 
-    describe('Incremental Diffs', () => {
-        it('uses diff mode for small changes', async () => {
-            const initialVault = Array.from({ length: 10 }, (_, i) => createMockVaultItem({ id: String(i) }));
-            const updatedVault = [
-                ...initialVault,
-                createMockVaultItem({ id: 'added-1', title: 'Added' })
+    describe('Consecutive Saves', () => {
+        it('preserves all items on reload after multiple saves', async () => {
+            const vaultABC = [
+                createMockVaultItem({ id: '1', title: 'A' }),
+                createMockVaultItem({ id: '2', title: 'B' }),
+                createMockVaultItem({ id: '3', title: 'C' })
+            ];
+            const vaultABCD = [
+                ...vaultABC,
+                createMockVaultItem({ id: '4', title: 'D' })
+            ];
+            const vaultABCDE = [
+                ...vaultABCD,
+                createMockVaultItem({ id: '5', title: 'E' })
             ];
 
-            await vaultService.saveVault(initialVault, { syncEnabled: true });
-            const result = await vaultService.saveVault(updatedVault, { syncEnabled: true });
+            await vaultService.saveVault(vaultABC, { syncEnabled: true });
+            await vaultService.saveVault(vaultABCD, { syncEnabled: true });
+            await vaultService.saveVault(vaultABCDE, { syncEnabled: true });
 
-            expect(result.success).toBe(true);
-            expect(syncStore['vault_diff']).toBeDefined();
+            const loaded = await vaultService.loadVault({ syncEnabled: true });
+            expect(loaded.vault).toHaveLength(5);
+            expect(loaded.vault.map((v: any) => v.id).sort()).toEqual(['1', '2', '3', '4', '5']);
+        });
+
+        it('handles concurrent saves without losing data', async () => {
+            const vault1 = [createMockVaultItem({ id: '1', title: 'First' })];
+            const vault2 = [createMockVaultItem({ id: '2', title: 'Second' })];
+            const vault3 = [createMockVaultItem({ id: '3', title: 'Third' })];
+
+            await Promise.all([
+                vaultService.saveVault(vault1, { syncEnabled: true }),
+                vaultService.saveVault(vault2, { syncEnabled: true }),
+                vaultService.saveVault(vault3, { syncEnabled: true })
+            ]);
+
+            const loaded = await vaultService.loadVault({ syncEnabled: true });
+            expect(loaded.vault).toHaveLength(1);
         });
     });
 

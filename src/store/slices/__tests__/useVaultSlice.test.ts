@@ -783,23 +783,23 @@ describe('useVaultSlice', () => {
 
   describe('deleteVaultDuplicates', () => {
     it('finds duplicates in groups', async () => {
-      const group1: VaultItem = { 
+      const group1: VaultItem = {
         id: 'vault-group-1',
         title: 'Group 1',
         color: 'blue',
         collapsed: false,
-        tabs: [createMockVaultTab({ id: 't1', url: 'https://example.com' })], 
-        savedAt: Date.now(), 
-        originalId: 1 
+        tabs: [createMockVaultTab({ id: 't1', url: 'https://example.com' })],
+        savedAt: Date.now(),
+        originalId: 1
       };
-      const group2: VaultItem = { 
+      const group2: VaultItem = {
         id: 'vault-group-2',
         title: 'Group 2',
         color: 'blue',
         collapsed: false,
-        tabs: [createMockVaultTab({ id: 't2', url: 'https://example.com' })], 
-        savedAt: Date.now(), 
-        originalId: 2 
+        tabs: [createMockVaultTab({ id: 't2', url: 'https://example.com' })],
+        savedAt: Date.now(),
+        originalId: 2
       };
       store = createTestStore({ vault: [group1, group2] });
       vi.mocked(quotaService.getVaultQuota).mockResolvedValue(createMockQuota());
@@ -807,7 +807,9 @@ describe('useVaultSlice', () => {
 
       await store.getState().deleteVaultDuplicates();
 
-      expect(store.getState().vault).toHaveLength(1);
+      expect(store.getState().vault).toHaveLength(2);
+      expect((store.getState().vault[0] as { tabs: unknown[] }).tabs).toHaveLength(1);
+      expect((store.getState().vault[1] as { tabs: unknown[] }).tabs).toHaveLength(0);
     });
 
     it('finds duplicates in loose items', async () => {

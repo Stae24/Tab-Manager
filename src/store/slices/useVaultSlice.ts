@@ -5,7 +5,7 @@ import { vaultService } from '../../services/vaultService';
 import { quotaService } from '../../services/quotaService';
 import { tabService } from '../../services/tabService';
 import { settingsService } from '../../services/settingsService';
-import { isIsland, parseNumericId, findItemInList, isAppearanceSettings } from '../utils';
+import { isIsland, parseNumericId, findItemInList, isAppearanceSettings, liveItemToVaultItem } from '../utils';
 import { logger } from '../../utils/logger';
 import { VAULT_QUOTA_SAFETY_MARGIN_BYTES } from '../../constants';
 
@@ -301,22 +301,9 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
     logger.info('VaultSlice', 'moveToVault: Updated islands state');
 
     const timestamp = Date.now();
-    const itemClone = JSON.parse(JSON.stringify(item));
+    const vaultItem = liveItemToVaultItem(item, timestamp);
 
-    const transformId = (i: (Island | Tab) & { originalId?: UniversalId }) => {
-      const numericId = parseNumericId(i.id);
-      i.originalId = i.originalId ?? (numericId !== null ? numericId : i.id);
-      i.id = `vault-${i.id}-${timestamp}`;
-
-      if (isIsland(i)) {
-        i.tabs?.forEach((t) => transformId(t as Tab & { originalId?: UniversalId }));
-      }
-    };
-
-    transformId(itemClone);
-    (itemClone as VaultItem).savedAt = timestamp;
-
-    const newVault = [...vault, itemClone as VaultItem];
+    const newVault = [...vault, vaultItem];
     set({ vault: newVault });
     logger.info('VaultSlice', `moveToVault: Updated vault state, now has ${newVault.length} items`);
 
@@ -371,22 +358,10 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
       }
     }
 
-    let newItem = JSON.parse(JSON.stringify(item));
     const timestamp = Date.now();
+    const vaultItem = liveItemToVaultItem(item, timestamp);
 
-    const transformId = (i: (Island | Tab) & { originalId?: UniversalId }) => {
-      const numericId = parseNumericId(i.id);
-      i.originalId = i.originalId ?? (numericId !== null ? numericId : i.id);
-      i.id = `vault-${i.id}-${timestamp}`;
-      if (isIsland(i)) {
-        i.tabs?.forEach((t) => transformId(t as Tab & { originalId?: UniversalId }));
-      }
-    };
-
-    transformId(newItem);
-    newItem.savedAt = timestamp;
-
-    const newVault = [...vault, newItem];
+    const newVault = [...vault, vaultItem];
     set({ vault: newVault });
 
     const { appearanceSettings: freshSettings, effectiveSyncEnabled: freshEffective } = get();
@@ -444,6 +419,8 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
         await applyRestorationHints(nt.id, vaultTab, appearanceSettings);
       }
     }
+
+    await get().syncLiveTabs();
   },
 
   createVaultGroup: async () => {
@@ -514,64 +491,90 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
   deleteVaultDuplicates: async () => {
     const { vault, appearanceSettings, persistVault } = get();
 
-    const urlMap = new Map<string, VaultItem[]>();
+    interface TabRef {
+      tab: VaultTab;
+      islandId?: string;
+      tabIndex?: number;
+    }
 
-    const collectUrls = (item: VaultItem) => {
-      if ('tabs' in item && Array.isArray(item.tabs)) {
-        const island = item as VaultIsland;
-        for (const tab of island.tabs) {
-          if (tab.url) {
-            try {
-              const url = new URL(tab.url);
-              const normalized = `${url.protocol}//${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, '').toLowerCase()}${url.search}`;
-              const existing = urlMap.get(normalized) || [];
-              existing.push(item);
-              urlMap.set(normalized, existing);
-            } catch {
-              const normalized = tab.url.split('#')[0].trim().replace(/\/+$/, '');
-              const existing = urlMap.get(normalized) || [];
-              existing.push(item);
-              urlMap.set(normalized, existing);
-            }
-          }
-        }
-      } else {
-        const tab = item as VaultTab;
-        if (tab.url) {
-          try {
-            const url = new URL(tab.url);
-            const normalized = `${url.protocol}//${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, '').toLowerCase()}${url.search}`;
-            const existing = urlMap.get(normalized) || [];
-            existing.push(item);
-            urlMap.set(normalized, existing);
-          } catch {
-            const normalized = tab.url.split('#')[0].trim().replace(/\/+$/, '');
-            const existing = urlMap.get(normalized) || [];
-            existing.push(item);
-            urlMap.set(normalized, existing);
-          }
-        }
+    const urlMap = new Map<string, TabRef[]>();
+
+    const normalizeUrl = (urlString: string): string => {
+      try {
+        const url = new URL(urlString);
+        return `${url.protocol}//${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, '').toLowerCase()}${url.search}`;
+      } catch {
+        return urlString.split('#')[0].trim().replace(/\/+$/, '');
       }
     };
 
-    vault.forEach(collectUrls);
+    vault.forEach((item) => {
+      if ('tabs' in item && Array.isArray(item.tabs)) {
+        const island = item as VaultIsland;
+        island.tabs.forEach((tab, index) => {
+          if (tab.url) {
+            const normalized = normalizeUrl(tab.url);
+            const existing = urlMap.get(normalized) || [];
+            existing.push({ tab, islandId: String(item.id), tabIndex: index });
+            urlMap.set(normalized, existing);
+          }
+        });
+      } else {
+        const tab = item as VaultTab;
+        if (tab.url) {
+          const normalized = normalizeUrl(tab.url);
+          const existing = urlMap.get(normalized) || [];
+          existing.push({ tab });
+          urlMap.set(normalized, existing);
+        }
+      }
+    });
 
-    const duplicateIds = new Set<string>();
-    urlMap.forEach((items) => {
-      if (items.length > 1) {
-        items.slice(1).forEach(item => {
-          duplicateIds.add(String(item.id));
+    const duplicateLooseTabIds = new Set<string>();
+    const duplicateIslandTabs = new Map<string, Set<number>>();
+
+    urlMap.forEach((refs) => {
+      if (refs.length > 1) {
+        refs.slice(1).forEach((ref) => {
+          if (ref.islandId !== undefined && ref.tabIndex !== undefined) {
+            const indices = duplicateIslandTabs.get(ref.islandId) || new Set<number>();
+            indices.add(ref.tabIndex);
+            duplicateIslandTabs.set(ref.islandId, indices);
+          } else {
+            duplicateLooseTabIds.add(String(ref.tab.id));
+          }
         });
       }
     });
 
-    if (duplicateIds.size === 0) return;
+    if (duplicateLooseTabIds.size === 0 && duplicateIslandTabs.size === 0) return;
 
-    const newVault = vault.filter((v: VaultItem) => !duplicateIds.has(String(v.id)));
+    const newVault: VaultItem[] = [];
+    vault.forEach((item) => {
+      const itemId = String(item.id);
+
+      if ('tabs' in item && Array.isArray(item.tabs)) {
+        const island = item as VaultIsland;
+        const indicesToRemove = duplicateIslandTabs.get(itemId);
+
+        if (indicesToRemove) {
+          const newTabs = island.tabs.filter((_, index) => !indicesToRemove.has(index));
+          newVault.push({ ...island, tabs: newTabs });
+        } else {
+          newVault.push(item);
+        }
+      } else {
+        if (!duplicateLooseTabIds.has(itemId)) {
+          newVault.push(item);
+        }
+      }
+    });
+
     set({ vault: newVault });
     await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
 
-    logger.info('VaultSlice', `Deleted ${duplicateIds.size} duplicate items from vault`);
+    const totalRemoved = duplicateLooseTabIds.size + Array.from(duplicateIslandTabs.values()).reduce((sum, set) => sum + set.size, 0);
+    logger.info('VaultSlice', `Deleted ${totalRemoved} duplicate tabs from vault`);
   },
 
   removeFromVault: async (id) => {
