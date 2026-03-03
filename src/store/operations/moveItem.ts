@@ -204,7 +204,7 @@ export function prepareOptimisticMove(
   const target = calculateMoveTarget(active, over, overId, islands, vault, activeInLive);
 
   if (!target || target.targetIndex === -1) return null;
-  if (active.containerId === target.targetContainerId && active.index === target.targetIndex) {
+  if (String(active.containerId) === String(target.targetContainerId) && String(active.index) === String(target.targetIndex)) {
     return null;
   }
 

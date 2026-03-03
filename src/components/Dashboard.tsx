@@ -15,7 +15,8 @@ import {
   UniqueIdentifier,
   MeasuringStrategy,
   defaultDropAnimationSideEffects,
-  Modifier
+  Modifier,
+  CollisionDetection
 } from '@dnd-kit/core';
 
 import {
@@ -56,6 +57,8 @@ const DragOverlayContent = React.memo(({ activeItem }: { activeItem: DragData })
   return <TabCard tab={activeItem.tab} isOverlay />;
 });
 
+const BOTTOM_ZONES = ['live-bottom', 'vault-bottom'];
+
 export const Dashboard: React.FC = () => {
   const isDarkMode = useStore(state => state.isDarkMode);
   const islands = useStore(state => state.islands);
@@ -92,6 +95,10 @@ export const Dashboard: React.FC = () => {
       };
     };
   }, [appearanceSettings?.uiScale]);
+
+  const collisionDetection = useMemo<CollisionDetection>(() => {
+    return createCollisionDetection(BOTTOM_ZONES);
+  }, []);
 
   const effectiveSyncEnabled = useStore(state => state.effectiveSyncEnabled);
   const syncRecovered = useStore(state => state.syncRecovered);
@@ -526,7 +533,7 @@ export const Dashboard: React.FC = () => {
       <ErrorBoundary name="Tactical Interface">
         <DndContext
           sensors={isRenaming ? [] : sensors}
-          collisionDetection={createCollisionDetection(['live-bottom', 'vault-bottom'])}  
+          collisionDetection={collisionDetection}
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
           modifiers={[scaleModifier]}
           onDragStart={handleDragStart}
@@ -556,6 +563,7 @@ export const Dashboard: React.FC = () => {
                 isCreatingIsland={isCreatingIsland}
                 creatingTabId={creatingTabId}
                 vaultItems={vault}
+                showDebugOverlays={appearanceSettings.showDebugOverlays}
               />
               {showVault && (
                 <>
@@ -590,6 +598,7 @@ export const Dashboard: React.FC = () => {
                     compressionTier={compressionTier}
                     showCompressionWarning={showCompressionWarning}
                     onDismissCompressionWarning={dismissCompressionWarning}
+                    showDebugOverlays={appearanceSettings.showDebugOverlays}
                   />
                 </>
               )}
