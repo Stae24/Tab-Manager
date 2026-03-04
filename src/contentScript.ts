@@ -1,5 +1,6 @@
 import { AppearanceSettings } from './types';
-import { HotkeyBinding, matchesHotkey, DEFAULT_SIDEBAR_TOGGLE_HOTKEY } from './utils/hotkeys';
+import type { HotkeyBinding } from './types';
+import { matchesHotkey, DEFAULT_SIDEBAR_TOGGLE_HOTKEY } from './utils/hotkeys';
 
 export type { HotkeyBinding };
 export { matchesHotkey };
