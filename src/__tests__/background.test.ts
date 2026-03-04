@@ -531,12 +531,25 @@ describe('background - Action Handler', () => {
     });
 
     it('handles toggle-sidebar action', async () => {
+      vi.clearAllMocks();
+      vi.resetModules();
+
       (chrome.storage.sync.get as any) = vi.fn().mockResolvedValue({
         appearanceSettings: { toolbarClickAction: 'toggle-sidebar' }
       });
       (chrome.tabs.query as any) = vi.fn().mockResolvedValue([{ id: 1, windowId: 1, url: 'https://example.com' }]);
+      (chrome.tabs.create as any) = vi.fn().mockResolvedValue({ id: 1, url: 'index.html', pinned: false, windowId: 1 });
+      (chrome.storage.session.get as any) = vi.fn().mockResolvedValue({});
+      (chrome.storage.session.set as any) = vi.fn().mockResolvedValue(undefined);
+      (chrome.contextMenus.create as any) = vi.fn();
+      (chrome.contextMenus.removeAll as any) = vi.fn();
+      (chrome.contextMenus.update as any) = vi.fn();
 
-      await actionClickHandler({ id: 1, windowId: 1 });
+      await import('../background');
+
+      const handler = (chrome.action.onClicked.addListener as unknown as MockFn).mock.calls[0]?.[0];
+
+      await handler({ id: 1, windowId: 1 });
 
       expect(chrome.sidePanel.open).toHaveBeenCalledWith({ windowId: 1 });
     });
