@@ -780,8 +780,125 @@ describe('vaultStorage - backward compatibility', () => {
     mockSyncStorage['vault_chunk_0'] = compressed;
     
     const { vault: loaded } = await loadVault({ syncEnabled: true });
-    
+
     expect(loaded).toHaveLength(1);
     expect(getUrl(loaded[0])).toBe('https://example.com/page');
+  });
+
+  it('migrates old v2 minified format (17 elements) to new format correctly', async () => {
+    const originalUrl = 'https://example.com/page';
+    const timestamp = 1234567890;
+    const tabId = 383460861;
+
+    // Old v2 format: 17 elements
+    const oldMinifiedTab = [
+      `vault-${tabId}-${timestamp}`, // id (0)
+      'Test Tab',                     // title (1)
+      originalUrl,                    // url (2)
+      '',                             // favicon (3)
+      timestamp,                      // savedAt (4)
+      tabId,                          // originalId (5)
+      null,                           // color (6)
+      null,                           // collapsed (7)
+      null,                           // tabs (8) - null means it's a tab, not an island
+      false,                          // active (9)
+      true,                           // discarded (10) - should become wasFrozen: true
+      999999,                         // windowId (11) - THIS WAS CORRUPTING wasFrozen!
+      0,                              // index (12)
+      -1,                             // groupId (13)
+      false,                          // muted (14)
+      false,                          // pinned (15)
+      false                           // audible (16)
+    ];
+
+    // Note: data[8] is null, so this is a tab, not an island
+    const legacyMinified = [oldMinifiedTab];
+    const legacyJson = JSON.stringify(legacyMinified);
+    const compressed = LZString.compressToUTF16(legacyJson);
+
+    const encoder = new TextEncoder();
+    const buffer = encoder.encode(legacyJson);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const checksum = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    mockSyncStorage[VAULT_META_KEY] = {
+      version: 3,
+      chunkCount: 1,
+      chunkKeys: ['vault_chunk_0'],
+      checksum,
+      timestamp: Date.now(),
+      compressed: true,
+      minified: true,
+      domainDedup: false,
+    };
+    mockSyncStorage['vault_chunk_0'] = compressed;
+
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+
+    expect(loaded).toHaveLength(1);
+    const tab = loaded[0] as { url: string; wasFrozen?: boolean; wasPinned?: boolean; wasMuted?: boolean };
+
+    // wasFrozen should be true (from discarded), NOT 999999 (from windowId)
+    expect(tab.wasFrozen).toBe(true);
+    expect(typeof tab.wasFrozen).toBe('boolean');
+    expect(tab.wasPinned).toBe(false);
+    expect(tab.wasMuted).toBe(false);
+    expect(tab.url).toBe('https://example.com/page');
+  });
+
+  it('sanitizes corrupted boolean fields to false', async () => {
+    const timestamp = 1234567890;
+
+    // New format but with corrupted wasFrozen as a number (simulating already-corrupted data)
+    const corruptedMinifiedTab = [
+      'vault-123',        // id
+      'Test Tab',         // title
+      'https://example.com', // url
+      '',                 // favicon
+      timestamp,          // savedAt
+      123,                // originalId
+      null,               // color
+      null,               // collapsed
+      null,               // tabs - null means it's a tab
+      'invalid',          // wasPinned - should be sanitized to false
+      999999,             // wasMuted - should be sanitized to false
+      383460849           // wasFrozen - should be sanitized to false
+    ];
+
+    const minified = [corruptedMinifiedTab];
+    const json = JSON.stringify(minified);
+    const compressed = LZString.compressToUTF16(json);
+
+    const encoder = new TextEncoder();
+    const buffer = encoder.encode(json);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const checksum = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    mockSyncStorage[VAULT_META_KEY] = {
+      version: 3,
+      chunkCount: 1,
+      chunkKeys: ['vault_chunk_0'],
+      checksum,
+      timestamp: Date.now(),
+      compressed: true,
+      minified: true,
+      domainDedup: false,
+    };
+    mockSyncStorage['vault_chunk_0'] = compressed;
+
+    const { vault: loaded } = await loadVault({ syncEnabled: true });
+
+    expect(loaded).toHaveLength(1);
+    const tab = loaded[0] as { wasFrozen?: boolean; wasPinned?: boolean; wasMuted?: boolean };
+
+    // All corrupted fields should be sanitized to false
+    expect(tab.wasFrozen).toBe(false);
+    expect(tab.wasPinned).toBe(false);
+    expect(tab.wasMuted).toBe(false);
+    expect(typeof tab.wasFrozen).toBe('boolean');
+    expect(typeof tab.wasPinned).toBe('boolean');
+    expect(typeof tab.wasMuted).toBe('boolean');
   });
 });

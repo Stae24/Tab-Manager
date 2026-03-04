@@ -1,10 +1,4 @@
-export interface HotkeyBinding {
-  code: string;
-  ctrl: boolean;
-  meta: boolean;
-  alt: boolean;
-  shift: boolean;
-}
+import type { HotkeyBinding } from '../types/index';
 
 export const matchesHotkey = (event: KeyboardEvent, binding: HotkeyBinding): boolean => {
   const codeMatches = event.code === binding.code;
@@ -29,7 +23,10 @@ export const normalizeHotkeyFromEvent = (event: KeyboardEvent): HotkeyBinding =>
 });
 
 export const formatHotkey = (binding: HotkeyBinding): string => {
-  const isMac = typeof navigator !== 'undefined' && navigator.platform?.startsWith('Mac');
+  const ua = typeof navigator !== 'undefined' ? navigator : null;
+  const isMac = ua && ('userAgentData' in ua
+    ? (ua as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform?.toLowerCase().startsWith('mac')
+    : ua.platform?.startsWith('Mac'));
   const parts: string[] = [];
 
   if (binding.ctrl || binding.meta) {
