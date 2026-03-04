@@ -3,7 +3,16 @@ import { mergeAppearanceSettings, defaultAppearanceSettings } from '../store/uti
 import { ToolbarClickAction } from '../types/index';
 
 const SIDEBAR_STICKY_STATE_KEY = 'sidebarStickyState';
+
+/**
+ * In-memory Set tracking which windows have the Side Panel open.
+ * NOTE: This can become stale if the user closes the Side Panel via the browser UI
+ * (e.g., right-click on toolbar icon → "Hide Side Panel") without going through
+ * our service.
+ */
 const sidePanelOpenWindows = new Set<number>();
+let cachedToolbarClickAction: ToolbarClickAction = 'toggle-sidebar';
+let storageListenerRegistered = false;
 
 const getStickyStateStorage = async (): Promise<Record<number, boolean>> => {
   try {
@@ -60,7 +69,9 @@ export const sidebarService = {
   },
 
   async handleToolbarClick(windowId: number, action?: ToolbarClickAction): Promise<void> {
-    if (action === 'open-manager-page') {
+    const effectiveAction = action ?? cachedToolbarClickAction;
+
+    if (effectiveAction === 'open-manager-page') {
       await this.openManagerPage();
       return;
     }
@@ -68,17 +79,6 @@ export const sidebarService = {
     // Must call toggleSidePanel before any async work (like loadSettings)
     // because Chrome requires sidePanel.open() in the same user gesture context.
     await this.toggleSidePanel(windowId);
-
-    const settings = await this.loadSettings();
-    if (settings.toolbarClickAction === 'open-manager-page') {
-      // Close the panel we just opened, then open manager page instead
-      if (sidePanelOpenWindows.has(windowId)) {
-        await chrome.sidePanel.setOptions({ enabled: false });
-        sidePanelOpenWindows.delete(windowId);
-        await chrome.sidePanel.setOptions({ enabled: true });
-      }
-      await this.openManagerPage();
-    }
   },
 
   async toggleSidePanel(windowId: number): Promise<void> {
@@ -196,6 +196,7 @@ export const sidebarService = {
       });
 
       const settings = await this.loadSettings();
+      cachedToolbarClickAction = settings.toolbarClickAction;
       const action = settings.toolbarClickAction;
       chrome.contextMenus.update(
         action === 'toggle-sidebar' ? 'toolbar-click-toggle-sidebar' : 'toolbar-click-open-manager',
@@ -249,6 +250,7 @@ export const sidebarService = {
 
       const newSettings = { ...currentSettings, toolbarClickAction: action };
       await chrome.storage.sync.set({ appearanceSettings: newSettings });
+      cachedToolbarClickAction = action;
 
       await this.setupContextMenus();
 
@@ -259,12 +261,25 @@ export const sidebarService = {
   },
 
   async initialize(): Promise<void> {
+    const settings = await this.loadSettings();
+    cachedToolbarClickAction = settings.toolbarClickAction;
     await this.setupWindowListeners();
     await this.setupContextMenus();
+
+    if (!storageListenerRegistered) {
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'sync' && changes.appearanceSettings?.newValue) {
+          const newSettings = mergeAppearanceSettings(changes.appearanceSettings.newValue);
+          cachedToolbarClickAction = newSettings.toolbarClickAction;
+        }
+      });
+      storageListenerRegistered = true;
+    }
+
     logger.info('SidebarService', 'Initialized');
   },
 
-  resetSidePanelState(): void {
+  clearSidePanelOpenWindows(): void {
     sidePanelOpenWindows.clear();
   }
 };

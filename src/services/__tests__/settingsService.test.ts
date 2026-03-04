@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { LOCAL_UI_SETTINGS_KEY } from '../../constants';
 
 const mockStorageSyncGet = vi.fn();
 const mockStorageSyncSet = vi.fn();
@@ -71,11 +72,11 @@ describe('settingsService', () => {
         showVault: true,
         settingsPanelWidth: 300,
       };
-      mockStorageLocalGet.mockResolvedValue({ ui_settings_local: mockLocalSettings });
+      mockStorageLocalGet.mockResolvedValue({ [LOCAL_UI_SETTINGS_KEY]: mockLocalSettings });
 
       const result = await settingsService.loadLocalSettings();
 
-      expect(mockStorageLocalGet).toHaveBeenCalledWith(['ui_settings_local']);
+      expect(mockStorageLocalGet).toHaveBeenCalledWith([LOCAL_UI_SETTINGS_KEY]);
       expect(result).toEqual(mockLocalSettings);
     });
 

@@ -60,7 +60,7 @@ describe('quotaService', () => {
   describe('getStorageStats', () => {
     it('returns storage statistics', async () => {
       mockStorageSyncGetBytesInUse.mockResolvedValue(10000);
-      mockLocalStorageGet.mockResolvedValue({ vault: [] });
+      mockLocalStorageGet.mockResolvedValue({ vault_local: [] });
 
       const stats = await quotaService.getStorageStats();
 

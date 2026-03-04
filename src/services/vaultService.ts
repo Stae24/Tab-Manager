@@ -304,6 +304,26 @@ function minifyVault(vault: VaultItem[]): MinifyResult {
   return vault.map(minifyVaultItemWithNormalizedUrls);
 }
 
+// Old v2 format key order - used for migrating legacy minified data
+const OLD_KEY_ORDER = ['id', 'title', 'url', 'favicon', 'savedAt', 'originalId', 'color', 'collapsed', 'tabs', 'active', 'discarded', 'windowId', 'index', 'groupId', 'muted', 'pinned', 'audible'] as const;
+
+function sanitizeVaultTab(tab: Record<string, unknown>): void {
+  if (typeof tab.wasPinned !== 'boolean') tab.wasPinned = false;
+  if (typeof tab.wasMuted !== 'boolean') tab.wasMuted = false;
+  if (typeof tab.wasFrozen !== 'boolean') tab.wasFrozen = false;
+}
+
+function sanitizeVaultIsland(island: Record<string, unknown>): void {
+  if (typeof island.collapsed !== 'boolean') island.collapsed = false;
+  if (Array.isArray(island.tabs)) {
+    for (const tab of island.tabs) {
+      if (tab && typeof tab === 'object') {
+        sanitizeVaultTab(tab as Record<string, unknown>);
+      }
+    }
+  }
+}
+
 function expandTab(data: unknown[]): VaultItem {
   const tab: Record<string, unknown> = {};
   for (let i = 0; i < KEY_ORDER.length; i++) {
@@ -314,6 +334,7 @@ function expandTab(data: unknown[]): VaultItem {
       tab[key] = value;
     }
   }
+  sanitizeVaultTab(tab);
   return tab as unknown as VaultItem;
 }
 
@@ -328,10 +349,40 @@ function expandIsland(data: unknown[]): VaultItem {
       island[key] = value;
     }
   }
+  sanitizeVaultIsland(island);
   return island as unknown as VaultItem;
 }
 
+function migrateOldMinifiedTab(data: unknown[]): unknown[] {
+  const migrated: unknown[] = [];
+  const oldKeys = OLD_KEY_ORDER as unknown as readonly string[];
+  for (let i = 0; i < KEY_ORDER.length; i++) {
+    const newKey = KEY_ORDER[i];
+    const oldIndex = oldKeys.indexOf(newKey);
+    if (oldIndex >= 0) {
+      migrated.push(data[oldIndex]);
+    } else if (newKey === 'wasPinned') {
+      const oldPinnedIndex = oldKeys.indexOf('pinned');
+      migrated.push(data[oldPinnedIndex] ? true : null);
+    } else if (newKey === 'wasMuted') {
+      const oldMutedIndex = oldKeys.indexOf('muted');
+      migrated.push(data[oldMutedIndex] ? true : null);
+    } else if (newKey === 'wasFrozen') {
+      const oldDiscardedIndex = oldKeys.indexOf('discarded');
+      migrated.push(data[oldDiscardedIndex] ? true : null);
+    } else {
+      migrated.push(null);
+    }
+  }
+  return migrated;
+}
+
 function expandVaultItem(data: unknown[]): VaultItem {
+  // Detect and migrate old v2 minified format (17 elements) to new format (12 elements)
+  if (data.length === OLD_KEY_ORDER.length) {
+    data = migrateOldMinifiedTab(data);
+  }
+
   if (Array.isArray(data[8])) {
     return expandIsland(data);
   }

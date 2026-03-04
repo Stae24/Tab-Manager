@@ -40,7 +40,7 @@ import { defaultAppearanceSettings } from '../../store/utils';
 describe('sidebarService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        sidebarService.resetSidePanelState();
+        sidebarService.clearSidePanelOpenWindows();
         // Default mocks for chrome API
         (chrome.tabs.query as any).mockResolvedValue([]);
         (chrome.tabs.create as any).mockResolvedValue({ id: 99 });
@@ -105,6 +105,7 @@ describe('sidebarService', () => {
             });
             (chrome.tabs.query as any).mockResolvedValue([{ id: 1, windowId: 10, url: 'https://example.com' }]);
 
+            await sidebarService.initialize();
             await sidebarService.handleToolbarClick(10);
 
             expect(chrome.sidePanel.open).toHaveBeenCalledWith({ windowId: 10 });
@@ -119,9 +120,14 @@ describe('sidebarService', () => {
                 return Promise.resolve([]);
             });
 
+            // Prime the cached toolbarClickAction via initialize()
+            await sidebarService.initialize();
+
             await sidebarService.handleToolbarClick(10);
 
             expect(chrome.tabs.create).toHaveBeenCalled();
+            // Side panel should NOT be opened when action is open-manager-page
+            expect(chrome.sidePanel.open).not.toHaveBeenCalled();
         });
     });
 
