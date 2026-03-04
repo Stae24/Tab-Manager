@@ -105,11 +105,17 @@ describe('Memory Leak Detection', () => {
         { type: 'grouped', negated: false },
       ];
 
-      warmup(() => tabs.forEach(tab => applyAllFilters(tab, bangs, context)));
+      warmup(() => {
+      for (const tab of tabs) {
+        applyAllFilters(tab, bangs, context);
+      }
+    });
       const initial = getStableHeapMB();
 
       for (let i = 0; i < 10000; i++) {
-        tabs.forEach(tab => applyAllFilters(tab, bangs, context));
+        for (const tab of tabs) {
+          applyAllFilters(tab, bangs, context);
+        }
       }
 
       const final = getStableHeapMB();
@@ -122,11 +128,17 @@ describe('Memory Leak Detection', () => {
       const tabs = generateTabs(100);
       const terms = ['youtube', 'google', 'github'];
 
-      warmup(() => tabs.forEach(tab => applyTextSearch(tab, terms)));
+      warmup(() => {
+      for (const tab of tabs) {
+        applyTextSearch(tab, terms);
+      }
+    });
       const initial = getStableHeapMB();
 
       for (let i = 0; i < 10000; i++) {
-        tabs.forEach(tab => applyTextSearch(tab, terms));
+        for (const tab of tabs) {
+          applyTextSearch(tab, terms);
+        }
       }
 
       const final = getStableHeapMB();
@@ -268,11 +280,9 @@ describe('Memory Leak Detection', () => {
     test('repeated search operations maintain stable memory', () => {
       const tabs = generateTabs(200);
 
-      for (let i = 0; i < 100; i++) {
-        tabs.filter(tab => 
-          tab.title?.includes('Tab') || tab.url?.includes('example')
-        );
-      }
+warmup(() => tabs.filter(tab =>
+  tab.title?.includes('Tab') || tab.url?.includes('example')
+));
 
       const measurements: number[] = [];
 
