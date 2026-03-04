@@ -35,6 +35,7 @@ const createMockVaultItem = (id: number, title: string): VaultItem => ({
 
 describe('loadVaultWithRetry', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
     vi.useFakeTimers();
     (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_local: [] });
@@ -80,10 +81,13 @@ describe('loadVaultWithRetry', () => {
       vault_local: [createMockVaultItem(1, 'Backup Tab')]
     });
 
-    const { VAULT_LOAD_MAX_RETRIES } = await import('../../constants');
-    
-    expect(attemptCount).toBe(0);
-    expect(VAULT_LOAD_MAX_RETRIES).toBe(3);
+    const { vaultService } = await import('../../services/vaultService');
+    const result = await vaultService.loadVault({ syncEnabled: true });
+
+    expect(attemptCount).toBe(2);
+    expect(result.fallbackToLocal).toBe(true);
+    expect(result.vault).toHaveLength(1);
+    expect(result.vault[0].title).toBe('Backup Tab');
   });
 
   it('falls back to local after max retries', async () => {
@@ -105,6 +109,7 @@ describe('loadVaultWithRetry', () => {
 
 describe('recoverVaultSync', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
     (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_local: [] });
   });
@@ -168,15 +173,26 @@ describe('recoverVaultSync', () => {
   });
 });
 
-describe('attemptSelfHealing', () => {
+describe('vaultService sync operations', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
     (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({ vault_local: [] });
   });
 
   it('returns early if sync is disabled', async () => {
-    const result = { success: true, effectiveSyncEnabled: false };
-    expect(result.effectiveSyncEnabled).toBe(false);
+    const vault = [createMockVaultItem(1, 'Test Tab')];
+
+    (chrome.storage.sync.get as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      vault_local: vault
+    });
+
+    const { vaultService } = await import('../../services/vaultService');
+    const result = await vaultService.loadVault({ syncEnabled: false });
+
+    expect(result.fallbackToLocal).toBeFalsy();
+    expect(chrome.storage.sync.set).not.toHaveBeenCalled();
   });
 
   it('attempts recovery when sync enabled', async () => {
@@ -235,7 +251,12 @@ describe('effectiveSyncEnabled type simplification', () => {
 });
 
 describe('fallback with settings consistency', () => {
-  it('updates settings when falling back to local', async () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it('loads vaultSyncEnabled from settings', async () => {
     (chrome.storage.sync.get as ReturnType<typeof vi.fn>).mockResolvedValue({
       appearanceSettings: {
         theme: 'dark',
@@ -271,5 +292,13 @@ describe('fallback with settings consistency', () => {
     const settings = await settingsService.loadSettings();
     
     expect((settings.appearanceSettings as { vaultSyncEnabled: boolean })?.vaultSyncEnabled).toBe(true);
+  });
+
+  it('propagates error when sync storage fails', async () => {
+    (chrome.storage.sync.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Sync unavailable'));
+
+    const { settingsService } = await import('../../services/settingsService');
+    
+    await expect(settingsService.loadSettings()).rejects.toThrow('Sync unavailable');
   });
 });

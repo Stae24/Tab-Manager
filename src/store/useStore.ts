@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { vaultService } from '../services/vaultService';
 import { quotaService } from '../services/quotaService';
-import { settingsService } from '../services/settingsService';
+import { settingsService, LocalUISettings } from '../services/settingsService';
 import { logger, setDebugMode } from '../utils/logger';
 import { isAppearanceSettings, isVaultItems, defaultAppearanceSettings, mergeAppearanceSettings } from './utils';
 import { detectBrowser } from '../utils/browser';
@@ -265,8 +265,8 @@ const init = async () => {
         }
       }
       // Handle local-only UI settings changes
-      if (changes.ui_settings_local?.newValue) {
-        const localSettings = changes.ui_settings_local.newValue as { dividerPosition?: number; showVault?: boolean; settingsPanelWidth?: number };
+      if (changes.ui_settings_local?.newValue && !useStore.getState().isUpdating) {
+        const localSettings = changes.ui_settings_local.newValue as LocalUISettings;
         if (localSettings.dividerPosition !== undefined) setDividerPosition(Number(localSettings.dividerPosition));
         if (localSettings.showVault !== undefined) setShowVault(Boolean(localSettings.showVault));
         if (localSettings.settingsPanelWidth !== undefined) setSettingsPanelWidth(Number(localSettings.settingsPanelWidth));

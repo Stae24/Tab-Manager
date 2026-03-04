@@ -349,8 +349,49 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
   restoreFromVault: async (id) => {
     const { vault, appearanceSettings } = get();
-    const itemIndex = vault.findIndex((v: VaultItem) => String(v.id) === String(id));
-    if (itemIndex === -1) return;
+    const idStr = String(id);
+
+    const itemIndex = vault.findIndex((v: VaultItem) => String(v.id) === idStr);
+
+    if (itemIndex === -1) {
+      let foundTab: VaultTab | null = null;
+      for (const item of vault) {
+        if ('tabs' in item && Array.isArray(item.tabs)) {
+          const match = item.tabs.find((t) => String(t.id) === idStr);
+          if (match) {
+            foundTab = match;
+            break;
+          }
+        }
+      }
+      if (!foundTab) return;
+
+      let insertionIndex = 0;
+      const currentWindowTabs = await tabService.getCurrentWindowTabs();
+      const currentWindowGroups = await tabService.getCurrentWindowGroups();
+
+      if (currentWindowGroups.length > 0) {
+        const groupsWithIndices = currentWindowGroups.map(g => {
+          const groupTabs = currentWindowTabs.filter(t => t.groupId === g.id);
+          const maxIndex = groupTabs.length > 0 ? Math.max(...groupTabs.map(t => t.index)) : -1;
+          return { ...g, maxIndex };
+        }).filter(g => g.maxIndex !== -1);
+
+        if (groupsWithIndices.length > 0) {
+          const lastGroup = groupsWithIndices.reduce((prev, current) => (current.maxIndex > prev.maxIndex) ? current : prev);
+          insertionIndex = lastGroup.maxIndex + 1;
+        }
+      } else if (currentWindowTabs.length > 0) {
+        insertionIndex = currentWindowTabs.length;
+      }
+
+      const nt = await tabService.createTab({ url: foundTab.url, active: false, index: insertionIndex });
+      if (nt.id) {
+        await applyRestorationHints(nt.id, foundTab, appearanceSettings);
+      }
+      await get().syncLiveTabs();
+      return;
+    }
 
     const item = vault[itemIndex];
 
@@ -571,7 +612,25 @@ export const createVaultSlice: StateCreator<StoreState, [], [], VaultSlice> = (s
 
   removeFromVault: async (id) => {
     const { vault, appearanceSettings, persistVault } = get();
-    const newVault = vault.filter((v: VaultItem) => v && String(v.id) !== String(id));
+    const idStr = String(id);
+
+    const isTopLevel = vault.some((v: VaultItem) => String(v.id) === idStr);
+
+    let newVault: VaultItem[];
+    if (isTopLevel) {
+      newVault = vault.filter((v: VaultItem) => v && String(v.id) !== idStr);
+    } else {
+      newVault = vault.map((item: VaultItem) => {
+        if ('tabs' in item && Array.isArray(item.tabs)) {
+          const filteredTabs = item.tabs.filter((t) => String(t.id) !== idStr);
+          if (filteredTabs.length !== item.tabs.length) {
+            return { ...item, tabs: filteredTabs };
+          }
+        }
+        return item;
+      });
+    }
+
     set({ vault: newVault });
     await persistVault(newVault, appearanceSettings.vaultSyncEnabled);
   },

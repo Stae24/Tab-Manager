@@ -113,14 +113,20 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
 
   const handleDeleteDuplicates = async () => {
     setCleaningAction('duplicates');
-    await deleteVaultDuplicates();
-    setTimeout(() => setCleaningAction(null), CLEANUP_ANIMATION_DELAY_MS);
+    try {
+      await deleteVaultDuplicates();
+    } finally {
+      setTimeout(() => setCleaningAction(null), CLEANUP_ANIMATION_DELAY_MS);
+    }
   };
 
   const handleDeleteEmptyGroups = async () => {
     setCleaningAction('emptyGroups');
-    await deleteEmptyVaultGroups();
-    setTimeout(() => setCleaningAction(null), CLEANUP_ANIMATION_DELAY_MS);
+    try {
+      await deleteEmptyVaultGroups();
+    } finally {
+      setTimeout(() => setCleaningAction(null), CLEANUP_ANIMATION_DELAY_MS);
+    }
   };
 
   const rowItems = useMemo(() => {
