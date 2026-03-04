@@ -4,7 +4,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AppearanceSettingsPanel } from '../AppearanceSettingsPanel';
 import { useStore, defaultAppearanceSettings } from '../../store/useStore';
 
-// Mock useStore
 vi.mock('../../store/useStore', () => ({
     useStore: vi.fn(),
     defaultAppearanceSettings: {
@@ -69,28 +68,26 @@ describe('AppearanceSettingsPanel', () => {
     it('should render when open', () => {
         render(<AppearanceSettingsPanel isOpen={true} onClose={mockOnClose} />);
         expect(screen.getByPlaceholderText(/search settings/i)).toBeTruthy();
-        expect(screen.getByText(/display/i)).toBeTruthy();
+        expect(screen.getByText(/appearance/i)).toBeTruthy();
     });
 
-    it('should not show content when closed (via CSS classes)', () => {
+    it('should not render when closed', () => {
         const { container } = render(<AppearanceSettingsPanel isOpen={false} onClose={mockOnClose} />);
-        const panel = container.querySelector('.translate-x-full');
-        expect(panel).toBeNull();
+        expect(container.firstChild).toBeNull();
     });
 
     it('should switch tabs', () => {
         render(<AppearanceSettingsPanel isOpen={true} onClose={mockOnClose} />);
 
-        const tabsBtn = screen.getByRole('button', { name: /tabs/i });
-        fireEvent.click(tabsBtn);
+        const layoutBtn = screen.getByRole('button', { name: /layout/i });
+        fireEvent.click(layoutBtn);
 
-        expect(screen.getByText(/tab density/i)).toBeTruthy();
+        expect(screen.getByText(/ui scale/i)).toBeTruthy();
     });
 
     it('should update theme setting', () => {
         render(<AppearanceSettingsPanel isOpen={true} onClose={mockOnClose} />);
 
-        // Expand Color Themes section
         fireEvent.click(screen.getByText(/color themes/i));
 
         const darkModeOption = screen.getByText(/dark mode/i);
@@ -103,14 +100,15 @@ describe('AppearanceSettingsPanel', () => {
         render(<AppearanceSettingsPanel isOpen={true} onClose={mockOnClose} />);
 
         const searchInput = screen.getByPlaceholderText(/search settings/i);
-        fireEvent.change(searchInput, { target: { value: 'Tabs' } });
+        fireEvent.change(searchInput, { target: { value: 'Appearance' } });
 
-        fireEvent.click(screen.getByText(/^Tabs$/));
+        const appearanceButtons = screen.getAllByRole('button', { name: /appearance/i });
+        fireEvent.click(appearanceButtons[0]);
 
-        expect(screen.getByText(/tab density/i)).toBeDefined();
+        expect(screen.getByText(/color themes/i)).toBeDefined();
 
         fireEvent.change(searchInput, { target: { value: 'NonExistentSetting' } });
-        expect(screen.queryByText(/tab density/i)).toBeNull();
+        expect(screen.queryByText(/color themes/i)).toBeNull();
     });
 
     it('should handle closing', () => {
@@ -123,7 +121,7 @@ describe('AppearanceSettingsPanel', () => {
             if (closeBtn) fireEvent.click(closeBtn);
 
             act(() => {
-                vi.advanceTimersByTime(300); // PANEL_CLOSE_DELAY_MS
+                vi.advanceTimersByTime(300);
             });
 
             expect(mockOnClose).toHaveBeenCalled();

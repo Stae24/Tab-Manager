@@ -4,15 +4,12 @@ import {
   Search,
   Settings,
   Palette,
-  ZoomIn,
-  Layout,
-  Layers,
-  Sparkles,
-  Cloud,
-  Sidebar,
-  Terminal,
   Monitor,
-  Space,
+  Sparkles,
+  Layers,
+  Cloud,
+  Zap,
+  SlidersHorizontal,
   GripVertical
 } from 'lucide-react';
 import { cn } from '../utils/cn';
@@ -29,15 +26,12 @@ import {
   SETTINGS_SECTION_GAP_DEFAULT,
 } from '../constants';
 
-import { ThemeSettings, SETTING_SECTIONS as THEME_SECTIONS } from './ThemeSettings';
-import { DisplaySettings, SETTING_SECTIONS as DISPLAY_SECTIONS } from './DisplaySettings';
-import { TabSettings, SETTING_SECTIONS as TAB_SECTIONS } from './TabSettings';
-import { GroupSettings, SETTING_SECTIONS as GROUP_SECTIONS } from './GroupSettings';
+import { AppearanceTab, SETTING_SECTIONS as APPEARANCE_SECTIONS } from './AppearanceTab';
+import { LayoutTab, SETTING_SECTIONS as LAYOUT_SECTIONS } from './LayoutTab';
+import { IndicatorsTab, SETTING_SECTIONS as INDICATORS_SECTIONS } from './IndicatorsTab';
+import { BehaviorTab, SETTING_SECTIONS as BEHAVIOR_SECTIONS } from './BehaviorTab';
 import { VaultSettings, VaultRestorationSettings, SETTING_SECTIONS as VAULT_SECTIONS } from './VaultSettings';
-import { GeneralSettings, SETTING_SECTIONS as GENERAL_SECTIONS } from './GeneralSettings';
-import { SidebarSettings, SETTING_SECTIONS as SIDEBAR_SECTIONS } from './SidebarSettings';
-import { DevSettings, SETTING_SECTIONS as DEV_SECTIONS } from './DevSettings';
-import { SpacingSettings, SETTING_SECTIONS as SPACING_SECTIONS } from './SpacingSettings';
+import { AdvancedTab, SETTING_SECTIONS as ADVANCED_SECTIONS } from './AdvancedTab';
 
 export interface SettingControl {
     id: string;
@@ -55,18 +49,24 @@ export interface SettingSection {
 }
 
 export const ALL_SETTING_SECTIONS: SettingSection[] = [
-    ...THEME_SECTIONS,
-    ...DISPLAY_SECTIONS,
-    ...TAB_SECTIONS,
-    ...GROUP_SECTIONS,
+    ...APPEARANCE_SECTIONS,
+    ...LAYOUT_SECTIONS,
+    ...INDICATORS_SECTIONS,
+    ...BEHAVIOR_SECTIONS,
     ...VAULT_SECTIONS,
-    ...GENERAL_SECTIONS,
-    ...SIDEBAR_SECTIONS,
-    ...SPACING_SECTIONS,
-    ...DEV_SECTIONS,
+    ...ADVANCED_SECTIONS,
 ];
 
-type TabId = 'theme' | 'general' | 'display' | 'tabs' | 'groups' | 'vault' | 'advanced' | 'dev' | 'sidebar' | 'spacing';
+type TabId = 'appearance' | 'layout' | 'indicators' | 'behavior' | 'vault' | 'advanced';
+
+const CATEGORY_TO_TAB: Record<string, TabId> = {
+  appearance: 'appearance',
+  layout: 'layout',
+  indicators: 'indicators',
+  behavior: 'behavior',
+  vault: 'vault',
+  advanced: 'advanced',
+};
 
 interface AppearanceSettingsPanelProps {
   isOpen: boolean;
@@ -90,11 +90,10 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
       }
     : undefined;
 
-  const [activeTab, setActiveTab] = useState<TabId>('theme');
+  const [activeTab, setActiveTab] = useState<TabId>('appearance');
   const [isResizing, setIsResizing] = useState(false);
   const [panelWidth, setPanelWidth] = useState(settingsPanelWidth || 400);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isClosing, setIsClosing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [highlightedControl, setHighlightedControl] = useState<{ sectionId: string; controlId: string } | null>(null);
   const highlightTimeoutRef = useRef<number | undefined>(undefined);
@@ -106,12 +105,10 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
   const priorExpandedRef = useRef<Set<string> | null>(null);
   const expandedSectionsRef = useRef(expandedSections);
 
-  // Keep ref in sync with state
   useEffect(() => {
     expandedSectionsRef.current = expandedSections;
   }, [expandedSections]);
 
-  // Clear highlight after 3 seconds
   useEffect(() => {
     if (highlightedControl) {
       if (highlightTimeoutRef.current) {
@@ -128,16 +125,13 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
     };
   }, [highlightedControl]);
 
-  // Auto-expand/collapse sections based on search
   useEffect(() => {
     if (searchQuery) {
-      // Save current expanded sections before expanding for search
       if (!priorExpandedRef.current) {
         priorExpandedRef.current = expandedSectionsRef.current;
       }
-      setExpandedSections(new Set(['theme', 'tab-density', 'favicons', 'active-indicator', 'audio-indicators', 'frozen-indicators', 'group-headers', 'tab-count', 'sort-groups', 'vault-sync', 'animations', 'drag-opacity', 'spinner', 'icons', 'button-size', 'auto-pin', 'search', 'sidebar', 'debug-mode']));
+      setExpandedSections(new Set(ALL_SETTING_SECTIONS.map(s => s.id)));
     } else if (priorExpandedRef.current) {
-      // Restore prior expanded sections when search is cleared
       setExpandedSections(priorExpandedRef.current);
       priorExpandedRef.current = null;
     }
@@ -209,9 +203,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
   };
 
   const handleClose = () => {
-    setIsClosing(true);
     onClose();
-    setIsClosing(false);
   };
 
   const filterSettings = (category: string) => {
@@ -243,15 +235,12 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
   };
 
   const rawTabs: { id: TabId; label: string; icon: React.ElementType }[] = [
-    { id: 'theme' as TabId, label: 'Theme', icon: Palette },
-    { id: 'display' as TabId, label: 'Display', icon: Monitor },
-    { id: 'tabs' as TabId, label: 'Tabs', icon: Layout },
-    { id: 'groups' as TabId, label: 'Groups', icon: Layers },
+    { id: 'appearance' as TabId, label: 'Appearance', icon: Palette },
+    { id: 'layout' as TabId, label: 'Layout', icon: Monitor },
+    { id: 'indicators' as TabId, label: 'Indicators', icon: Sparkles },
+    { id: 'behavior' as TabId, label: 'Behavior', icon: Zap },
     { id: 'vault' as TabId, label: 'Vault', icon: Cloud },
-    { id: 'general' as TabId, label: 'General', icon: Settings },
-    { id: 'sidebar' as TabId, label: 'Sidebar', icon: Sidebar },
-    { id: 'spacing' as TabId, label: 'Spacing', icon: Space },
-    { id: 'dev' as TabId, label: 'Developer', icon: Terminal },
+    { id: 'advanced' as TabId, label: 'Advanced', icon: SlidersHorizontal },
   ];
 
   const matchingSections = searchQuery
@@ -271,7 +260,7 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
   const tabs = rawTabs.filter(tab => filterSettings(tab.label));
 
-  if (!isOpen && !isClosing) return null;
+  if (!isOpen) return null;
 
   const renderTabButton = (tab: { id: TabId; label: string; icon: React.ElementType }) => (
     <button
@@ -291,7 +280,6 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={cn(
           "fixed inset-0 z-40 transition-opacity duration-300",
@@ -312,13 +300,11 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
         }}
       />
 
-      {/* Slide-over Panel with resize handle */}
       <div
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "fixed right-0 top-0 bg-gx-gray/95 border-l border-gx-gray z-50 flex flex-col transition-transform duration-300 ease-out shadow-2xl",
-          isClosing && "transition-transform duration-200"
+          "fixed right-0 top-0 bg-gx-gray/95 border-l border-gx-gray z-50 flex flex-col transition-transform duration-300 ease-out shadow-2xl"
         )}
         style={{
           width: `${panelWidth}px`,
@@ -329,7 +315,6 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
           height: `${100 / appearanceSettings.settingsScale}%`
         }}
       >
-        {/* Resize handle on the left edge */}
         <div
           onMouseDown={handleResizeStart}
           className={cn(
@@ -381,7 +366,6 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
           </button>
         </div>
 
-        {/* Responsive Tabs Section */}
         {!searchQuery && (
           <div 
             className="border-b border-gx-gray bg-gx-gray/30"
@@ -396,7 +380,6 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
           </div>
         )}
 
-        {/* Settings Content */}
         <div 
           className="flex-1 overflow-y-auto scroll-smooth overscroll-none scrollbar-hide"
           style={{ 
@@ -440,21 +423,11 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                         Controls ({matchingControls.length})
                       </div>
                       {matchingControls.map((control) => {
-                        const categoryToTab: Record<string, TabId> = {
-                          theme: 'theme',
-                          display: 'display',
-                          tabs: 'tabs',
-                          groups: 'groups',
-                          vault: 'vault',
-                          general: 'general',
-                          sidebar: 'sidebar',
-                          dev: 'dev',
-                        };
                         return (
                           <button
                             key={`${control.sectionId}-${control.id}`}
                             onClick={() => {
-                              const tabId = categoryToTab[control.category] || 'theme';
+                              const tabId = CATEGORY_TO_TAB[control.category] || 'appearance';
                               setSearchQuery('');
                               setActiveTab(tabId);
                               setExpandedSections((prev) => new Set([...prev, control.sectionId]));
@@ -478,22 +451,12 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                         Sections ({matchingSections.length})
                       </div>
                       {matchingSections.map((section) => {
-                        const categoryToTab: Record<string, TabId> = {
-                          theme: 'theme',
-                          display: 'display',
-                          tabs: 'tabs',
-                          groups: 'groups',
-                          vault: 'vault',
-                          general: 'general',
-                          sidebar: 'sidebar',
-                          dev: 'dev',
-                        };
                         return (
                           <button
                             key={section.id}
                             onClick={() => {
                               setSearchQuery('');
-                              setActiveTab(categoryToTab[section.category] || 'theme');
+                              setActiveTab(CATEGORY_TO_TAB[section.category] || 'appearance');
                               setExpandedSections((prev) => new Set([...prev, section.id]));
                             }}
                             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gx-border bg-gx-gray/30 hover:border-gx-accent/30 hover:bg-gx-gray/50 transition-all text-left"
@@ -518,8 +481,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
             </>
           ) : (
             <>
-              {activeTab === 'theme' && filterSettings('Theme') && (
-                <ThemeSettings
+              {activeTab === 'appearance' && filterSettings('Appearance') && (
+                <AppearanceTab
                   appearanceSettings={appearanceSettings}
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
@@ -528,8 +491,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                 />
               )}
 
-              {activeTab === 'display' && filterSettings('Display') && (
-                <DisplaySettings
+              {activeTab === 'layout' && filterSettings('Layout') && (
+                <LayoutTab
                   appearanceSettings={appearanceSettings}
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
@@ -538,8 +501,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                 />
               )}
 
-              {activeTab === 'tabs' && filterSettings('Tabs') && (
-                <TabSettings
+              {activeTab === 'indicators' && filterSettings('Indicators') && (
+                <IndicatorsTab
                   appearanceSettings={appearanceSettings}
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
@@ -548,13 +511,12 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                 />
               )}
 
-              {activeTab === 'groups' && filterSettings('Groups') && (
-                <GroupSettings
+              {activeTab === 'behavior' && filterSettings('Behavior') && (
+                <BehaviorTab
                   appearanceSettings={appearanceSettings}
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
                   toggleSection={toggleSection}
-                  highlightedControl={highlightedControl}
                 />
               )}
 
@@ -579,38 +541,8 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
                 </>
               )}
 
-              {activeTab === 'general' && filterSettings('General') && (
-                <GeneralSettings
-                  appearanceSettings={appearanceSettings}
-                  setAppearanceSettings={setAppearanceSettings}
-                  expandedSections={expandedSections}
-                  toggleSection={toggleSection}
-                  highlightedControl={highlightedControl}
-                />
-              )}
-
-              {activeTab === 'sidebar' && filterSettings('Sidebar') && (
-                <SidebarSettings
-                  appearanceSettings={appearanceSettings}
-                  setAppearanceSettings={setAppearanceSettings}
-                  expandedSections={expandedSections}
-                  toggleSection={toggleSection}
-                  highlightedControl={highlightedControl}
-                />
-              )}
-
-              {activeTab === 'spacing' && filterSettings('Spacing') && (
-                <SpacingSettings
-                  appearanceSettings={appearanceSettings}
-                  setAppearanceSettings={setAppearanceSettings}
-                  expandedSections={expandedSections}
-                  toggleSection={toggleSection}
-                  highlightedControl={highlightedControl}
-                />
-              )}
-
-              {activeTab === 'dev' && filterSettings('Dev') && (
-                <DevSettings
+              {activeTab === 'advanced' && filterSettings('Advanced') && (
+                <AdvancedTab
                   appearanceSettings={appearanceSettings}
                   setAppearanceSettings={setAppearanceSettings}
                   expandedSections={expandedSections}
@@ -622,7 +554,6 @@ export const AppearanceSettingsPanel: React.FC<AppearanceSettingsPanelProps> = (
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-5 py-4 border-t border-gx-gray bg-gx-gray/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
