@@ -59,12 +59,14 @@ const mockGetBrowserCapabilities = vi.fn(() => Promise.resolve({
   supportsGroupCollapse: null,
   supportsSingleTabGroups: true,
 }));
+const mockNeedsVisualRefreshWorkaround = vi.fn(() => true);
 
 vi.mock('../../utils/browser', () => ({
   initBrowserCapabilities: vi.fn(() => Promise.resolve(true)),
   getCachedCapabilities: vi.fn(() => null),
-  needsCompanionTabForSingleTabGroup: () => mockNeedsCompanionTab(),
-  getBrowserCapabilities: () => mockGetBrowserCapabilities(),
+  needsCompanionTabForSingleTabGroup: mockNeedsCompanionTab,
+  getBrowserCapabilities: mockGetBrowserCapabilities,
+  needsVisualRefreshWorkaround: mockNeedsVisualRefreshWorkaround,
 }));
 
 describe('tabService', () => {
@@ -751,15 +753,11 @@ describe('tabService', () => {
     });
   });
 
-  describe('updateTabGroupCollapse - Brave Browser Workaround', () => {
-    it('should apply Brave visual refresh workaround', async () => {
-      // Mock Brave browser
-      const { getCachedCapabilities } = await import('../../utils/browser');
-      vi.mocked(getCachedCapabilities).mockReturnValue({
-        vendor: 'brave',
-        supportsGroupCollapse: true,
-        supportsSingleTabGroups: true,
-      } as any);
+  describe('updateTabGroupCollapse - Visual Refresh Workaround', () => {
+    it('should apply workaround for browsers that need it (Chrome, Brave, Edge, Helium, unknown)', async () => {
+      // Mock a browser that needs the workaround
+      const { needsVisualRefreshWorkaround } = await import('../../utils/browser');
+      vi.mocked(needsVisualRefreshWorkaround).mockReturnValue(true);
 
       // Mock update to succeed
       mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
@@ -794,13 +792,37 @@ describe('tabService', () => {
       expect(mockTabsRemove).toHaveBeenCalledWith(99);
     });
 
-    it('should handle Brave workaround errors gracefully', async () => {
-      const { getCachedCapabilities } = await import('../../utils/browser');
-      vi.mocked(getCachedCapabilities).mockReturnValue({
-        vendor: 'brave',
-        supportsGroupCollapse: true,
-        supportsSingleTabGroups: true,
-      } as any);
+    it('should NOT apply workaround for Opera', async () => {
+      // Mock Opera - does not need the workaround
+      const { needsVisualRefreshWorkaround } = await import('../../utils/browser');
+      vi.mocked(needsVisualRefreshWorkaround).mockReturnValue(false);
+
+      mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
+        callback();
+        return Promise.resolve({ id: 100, collapsed: true });
+      });
+
+      const mockTabGroupsGet = vi.fn().mockResolvedValue({ id: 100, collapsed: true });
+      vi.stubGlobal('chrome', {
+        ...chrome,
+        tabGroups: {
+          ...chrome.tabGroups,
+          get: mockTabGroupsGet
+        }
+      });
+
+      mockTabsQuery.mockResolvedValue([{ id: 10, windowId: 1 }]);
+
+      const result = await tabService.updateTabGroupCollapse(100, true);
+
+      expect(result).toBe(true);
+      expect(mockTabsCreate).not.toHaveBeenCalled();
+      expect(mockTabsRemove).not.toHaveBeenCalled();
+    });
+
+    it('should handle workaround errors gracefully', async () => {
+      const { needsVisualRefreshWorkaround } = await import('../../utils/browser');
+      vi.mocked(needsVisualRefreshWorkaround).mockReturnValue(true);
 
       mockTabGroupsUpdate.mockImplementation((id, props, callback) => {
         callback();

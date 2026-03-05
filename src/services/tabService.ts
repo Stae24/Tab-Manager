@@ -1,7 +1,7 @@
 import { Tab, Island, LiveItem } from '../types/index';
 import { MAX_SYNC_RETRIES, TAB_ACTION_RETRY_DELAY_BASE } from '../constants';
 import { logger } from '../utils/logger';
-import { getCachedCapabilities, needsCompanionTabForSingleTabGroup, getBrowserCapabilities } from '../utils/browser';
+import { getCachedCapabilities, needsCompanionTabForSingleTabGroup, getBrowserCapabilities, needsVisualRefreshWorkaround } from '../utils/browser';
 
 const withRetry = async <T>(fn: () => Promise<T>, label: string, maxAttempts = MAX_SYNC_RETRIES): Promise<T> => {
   let lastError: unknown;
@@ -276,8 +276,7 @@ export const tabService = {
         const changeApplied = group.collapsed === collapsed;
 
         if (changeApplied) {
-          const cached = getCachedCapabilities();
-          if (cached?.vendor === 'brave') {
+          if (needsVisualRefreshWorkaround()) {
             const tabs = await chrome.tabs.query({ groupId });
             if (tabs.length > 0 && tabs[0].id !== undefined) {
               const dummyTab = await chrome.tabs.create({ url: 'about:blank', windowId: tabs[0].windowId, active: false });
@@ -309,11 +308,37 @@ export const tabService = {
   },
 
   discardTab: async (tabId: number) => {
-    return chrome.tabs.discard(tabId);
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      if (!tab) {
+        logger.warn('[tabService] discardTab: Tab not found:', tabId);
+        return null;
+      }
+      return chrome.tabs.discard(tabId);
+    } catch (error) {
+      logger.error('[tabService] discardTab: Failed to discard tab:', tabId, error);
+      throw error;
+    }
   },
 
   discardTabs: async (tabIds: number[]) => {
-    return Promise.all(tabIds.map(id => chrome.tabs.discard(id)));
+    const results: (chrome.tabs.Tab | null | undefined)[] = [];
+    for (const id of tabIds) {
+      try {
+        const tab = await chrome.tabs.get(id);
+        if (tab === undefined) {
+          logger.warn('[tabService] discardTabs: Tab not found:', id);
+          results.push(null);
+          continue;
+        }
+        const result = await chrome.tabs.discard(id);
+        results.push(result);
+      } catch (error) {
+        logger.error('[tabService] discardTabs: Failed to discard tab:', id, error);
+        results.push(null);
+      }
+    }
+    return results;
   },
 
   closeTab: async (tabId: number) => {
