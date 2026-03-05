@@ -39,6 +39,7 @@ const chromeMock = {
     create: vi.fn().mockResolvedValue({ id: 1, url: 'index.html', pinned: false, windowId: 1 }),
     update: vi.fn().mockResolvedValue({ id: 1, pinned: true }),
     query: vi.fn().mockResolvedValue([]),
+    get: vi.fn(),
     discard: vi.fn(),
     sendMessage: vi.fn(),
   },
@@ -103,6 +104,7 @@ describe('Background Script Listener Management', () => {
   it('messageListener should handle FREEZE_TAB', async () => {
     const { messageListener } = await import('../background');
     const sendResponse = vi.fn();
+    (chrome.tabs.get as any).mockResolvedValue({ id: 1 });
     (chrome.tabs.discard as any).mockResolvedValue({ id: 1 });
 
     const result = messageListener({ type: 'FREEZE_TAB', tabId: 1 }, {} as any, sendResponse);
@@ -424,6 +426,7 @@ describe('background - Message Handlers Extended', () => {
   describe('FREEZE_TAB error handling', () => {
     it('handles discard failure', async () => {
       const sendResponse = vi.fn();
+      (chrome.tabs.get as any).mockResolvedValue({ id: 1 });
       (chrome.tabs.discard as any).mockRejectedValue(new Error('Cannot discard'));
 
       messageListener(
@@ -438,6 +441,7 @@ describe('background - Message Handlers Extended', () => {
 
     it('handles already discarded tab', async () => {
       const sendResponse = vi.fn();
+      (chrome.tabs.get as any).mockResolvedValue({ id: 1 });
       (chrome.tabs.discard as any).mockResolvedValue(null);
 
       messageListener(
@@ -455,6 +459,20 @@ describe('background - Message Handlers Extended', () => {
 
       messageListener(
         { type: 'FREEZE_TAB' },
+        {},
+        sendResponse
+      );
+
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(sendResponse).toHaveBeenCalledWith({ success: false });
+    });
+
+    it('handles tab not found', async () => {
+      const sendResponse = vi.fn();
+      (chrome.tabs.get as any).mockResolvedValue(undefined);
+
+      messageListener(
+        { type: 'FREEZE_TAB', tabId: 999 },
         {},
         sendResponse
       );

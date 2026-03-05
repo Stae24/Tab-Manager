@@ -163,9 +163,24 @@ export function messageListener(
   }
 
   if (message.type === 'FREEZE_TAB') {
-    chrome.tabs.discard(message.tabId).then((discardedTab) => {
-      sendResponse({ success: !!discardedTab });
-    }).catch(() => {
+    const tabId = message.tabId;
+    if (tabId === undefined) {
+      sendResponse({ success: false });
+      return false;
+    }
+    chrome.tabs.get(tabId).then((tab) => {
+      if (!tab) {
+        logger.warn('[background] FREEZE_TAB: Tab not found:', tabId);
+        sendResponse({ success: false });
+        return;
+      }
+      return chrome.tabs.discard(tabId);
+    }).then((discardedTab) => {
+      if (discardedTab !== undefined) {
+        sendResponse({ success: !!discardedTab });
+      }
+    }).catch((error) => {
+      logger.error('[background] FREEZE_TAB: Failed to discard tab:', tabId, error);
       sendResponse({ success: false });
     });
     return true;
