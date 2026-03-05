@@ -5,6 +5,7 @@ import { useStore } from '../../store/useStore';
 import { findItemInList } from '../../store/utils';
 import { tabService } from '../../services/tabService';
 import { ungroupTab } from '../../utils/chromeApi';
+import { logger } from '../../utils/logger';
 
 const deleteCommand: CommandFunction = async (
   tabs: Tab[],
@@ -74,12 +75,21 @@ const freezeCommand: CommandFunction = async (
     return { success: false, affectedCount: 0, error: 'No valid tab IDs found' };
   }
 
+  logger.debug('[freezeCommand] Discarding tabs:', tabIds);
   const results = await Promise.allSettled(tabIds.map((id) => chrome.tabs.discard(id)));
-  const fulfilled = results.filter((r) => r.status === 'fulfilled');
-  const rejected = results.filter((r) => r.status === 'rejected');
+  
+  const successful = results.filter((r): r is PromiseFulfilledResult<chrome.tabs.Tab> => 
+    r.status === 'fulfilled' && r.value !== null
+  );
+  const failed = results.filter((r) => r.status === 'rejected' || r.status === 'fulfilled' && !r.value);
 
-  const affectedCount = fulfilled.length;
-  const errors = rejected.map((r) => r.status === 'rejected' ? r.reason : '').filter(Boolean);
+  const affectedCount = successful.length;
+  const errors = failed.map((r): string => {
+    if (r.status === 'rejected') return String(r.reason);
+    return 'Discard returned null';
+  }).filter(Boolean);
+
+  logger.debug('[freezeCommand] Results:', { total: tabIds.length, successful: affectedCount, failed: failed.length, errors });
 
   return {
     success: affectedCount > 0,

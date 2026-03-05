@@ -17,18 +17,33 @@ const isValueBang = (type: BangType): boolean => {
   return BANG_REGISTRY[type]?.type === 'value';
 };
 
+/**
+ * Check if position is at a boundary (start of query, preceded by whitespace, or after operator token)
+ * This allows consecutive operators like !audio!frozen but prevents mid-word operators like url!audio
+ */
+const isAtBoundary = (query: string, i: number, lastWasOperator: boolean): boolean => {
+  if (i === 0) return true;
+  if (/\s/.test(query[i - 1])) return true;
+  // Allow consecutive operators (e.g., !audio!frozen)
+  if (lastWasOperator) return true;
+  return false;
+};
+
 export function tokenize(query: string): SearchToken[] {
   const tokens: SearchToken[] = [];
   let i = 0;
   const len = query.length;
+  let lastTokenWasOperator = false; // Track internally
 
   while (i < len) {
     if (/\s/.test(query[i])) {
+      lastTokenWasOperator = false;
       i++;
       continue;
     }
 
-    if (query[i] === '"') {
+    // Quoted strings - require boundary
+    if (query[i] === '"' && isAtBoundary(query, i, lastTokenWasOperator)) {
       const start = i;
       i++;
       let literal = '';
@@ -37,16 +52,19 @@ export function tokenize(query: string): SearchToken[] {
         i++;
       }
       if (i < len) i++;
-      tokens.push({
-        type: 'text',
+      const token = {
+        type: 'text' as const,
         raw: query.slice(start, i),
         value: literal,
         position: { start, end: i },
-      });
+      };
+      tokens.push(token);
+      lastTokenWasOperator = false;
       continue;
     }
 
-    if (query[i] === '/' && i + 1 < len && /[a-zA-Z]/.test(query[i + 1])) {
+    // Commands - require boundary
+    if (query[i] === '/' && isAtBoundary(query, i, lastTokenWasOperator) && i + 1 < len && /[a-zA-Z]/.test(query[i + 1])) {
       const start = i;
       i++;
       let commandName = '';
@@ -54,16 +72,19 @@ export function tokenize(query: string): SearchToken[] {
         commandName += query[i];
         i++;
       }
-      tokens.push({
-        type: 'command',
+      const token = {
+        type: 'command' as const,
         raw: query.slice(start, i),
         value: commandName.toLowerCase(),
         position: { start, end: i },
-      });
+      };
+      tokens.push(token);
+      lastTokenWasOperator = true;
       continue;
     }
 
-    if (query[i] === '!' && i + 1 < len && /[a-zA-Z]/.test(query[i + 1])) {
+    // Bangs - require boundary
+    if (query[i] === '!' && isAtBoundary(query, i, lastTokenWasOperator) && i + 1 < len && /[a-zA-Z]/.test(query[i + 1])) {
       const start = i;
       i++;
       let bangName = '';
@@ -71,16 +92,19 @@ export function tokenize(query: string): SearchToken[] {
         bangName += query[i];
         i++;
       }
-      tokens.push({
-        type: 'bang',
+      const token = {
+        type: 'bang' as const,
         raw: query.slice(start, i),
         value: bangName.toLowerCase(),
         position: { start, end: i },
-      });
+      };
+      tokens.push(token);
+      lastTokenWasOperator = true;
       continue;
     }
 
-    if (query[i] === '-' && i + 1 < len && query[i + 1] === '!') {
+    // Excluded bangs: -!bang - require boundary
+    if (query[i] === '-' && isAtBoundary(query, i, lastTokenWasOperator) && i + 1 < len && query[i + 1] === '!') {
       const start = i;
       i += 2;
       let bangName = '';
@@ -88,17 +112,62 @@ export function tokenize(query: string): SearchToken[] {
         bangName += query[i];
         i++;
       }
-      tokens.push({
-        type: 'exclude',
+      const token = {
+        type: 'exclude' as const,
         raw: query.slice(start, i),
         value: bangName.toLowerCase(),
         position: { start, end: i },
-      });
+      };
+      tokens.push(token);
+      lastTokenWasOperator = true;
       continue;
     }
 
-    if (query[i] === '-' && i + 1 < len && query[i + 1] === '/') {
+    // Excluded commands: -/command - require boundary
+    if (query[i] === '-' && isAtBoundary(query, i, lastTokenWasOperator) && i + 1 < len && query[i + 1] === '/') {
       i += 2;
+      lastTokenWasOperator = false;
+      continue;
+    }
+
+    // Excluded quoted text: -"phrase" - require boundary
+    if (query[i] === '-' && isAtBoundary(query, i, lastTokenWasOperator) && i + 1 < len && query[i + 1] === '"') {
+      const start = i;
+      i += 2; // Skip -"
+      let literal = '';
+      while (i < len && query[i] !== '"') {
+        literal += query[i];
+        i++;
+      }
+      if (i < len) i++; // Skip closing "
+      const token = {
+        type: 'exclude-text' as const,
+        raw: query.slice(start, i),
+        value: literal,
+        position: { start, end: i },
+      };
+      tokens.push(token);
+      lastTokenWasOperator = true;
+      continue;
+    }
+
+    // Excluded unquoted text: -term - require boundary
+    if (query[i] === '-' && isAtBoundary(query, i, lastTokenWasOperator) && i + 1 < len && /[a-zA-Z0-9]/.test(query[i + 1])) {
+      const start = i;
+      i++; // Skip -
+      let text = '';
+      while (i < len && /[a-zA-Z0-9]/.test(query[i])) {
+        text += query[i];
+        i++;
+      }
+      const token = {
+        type: 'exclude-text' as const,
+        raw: query.slice(start, i),
+        value: text.toLowerCase(),
+        position: { start, end: i },
+      };
+      tokens.push(token);
+      lastTokenWasOperator = true;
       continue;
     }
 
@@ -106,14 +175,40 @@ export function tokenize(query: string): SearchToken[] {
     let text = '';
     while (i < len) {
       const ch = query[i];
+      // Check if this could be an operator that needs boundary checking
       if (ch === '"' || ch === '!' || ch === '/' || ch === ',') {
-        break;
+        // If it's at a boundary, stop here and let the main loop handle it
+        if (isAtBoundary(query, i, lastTokenWasOperator)) {
+          // If we haven't collected any text yet, consume this character as text
+          // to avoid infinite loop (e.g., when query is just '/' or '!')
+          if (text === '') {
+            text += ch;
+            i++;
+            lastTokenWasOperator = false;
+          }
+          break;
+        }
+        // Otherwise, consume it as text
+        text += ch;
+        i++;
+        lastTokenWasOperator = false;
+        continue;
       }
-      if (ch === '-' && i + 1 < len && (query[i + 1] === '!' || query[i + 1] === '/')) {
-        break;
+      if (ch === '-' && i + 1 < len) {
+        const nextCh = query[i + 1];
+        const couldBeOperator = nextCh === '!' || nextCh === '/' || nextCh === '"' || /[a-zA-Z0-9]/.test(nextCh);
+        if (couldBeOperator && isAtBoundary(query, i, lastTokenWasOperator)) {
+          break;
+        }
+        // Otherwise, consume the dash as text
+        text += ch;
+        i++;
+        lastTokenWasOperator = false;
+        continue;
       }
       text += ch;
       i++;
+      lastTokenWasOperator = false;
     }
     text = text.trim();
     if (text) {
@@ -126,17 +221,6 @@ export function tokenize(query: string): SearchToken[] {
       });
     } else if (i < len && query[i] === ',') {
       i++;
-    } else if (i < len) {
-      const ch = query[i];
-      if (ch === '!' || ch === '/' || ch === '"') {
-        tokens.push({
-          type: 'text',
-          raw: ch,
-          value: ch,
-          position: { start: i, end: i + 1 },
-        });
-        i++;
-      }
     }
   }
 
@@ -147,6 +231,7 @@ export function parseQuery(query: string): ParsedQuery {
   const trimmed = query.trim();
   const tokens = tokenize(trimmed);
   const textTerms: string[] = [];
+  const excludedTextTerms: string[] = [];
   const bangs: BangFilter[] = [];
   const commands: CommandType[] = [];
   const errors: ParseError[] = [];
@@ -159,6 +244,12 @@ export function parseQuery(query: string): ParsedQuery {
     if (token.type === 'text') {
       const parts = token.value.split(',').map((p) => p.trim()).filter(Boolean);
       textTerms.push(...parts);
+      i++;
+      continue;
+    }
+
+    if (token.type === 'exclude-text') {
+      excludedTextTerms.push(token.value.toLowerCase());
       i++;
       continue;
     }
@@ -184,7 +275,7 @@ export function parseQuery(query: string): ParsedQuery {
 
         while (j < tokens.length) {
           const nextToken = tokens[j];
-          if (nextToken.type === 'bang' || nextToken.type === 'exclude' || nextToken.type === 'command') {
+          if (nextToken.type === 'bang' || nextToken.type === 'exclude' || nextToken.type === 'command' || nextToken.type === 'exclude-text') {
             break;
           }
           if (nextToken.type === 'text') {
@@ -266,6 +357,7 @@ export function parseQuery(query: string): ParsedQuery {
 
   return {
     textTerms,
+    excludedTextTerms,
     bangs,
     commands,
     sort,
@@ -287,6 +379,16 @@ export function getQueryString(parsed: ParsedQuery): string {
 
   if (parsed.textTerms.length > 0) {
     parts.push(parsed.textTerms.join(', '));
+  }
+
+  if (parsed.excludedTextTerms.length > 0) {
+    for (const term of parsed.excludedTextTerms) {
+      if (term.includes(' ')) {
+        parts.push(`-"${term}"`);
+      } else {
+        parts.push(`-${term}`);
+      }
+    }
   }
 
   for (const bang of parsed.bangs) {

@@ -109,8 +109,8 @@ export async function search(
 
   const parsedQuery = parseQuery(query);
 
-  // If there's no text terms, bangs, or commands, return empty results
-  if (parsedQuery.textTerms.length === 0 && parsedQuery.bangs.length === 0 && parsedQuery.commands.length === 0) {
+  // If there's no text terms, bangs, commands, or excluded terms, return empty results
+  if (parsedQuery.textTerms.length === 0 && parsedQuery.bangs.length === 0 && parsedQuery.commands.length === 0 && parsedQuery.excludedTextTerms.length === 0) {
     return { results: [], parsedQuery };
   }
 
@@ -129,6 +129,7 @@ export async function search(
     const textMatch = applyTextSearch(
       tab,
       parsedQuery.textTerms,
+      parsedQuery.excludedTextTerms,
       !!titleScopeBang && !titleScopeBang.negated,
       !!urlScopeBang && !urlScopeBang.negated
     );
@@ -181,7 +182,7 @@ export async function searchAndExecute(
 
 export function isSearchActive(parsedQuery: ParsedQuery | null): boolean {
   if (!parsedQuery) return false;
-  return parsedQuery.textTerms.length > 0 || parsedQuery.bangs.length > 0 || parsedQuery.commands.length > 0;
+  return parsedQuery.textTerms.length > 0 || parsedQuery.bangs.length > 0 || parsedQuery.commands.length > 0 || parsedQuery.excludedTextTerms.length > 0;
 }
 
 export function hasCommands(parsedQuery: ParsedQuery | null): boolean {

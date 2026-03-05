@@ -155,12 +155,23 @@ export function applyAllFilters(
 export function applyTextSearch(
   tab: Tab,
   terms: string[],
+  excludedTerms: string[] = [],
   titleScope: boolean = false,
   urlScope: boolean = false
 ): boolean {
+  const scope: 'title' | 'url' | undefined = titleScope ? 'title' : urlScope ? 'url' : undefined;
+
+  // First check excluded terms - if any match, reject immediately
+  for (const excludedTerm of excludedTerms) {
+    if (matchesText(tab, excludedTerm, scope)) {
+      return false;
+    }
+  }
+
+  // If no included terms, only exclusions were specified - accept the tab
   if (terms.length === 0) return true;
 
-  const scope: 'title' | 'url' | undefined = titleScope ? 'title' : urlScope ? 'url' : undefined;
+  // Check included terms with OR logic
   for (const term of terms) {
     if (matchesText(tab, term, scope)) {
       return true;

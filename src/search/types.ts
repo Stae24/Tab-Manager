@@ -1,7 +1,7 @@
 import { Tab, VaultItem, Island } from '../types/index';
 
 export interface SearchToken {
-  type: 'text' | 'bang' | 'command' | 'exclude';
+  type: 'text' | 'bang' | 'command' | 'exclude' | 'exclude-text';
   raw: string;
   value: string;
   bangType?: BangType;
@@ -11,6 +11,7 @@ export interface SearchToken {
 
 export interface ParsedQuery {
   textTerms: string[];
+  excludedTextTerms: string[];
   bangs: BangFilter[];
   commands: CommandType[];
   sort: SortType;
