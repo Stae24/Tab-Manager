@@ -403,6 +403,7 @@ describe('isSearchActive', () => {
   it('returns false for empty textTerms and bangs', () => {
     const parsed: ParsedQuery = {
       textTerms: [],
+      excludedTextTerms: [],
       bangs: [],
       commands: [],
       sort: 'index',
@@ -415,6 +416,7 @@ describe('isSearchActive', () => {
   it('returns true when textTerms present', () => {
     const parsed: ParsedQuery = {
       textTerms: ['test'],
+      excludedTextTerms: [],
       bangs: [],
       commands: [],
       sort: 'index',
@@ -427,6 +429,7 @@ describe('isSearchActive', () => {
   it('returns true when bangs present', () => {
     const parsed: ParsedQuery = {
       textTerms: [],
+      excludedTextTerms: [],
       bangs: [{ type: 'audio', negated: false, raw: '!audio', position: { start: 0, end: 6 } }],
       commands: [],
       sort: 'index',
@@ -441,6 +444,7 @@ describe('hasCommands', () => {
   it('detects commands', () => {
     const parsed: ParsedQuery = {
       textTerms: [],
+      excludedTextTerms: [],
       bangs: [],
       commands: ['delete'],
       sort: 'index',
@@ -453,6 +457,35 @@ describe('hasCommands', () => {
   it('returns false when no commands', () => {
     const parsed: ParsedQuery = {
       textTerms: ['test'],
+      excludedTextTerms: [],
+      bangs: [],
+      commands: [],
+      sort: 'index',
+      errors: [],
+      raw: 'test',
+    };
+    expect(hasCommands(parsed)).toBe(false);
+  });
+});
+
+describe('hasCommands', () => {
+  it('detects commands', () => {
+    const parsed: ParsedQuery = {
+      textTerms: [],
+      excludedTextTerms: [],
+      bangs: [],
+      commands: ['delete'],
+      sort: 'index',
+      errors: [],
+      raw: '/delete',
+    };
+    expect(hasCommands(parsed)).toBe(true);
+  });
+
+  it('returns false when no commands', () => {
+    const parsed: ParsedQuery = {
+      textTerms: ['test'],
+      excludedTextTerms: [],
       bangs: [],
       commands: [],
       sort: 'index',

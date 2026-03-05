@@ -241,6 +241,91 @@ describe('applyTextSearch', () => {
     const tab = createMockTab({ title: 'YouTube - Best Songs' });
     expect(applyTextSearch(tab, ['Tube'])).toBe(true);
   });
+
+  describe('excluded terms', () => {
+    it('should return false when excluded term matches title', () => {
+      const tab = createMockTab({ title: 'GitHub Documentation' });
+      expect(applyTextSearch(tab, ['github'], ['documentation'])).toBe(false);
+    });
+
+    it('should return true when excluded term does not match', () => {
+      const tab = createMockTab({ title: 'GitHub Repository' });
+      expect(applyTextSearch(tab, ['github'], ['documentation'])).toBe(true);
+    });
+
+    it('should return true for only exclusions when none match', () => {
+      const tab = createMockTab({ title: 'GitHub Repository' });
+      expect(applyTextSearch(tab, [], ['documentation'])).toBe(true);
+    });
+
+    it('should return false for only exclusions when one matches', () => {
+      const tab = createMockTab({ title: 'GitHub Documentation' });
+      expect(applyTextSearch(tab, [], ['documentation'])).toBe(false);
+    });
+
+    it('should handle both included and excluded terms', () => {
+      const tab = createMockTab({ title: 'GitHub Repository' });
+      expect(applyTextSearch(tab, ['github', 'gitlab'], ['docs', 'documentation'])).toBe(true);
+    });
+
+    it('should exclude based on URL', () => {
+      const tab = createMockTab({ title: 'Test', url: 'https://github.com/docs' });
+      expect(applyTextSearch(tab, ['github'], ['docs'])).toBe(false);
+    });
+  });
+});
+
+  it('should return false when no comma-separated terms match', () => {
+    const tab = createMockTab({ title: 'Google Search' });
+    expect(applyTextSearch(tab, ['spotify', 'youtube'])).toBe(false);
+  });
+
+  it('should match phrase with spaces as single term', () => {
+    const tab = createMockTab({ title: 'YouTube Music Playlist' });
+    expect(applyTextSearch(tab, ['youtube music'])).toBe(true);
+  });
+
+  it('should return false when phrase has no overlap with title', () => {
+    const tab = createMockTab({ title: 'YouTube - Best Songs' });
+    expect(applyTextSearch(tab, ['google docs'])).toBe(false);
+  });
+
+  it('should match partial words within title', () => {
+    const tab = createMockTab({ title: 'YouTube - Best Songs' });
+    expect(applyTextSearch(tab, ['Tube'])).toBe(true);
+  });
+
+  describe('excluded terms', () => {
+    it('should return false when excluded term matches title', () => {
+      const tab = createMockTab({ title: 'GitHub Documentation' });
+      expect(applyTextSearch(tab, ['github'], ['documentation'])).toBe(false);
+    });
+
+    it('should return true when excluded term does not match', () => {
+      const tab = createMockTab({ title: 'GitHub Repository' });
+      expect(applyTextSearch(tab, ['github'], ['documentation'])).toBe(true);
+    });
+
+    it('should return true for only exclusions when none match', () => {
+      const tab = createMockTab({ title: 'GitHub Repository' });
+      expect(applyTextSearch(tab, [], ['documentation'])).toBe(true);
+    });
+
+    it('should return false for only exclusions when one matches', () => {
+      const tab = createMockTab({ title: 'GitHub Documentation' });
+      expect(applyTextSearch(tab, [], ['documentation'])).toBe(false);
+    });
+
+    it('should handle both included and excluded terms', () => {
+      const tab = createMockTab({ title: 'GitHub Repository' });
+      expect(applyTextSearch(tab, ['github', 'gitlab'], ['docs', 'documentation'])).toBe(true);
+    });
+
+    it('should exclude based on URL', () => {
+      const tab = createMockTab({ title: 'Test', url: 'https://github.com/docs' });
+      expect(applyTextSearch(tab, ['github'], ['docs'])).toBe(false);
+    });
+  });
 });
 
 describe('groupname filter', () => {
@@ -351,5 +436,4 @@ describe('duplicate filter', () => {
     
     expect(applyFilter(tab, 'duplicate', context)).toBe(false);
   });
-});
 });

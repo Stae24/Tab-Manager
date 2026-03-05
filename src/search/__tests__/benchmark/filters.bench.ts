@@ -145,11 +145,11 @@ describe('applyTextSearch', () => {
   });
 
   bench('500 tabs - title scope', () => {
-    tabs500.forEach(tab => applyTextSearch(tab, ['Tab'], true, false));
+    tabs500.forEach(tab => applyTextSearch(tab, ['Tab'], [], true, false));
   });
 
   bench('500 tabs - url scope', () => {
-    tabs500.forEach(tab => applyTextSearch(tab, ['com'], false, true));
+    tabs500.forEach(tab => applyTextSearch(tab, ['com'], [], false, true));
   });
 });
 
