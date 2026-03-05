@@ -114,13 +114,13 @@ describe('useUISlice', () => {
 
   describe('setParsedQuery', () => {
     it('should set parsed query', () => {
-      const parsed: ParsedQuery = { textTerms: ['test'], bangs: [], commands: [], sort: 'index', errors: [], raw: 'test' };
+      const parsed: ParsedQuery = { textTerms: ['test'], excludedTextTerms: [], bangs: [], commands: [], sort: 'index', errors: [], raw: 'test' };
       useStore.getState().setParsedQuery(parsed);
       expect(useStore.getState().parsedQuery).toEqual(parsed);
     });
 
     it('should clear parsed query', () => {
-      useStore.setState({ parsedQuery: { textTerms: ['test'], bangs: [], commands: [], sort: 'index', errors: [], raw: 'test' } });
+      useStore.setState({ parsedQuery: { textTerms: ['test'], excludedTextTerms: [], bangs: [], commands: [], sort: 'index', errors: [], raw: 'test' } });
       useStore.getState().setParsedQuery(null);
       expect(useStore.getState().parsedQuery).toBeNull();
     });

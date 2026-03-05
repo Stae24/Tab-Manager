@@ -103,3 +103,10 @@ export async function detectSidebarContext(): Promise<boolean> {
 export function getCachedSidebarContext(): boolean | null {
   return cachedIsSidebar;
 }
+
+export function needsVisualRefreshWorkaround(): boolean {
+  const cached = getCachedCapabilities();
+  if (!cached) return true; // Default to needing workaround if not initialized
+  // Only Opera (and Firefox which has no tab groups) works correctly without the workaround
+  return cached.vendor !== 'opera';
+}
