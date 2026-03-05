@@ -10,6 +10,7 @@ import { TabIndicators } from './TabIndicators';
 import { useScrollContainer } from '../contexts/ScrollContainerContext';
 import { ContextMenu } from './ContextMenu';
 import { INTERSECTION_OBSERVER_MARGIN_PX, TAB_LOAD_DELAY_BASE_MS, Z_INDEX_SCALE } from '../constants';
+import { logger } from '../utils/logger';
 import type { Tab } from '../types/index';
 
 interface TabCardProps {
@@ -335,25 +336,39 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
         {!isVault && (
           <>
             <button
-              onClick={() => {
+              onClick={async () => {
                 const numericId = parseNumericId(tab.id);
-                if (numericId !== null) tabService.discardTab(numericId);
+                if (numericId !== null) {
+                  try {
+                    await tabService.discardTab(numericId);
+                  } catch (error) {
+                    logger.error('[TabCard] Failed to freeze tab:', error);
+                  }
+                }
                 setShowMenu(false);
               }}
-              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
+              disabled={tab.discarded}
+              className={cn(
+                "flex items-center gap-2 px-2 py-1 text-[10px] rounded",
+                tab.discarded
+                  ? "text-gx-muted cursor-not-allowed"
+                  : "hover:bg-gx-accent/20"
+              )}
             >
-              <Snowflake size={10} /> FREEZE
+              <Snowflake size={10} /> {tab.discarded ? 'FROZEN' : 'FREEZE'}
             </button>
-            <button
-              onClick={() => {
-                const numericId = parseNumericId(tab.id);
-                if (numericId !== null) tabService.ungroupTab(numericId);
-                setShowMenu(false);
-              }}
-              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
-            >
-              <LogOut size={10} /> UNGROUP
-            </button>
+            {tab.groupId !== -1 && (
+              <button
+                onClick={() => {
+                  const numericId = parseNumericId(tab.id);
+                  if (numericId !== null) tabService.ungroupTab(numericId);
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-accent/20 rounded"
+              >
+                <LogOut size={10} /> UNGROUP
+              </button>
+            )}
             <button
               onClick={() => {
                 const numericId = parseNumericId(tab.id);

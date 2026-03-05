@@ -334,7 +334,7 @@ describe('TabCard', () => {
     });
 
     it('contains ungroup action', async () => {
-      render(<TabCard tab={defaultTab} />);
+      render(<TabCard tab={{ ...defaultTab, groupId: 1 }} />);
 
       const card = screen.getByText('Test Tab');
       fireEvent.contextMenu(card);
@@ -391,7 +391,7 @@ describe('TabCard', () => {
     });
 
     it('calls tabService.ungroupTab on ungroup', async () => {
-      render(<TabCard tab={defaultTab} />);
+      render(<TabCard tab={{ ...defaultTab, groupId: 1 }} />);
 
       const card = screen.getByText('Test Tab');
       fireEvent.contextMenu(card);

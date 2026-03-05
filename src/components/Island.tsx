@@ -9,6 +9,7 @@ import { Island as IslandType, Tab, UniversalId } from '../types/index';
 import { ungroupTab, discardTabs, duplicateIsland } from '../utils/chromeApi';
 import { useStore, parseNumericId } from '../store/useStore';
 import { VIRTUAL_ROW_ESTIMATE_SIZE, Z_INDEX_SCALE } from '../constants';
+import { logger } from '../utils/logger';
 
 interface IslandProps {
   island: IslandType;
@@ -118,12 +119,23 @@ export const Island: React.FC<IslandProps> = React.memo(({
     if (ids.length > 0) ungroupTab(ids);
   };
 
-  // Freeze all tabs
-  const handleFreezeAll = () => {
+  // Freeze all tabs (only non-discarded ones)
+  const handleFreezeAll = async () => {
     setShowMenu(false);
-    const ids = (island.tabs || []).map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
-    if (ids.length > 0) discardTabs(ids);
+    const ids = (island.tabs || [])
+      .filter(t => !t.discarded)
+      .map(t => parseNumericId(t.id))
+      .filter((id): id is number => id !== null);
+    if (ids.length > 0) {
+      try {
+        await discardTabs(ids);
+      } catch (error) {
+        logger.error('[Island] Failed to freeze tabs:', error);
+      }
+    }
   };
+
+  const allFrozen = island.tabs.every(t => t.discarded);
 
   // Calculate menu position - use mouse position directly
   const calculateMenuPosition = (clientX: number, clientY: number) => {
@@ -317,9 +329,15 @@ export const Island: React.FC<IslandProps> = React.memo(({
             </button>
             <button
               onClick={handleFreezeAll}
-              className="flex items-center gap-2 px-2 py-1 text-[10px] hover:bg-gx-cyan/20 hover:text-gx-cyan rounded"
+              disabled={allFrozen}
+              className={cn(
+                "flex items-center gap-2 px-2 py-1 text-[10px] rounded",
+                allFrozen
+                  ? "text-gx-muted cursor-not-allowed"
+                  : "hover:bg-gx-cyan/20 hover:text-gx-cyan"
+              )}
             >
-              <Snowflake size={10} /> FREEZE ALL
+              <Snowflake size={10} /> {allFrozen ? 'ALL FROZEN' : 'FREEZE ALL'}
             </button>
           </>
         )}
