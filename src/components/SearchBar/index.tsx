@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from 'react';
 import { Search, X, Play, HelpCircle } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { parseQuery, hasCommands as checkHasCommands } from '../../search';
-import { BANG_REGISTRY, COMMAND_REGISTRY, getAllBangNames, getAllCommandNames } from '../../search';
-import type { ParsedQuery, AutocompleteSuggestion } from '../../search';
+import { parseQuery } from '../../search/parser';
+import { BANG_REGISTRY, COMMAND_REGISTRY, getAllBangNames, getAllCommandNames } from '../../search/bangRegistry';
+import type { ParsedQuery, AutocompleteSuggestion } from '../../search/types';
 
 interface SearchBarProps {
   query: string;
@@ -114,7 +114,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>((
     return buildAutocompleteSuggestions(query, cursorPos);
   }, [query, cursorPos]);
 
-  const hasCommands = useMemo(() => checkHasCommands(parsedQuery), [parsedQuery]);
+  const hasCommands = useMemo(() => parsedQuery ? parsedQuery.commands.length > 0 : false, [parsedQuery]);
 
   useEffect(() => {
     setParsedQuery(parseQuery(query));
