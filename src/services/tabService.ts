@@ -309,11 +309,7 @@ export const tabService = {
 
   discardTab: async (tabId: number) => {
     try {
-      const tab = await chrome.tabs.get(tabId);
-      if (!tab) {
-        logger.warn('[tabService] discardTab: Tab not found:', tabId);
-        return null;
-      }
+      await chrome.tabs.get(tabId);
       return chrome.tabs.discard(tabId);
     } catch (error) {
       logger.error('[tabService] discardTab: Failed to discard tab:', tabId, error);
@@ -325,16 +321,11 @@ export const tabService = {
     const results: (chrome.tabs.Tab | null | undefined)[] = [];
     for (const id of tabIds) {
       try {
-        const tab = await chrome.tabs.get(id);
-        if (tab === undefined) {
-          logger.warn('[tabService] discardTabs: Tab not found:', id);
-          results.push(null);
-          continue;
-        }
+        await chrome.tabs.get(id);
         const result = await chrome.tabs.discard(id);
         results.push(result);
       } catch (error) {
-        logger.error('[tabService] discardTabs: Failed to discard tab:', id, error);
+        logger.warn('[tabService] discardTabs: Tab not found:', id, error);
         results.push(null);
       }
     }

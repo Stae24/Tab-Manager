@@ -35,6 +35,7 @@ vi.stubGlobal('chrome', {
     query: mockTabGroupsQuery,
     move: mockTabGroupsMove,
     update: mockTabGroupsUpdate,
+    get: vi.fn(),
     TAB_GROUP_ID_NONE: -1,
   },
   windows: {
@@ -78,6 +79,8 @@ describe('tabService', () => {
     mockNeedsCompanionTab.mockReturnValue(false);
     vi.resetModules();
     tabService = (await import('../tabService')).tabService;
+    // Reset the module-level tabGroups.get mock
+    (chrome.tabGroups.get as ReturnType<typeof vi.fn>).mockReset();
   });
 
   afterEach(() => {
@@ -692,13 +695,7 @@ describe('tabService', () => {
         return Promise.resolve({ id: 100 });
       });
       // Mock get to return inconsistent state
-      vi.stubGlobal('chrome', {
-        ...chrome,
-        tabGroups: {
-          ...chrome.tabGroups,
-          get: vi.fn().mockResolvedValue({ id: 100, collapsed: false }) // Should be true
-        }
-      });
+      chrome.tabGroups.get = vi.fn().mockResolvedValue({ id: 100, collapsed: false }); // Should be true
 
       const result = await tabService.updateTabGroupCollapse(100, true);
       expect(result).toBe(false);
@@ -766,14 +763,7 @@ describe('tabService', () => {
       });
 
       // Mock get to return correct state
-      const mockTabGroupsGet = vi.fn().mockResolvedValue({ id: 100, collapsed: true });
-      vi.stubGlobal('chrome', {
-        ...chrome,
-        tabGroups: {
-          ...chrome.tabGroups,
-          get: mockTabGroupsGet
-        }
-      });
+      chrome.tabGroups.get = vi.fn().mockResolvedValue({ id: 100, collapsed: true });
 
       mockTabsQuery.mockResolvedValue([{ id: 10, windowId: 1 }]);
       mockTabsCreate.mockResolvedValue({ id: 99 } as any);
@@ -802,14 +792,7 @@ describe('tabService', () => {
         return Promise.resolve({ id: 100, collapsed: true });
       });
 
-      const mockTabGroupsGet = vi.fn().mockResolvedValue({ id: 100, collapsed: true });
-      vi.stubGlobal('chrome', {
-        ...chrome,
-        tabGroups: {
-          ...chrome.tabGroups,
-          get: mockTabGroupsGet
-        }
-      });
+      chrome.tabGroups.get = vi.fn().mockResolvedValue({ id: 100, collapsed: true });
 
       mockTabsQuery.mockResolvedValue([{ id: 10, windowId: 1 }]);
 
@@ -829,14 +812,7 @@ describe('tabService', () => {
         return Promise.resolve({ id: 100, collapsed: true });
       });
 
-      const mockTabGroupsGet = vi.fn().mockResolvedValue({ id: 100, collapsed: true });
-      vi.stubGlobal('chrome', {
-        ...chrome,
-        tabGroups: {
-          ...chrome.tabGroups,
-          get: mockTabGroupsGet
-        }
-      });
+      chrome.tabGroups.get = vi.fn().mockResolvedValue({ id: 100, collapsed: true });
 
       mockTabsQuery.mockResolvedValue([{ id: 10, windowId: 1 }]);
       mockTabsCreate.mockResolvedValue({ id: 99 } as any);
@@ -853,14 +829,7 @@ describe('tabService', () => {
         return Promise.resolve({ id: 100 });
       });
 
-      const mockTabGroupsGet = vi.fn().mockRejectedValue(new Error('Not found'));
-      vi.stubGlobal('chrome', {
-        ...chrome,
-        tabGroups: {
-          ...chrome.tabGroups,
-          get: mockTabGroupsGet
-        }
-      });
+      chrome.tabGroups.get = vi.fn().mockRejectedValue(new Error('Not found'));
 
       const result = await tabService.updateTabGroupCollapse(100, true);
 

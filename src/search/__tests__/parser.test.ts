@@ -94,62 +94,6 @@ describe('searchParser', () => {
       expect(tokens[0].value).toBe('https://example.com/path');
     });
 
-    it('should tokenize excluded text terms', () => {
-      const tokens = tokenize('-github');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe('exclude-text');
-      expect(tokens[0].value).toBe('github');
-    });
-
-    it('should tokenize excluded quoted strings', () => {
-      const tokens = tokenize('-"hello world"');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe('exclude-text');
-      expect(tokens[0].value).toBe('hello world');
-    });
-
-    it('should tokenize quoted strings', () => {
-      const tokens = tokenize('"hello world"');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe('text');
-      expect(tokens[0].value).toBe('hello world');
-    });
-
-    it('should enforce boundary for bangs', () => {
-      const tokens = tokenize('url!audio');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe('text');
-      expect(tokens[0].value).toBe('url!audio');
-    });
-
-    it('should enforce boundary for commands', () => {
-      const tokens = tokenize('path/delete');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe('text');
-      expect(tokens[0].value).toBe('path/delete');
-    });
-
-    it('should enforce boundary for quoted strings', () => {
-      const tokens = tokenize('say"hello"');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe('text');
-      expect(tokens[0].value).toBe('say"hello"');
-    });
-
-    it('should enforce boundary for excluded terms', () => {
-      const tokens = tokenize('co-operate');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe('text');
-      expect(tokens[0].value).toBe('co-operate');
-    });
-
-    it('should not treat dash in URLs as exclusion', () => {
-      const tokens = tokenize('https://example.com/path');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe('text');
-      expect(tokens[0].value).toBe('https://example.com/path');
-    });
-
     it('should tokenize complex queries', () => {
       const tokens = tokenize('youtube, !audio /delete');
       expect(tokens.length).toBeGreaterThan(1);

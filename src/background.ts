@@ -168,21 +168,16 @@ export function messageListener(
       sendResponse({ success: false });
       return false;
     }
-    chrome.tabs.get(tabId).then((tab) => {
-      if (!tab) {
-        logger.warn('[background] FREEZE_TAB: Tab not found:', tabId);
-        sendResponse({ success: false });
-        return;
-      }
-      return chrome.tabs.discard(tabId);
-    }).then((discardedTab) => {
-      if (discardedTab !== undefined) {
+    (async () => {
+      try {
+        await chrome.tabs.get(tabId);
+        const discardedTab = await chrome.tabs.discard(tabId);
         sendResponse({ success: !!discardedTab });
+      } catch (error) {
+        logger.error('[background] FREEZE_TAB: Failed to discard tab:', tabId, error);
+        sendResponse({ success: false });
       }
-    }).catch((error) => {
-      logger.error('[background] FREEZE_TAB: Failed to discard tab:', tabId, error);
-      sendResponse({ success: false });
-    });
+    })();
     return true;
   }
 

@@ -88,6 +88,7 @@ const createMockStore = () => {
     moveItemOptimistically: vi.fn().mockImplementation((activeId: string, overId: string) => {
       return { activeId, overId };
     }),
+    cancelOptimisticMove: vi.fn(),
     syncLiveTabs: vi.fn().mockResolvedValue(undefined),
     moveToVault: vi.fn().mockResolvedValue(undefined),
     restoreFromVault: vi.fn().mockResolvedValue(undefined),

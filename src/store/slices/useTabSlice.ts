@@ -27,11 +27,14 @@ export interface TabSlice {
   toggleLiveGroupCollapse: (id: UniversalId) => Promise<void>;
   initBrowserCapabilities: () => Promise<void>;
   moveItemOptimistically: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
+  cancelOptimisticMove: () => void;
   deleteDuplicateTabs: () => Promise<void>;
   sortGroupsToTop: () => Promise<void>;
   groupSearchResults: (tabs: Tab[]) => Promise<void>;
   groupUngroupedTabs: () => Promise<void>;
 }
+
+const optimisticMoveRafId = { current: null as number | null };
 
 export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, get) => ({
   islands: [],
@@ -168,10 +171,9 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
   moveItemOptimistically: (() => {
     const pendingId = { current: null as UniqueIdentifier | null };
     const pendingOverId = { current: null as UniqueIdentifier | null };
-    const rafId = { current: null as number | null };
 
     return (activeId: UniqueIdentifier, overId: UniqueIdentifier) => {
-      if (rafId.current !== null) {
+      if (optimisticMoveRafId.current !== null) {
         pendingId.current = activeId;
         pendingOverId.current = overId;
         return;
@@ -180,13 +182,13 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       pendingId.current = activeId;
       pendingOverId.current = overId;
 
-      rafId.current = requestAnimationFrame(() => {
+      optimisticMoveRafId.current = requestAnimationFrame(() => {
         const activeIdVal = pendingId.current;
         const overIdVal = pendingOverId.current;
 
         pendingId.current = null;
         pendingOverId.current = null;
-        rafId.current = null;
+        optimisticMoveRafId.current = null;
 
         if (activeIdVal === null || overIdVal === null) {
           return;
@@ -208,6 +210,13 @@ export const createTabSlice: StateCreator<StoreState, [], [], TabSlice> = (set, 
       });
     };
   })(),
+
+  cancelOptimisticMove: () => {
+    if (optimisticMoveRafId.current !== null) {
+      cancelAnimationFrame(optimisticMoveRafId.current);
+      optimisticMoveRafId.current = null;
+    }
+  },
 
   deleteDuplicateTabs: async () => {
     try {

@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn, getBorderRadiusClass } from '../utils/cn';
 import { tabService } from '../services/tabService';
 import { parseNumericId, isIsland, useStore } from '../store/useStore';
+import { isSearchActive } from '../search';
 import { Favicon } from './Favicon';
 import { TabIndicators } from './TabIndicators';
 import { useScrollContainer } from '../contexts/ScrollContainerContext';
@@ -301,7 +302,14 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
                 if (onClose) onClose();
                 else {
                   const numericId = parseNumericId(tab.id);
-                  if (numericId !== null) tabService.closeTab(numericId);
+                  if (numericId !== null) {
+                    tabService.closeTab(numericId);
+                    const { parsedQuery, searchResults, setSearchResults } = useStore.getState();
+                    if (parsedQuery && isSearchActive(parsedQuery)) {
+                      const filtered = searchResults.filter(r => String(r.tab.id) !== String(tab.id));
+                      setSearchResults(filtered);
+                    }
+                  }
                 }
               }}
               className={cn(
@@ -418,7 +426,15 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
             <button
               onClick={() => {
                 const ids = tabsBelow.map((t) => parseNumericId(t.id)).filter((id): id is number => id !== null);
-                if (ids.length > 0) tabService.closeTabs(ids);
+                if (ids.length > 0) {
+                  tabService.closeTabs(ids);
+                  const { parsedQuery, searchResults, setSearchResults } = useStore.getState();
+                  if (parsedQuery && isSearchActive(parsedQuery)) {
+                    const closedIdSet = new Set(ids.map(String));
+                    const filtered = searchResults.filter(r => !closedIdSet.has(String(r.tab.id)));
+                    setSearchResults(filtered);
+                  }
+                }
                 setShowMenu(false);
               }}
               disabled={tabsBelowCount === 0}
@@ -500,7 +516,14 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
             if (onClose) onClose();
             else {
               const numericId = parseNumericId(tab.id);
-              if (numericId !== null) tabService.closeTab(numericId);
+              if (numericId !== null) {
+                tabService.closeTab(numericId);
+                const { parsedQuery, searchResults, setSearchResults } = useStore.getState();
+                if (parsedQuery && isSearchActive(parsedQuery)) {
+                  const filtered = searchResults.filter(r => String(r.tab.id) !== String(numericId));
+                  setSearchResults(filtered);
+                }
+              }
             }
             setShowMenu(false);
           }}

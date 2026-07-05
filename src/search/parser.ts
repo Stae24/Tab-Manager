@@ -143,7 +143,7 @@ export function tokenize(query: string): SearchToken[] {
       const token = {
         type: 'exclude-text' as const,
         raw: query.slice(start, i),
-        value: literal,
+        value: literal.toLowerCase(),
         position: { start, end: i },
       };
       tokens.push(token);

@@ -15,7 +15,6 @@ import {
   UniqueIdentifier,
   MeasuringStrategy,
   defaultDropAnimationSideEffects,
-  Modifier,
   CollisionDetection
 } from '@dnd-kit/core';
 
@@ -30,6 +29,7 @@ import { Island } from './Island';
 import { TabCard } from './TabCard';
 import { QuotaExceededModal, QuotaExceededAction } from './QuotaExceededModal';
 import { useStore, parseNumericId, findItemInList, isVaultId } from '../store/useStore';
+import { isSearchActive } from '../search';
 import { cn } from '../utils/cn';
 import { closeTab, closeTabs, createIsland } from '../utils/chromeApi';
 import { tabService } from '../services/tabService';
@@ -70,6 +70,7 @@ export const Dashboard: React.FC = () => {
   const setDividerPosition = useStore(state => state.setDividerPosition);
   const removeFromVault = useStore(state => state.removeFromVault);
   const moveItemOptimistically = useStore(state => state.moveItemOptimistically);
+  const cancelOptimisticMove = useStore(state => state.cancelOptimisticMove);
   const renameGroup = useStore(state => state.renameGroup);
   const createVaultGroup = useStore(state => state.createVaultGroup);
   const toggleVaultGroupCollapse = useStore(state => state.toggleVaultGroupCollapse);
@@ -82,20 +83,6 @@ export const Dashboard: React.FC = () => {
   const showVault = useStore(state => state.showVault);
   const isRenaming = useStore(state => state.isRenaming);
   const appearanceSettings = useStore(state => state.appearanceSettings);
-
-  const scaleModifier = useMemo<Modifier>(() => {
-    return ({ transform }) => {
-      const uiScale = appearanceSettings?.uiScale ?? 1;
-      if (uiScale === 1) {
-        return transform;
-      }
-      return {
-        ...transform,
-        x: transform.x / uiScale,
-        y: transform.y / uiScale,
-      };
-    };
-  }, [appearanceSettings?.uiScale]);
 
   const collisionDetection = useMemo<CollisionDetection>(() => {
     return createCollisionDetection(BOTTOM_ZONES);
@@ -202,11 +189,12 @@ export const Dashboard: React.FC = () => {
     isUnmounted.current = false;
     return () => {
       isUnmounted.current = true;
+      cancelOptimisticMove();
       if (inFlightCount.current === 0) {
         clearPendingOperations();
       }
     };
-  }, [clearPendingOperations]);
+  }, [clearPendingOperations, cancelOptimisticMove]);
 
   const handleTabClick = async (tabId: UniversalId) => {
     const numericId = parseNumericId(tabId);
@@ -223,6 +211,11 @@ export const Dashboard: React.FC = () => {
     const numericId = parseNumericId(tabId);
     if (numericId !== null) {
       await closeTab(numericId);
+      const { parsedQuery, searchResults, setSearchResults } = useStore.getState();
+      if (parsedQuery && isSearchActive(parsedQuery)) {
+        const filtered = searchResults.filter(r => String(r.tab.id) !== String(tabId));
+        setSearchResults(filtered);
+      }
     }
   };
 
@@ -232,6 +225,12 @@ export const Dashboard: React.FC = () => {
       const tabIds = island.tabs.map(t => parseNumericId(t.id)).filter((id): id is number => id !== null);
       if (tabIds.length > 0) {
         await closeTabs(tabIds);
+        const { parsedQuery, searchResults, setSearchResults } = useStore.getState();
+        if (parsedQuery && isSearchActive(parsedQuery)) {
+          const closedIdSet = new Set(tabIds.map(String));
+          const filtered = searchResults.filter(r => !closedIdSet.has(String(r.tab.id)));
+          setSearchResults(filtered);
+        }
       }
     }
   };
@@ -385,6 +384,8 @@ export const Dashboard: React.FC = () => {
         return;
       }
 
+      let started = false;
+
       try {
         const tab = await tabService.getTab(tabId);
         if (tab.pinned) {
@@ -396,7 +397,12 @@ export const Dashboard: React.FC = () => {
         setIsCreatingIsland(true);
         setCreatingTabId(tabId);
 
-        await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
+        try {
+          await chrome.runtime.sendMessage({ type: 'START_ISLAND_CREATION' });
+          started = true;
+        } catch (sendError) {
+          logger.error('Dashboard', 'START_ISLAND_CREATION sendMessage failed:', sendError);
+        }
 
         logger.debug('Dashboard', `Creating island for tab: ${tabId}`);
 
@@ -408,19 +414,16 @@ export const Dashboard: React.FC = () => {
           logger.error('Dashboard', `createIsland returned null for tab: ${tabId}`);
         }
 
-        await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
+        if (started) {
+          await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
+        }
 
         await new Promise(r => setTimeout(r, POST_ISLAND_CREATION_DELAY_MS));
       } catch (e) {
-        logger.error('Dashboard', 'Tab no longer exists or access denied', e);
+        logger.error('Dashboard', 'Island creation failed:', e);
       } finally {
         setIsCreatingIsland(false);
         setCreatingTabId(null);
-        try {
-          await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
-        } catch (e) {
-          logger.debug('END_ISLAND_CREATION sendMessage failed:', e);
-        }
         cleanupPendingOperation();
       }
       return;
@@ -435,15 +438,16 @@ export const Dashboard: React.FC = () => {
         let targetIslandId: UniversalId | null = null;
         let isMovingGroup = false;
 
+        // Find the drop target (overId) position, not the source position
         for (const item of finalIslands) {
-          if (String(item.id) === String(activeId)) {
+          if (String(item.id) === String(overId)) {
             targetItem = item;
             isMovingGroup = 'tabs' in item;
             break;
           }
 
           if ('tabs' in item && item.tabs) {
-            const nestedIndex = item.tabs.findIndex((t: TabType) => String(t.id) === String(activeId));
+            const nestedIndex = item.tabs.findIndex((t: TabType) => String(t.id) === String(overId));
             if (nestedIndex !== -1) {
               targetItem = item.tabs[nestedIndex];
               targetIslandId = item.id;
@@ -536,7 +540,7 @@ export const Dashboard: React.FC = () => {
           sensors={isRenaming ? [] : sensors}
           collisionDetection={collisionDetection}
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-          modifiers={[scaleModifier]}
+          modifiers={[]}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}

@@ -81,7 +81,7 @@ const freezeCommand: CommandFunction = async (
   const successful = results.filter((r): r is PromiseFulfilledResult<chrome.tabs.Tab> => 
     r.status === 'fulfilled' && r.value !== null
   );
-  const failed = results.filter((r) => r.status === 'rejected' || r.status === 'fulfilled' && !r.value);
+  const failed = results.filter((r) => (r.status === 'rejected') || (r.status === 'fulfilled' && !r.value));
 
   const affectedCount = successful.length;
   const errors = failed.map((r): string => {

@@ -135,7 +135,7 @@ export const Island: React.FC<IslandProps> = React.memo(({
     }
   };
 
-  const allFrozen = island.tabs.every(t => t.discarded);
+  const allFrozen = island.tabs.length > 0 && island.tabs.every(t => t.discarded);
 
   // Calculate menu position - use mouse position directly
   const calculateMenuPosition = (clientX: number, clientY: number) => {

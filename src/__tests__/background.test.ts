@@ -469,7 +469,7 @@ describe('background - Message Handlers Extended', () => {
 
     it('handles tab not found', async () => {
       const sendResponse = vi.fn();
-      (chrome.tabs.get as any).mockResolvedValue(undefined);
+      (chrome.tabs.get as any).mockRejectedValue(new Error('Tab not found'));
 
       messageListener(
         { type: 'FREEZE_TAB', tabId: 999 },
