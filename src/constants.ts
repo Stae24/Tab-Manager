@@ -228,3 +228,24 @@ export const PANEL_HEADERS_SECTION = 'panel-headers';
 export const PANEL_HEADER_TRUNCATE_THRESHOLD = 320;
 export const PANEL_HEADER_ICON_ONLY_THRESHOLD = 280;
 export const PANEL_HEADER_HIDDEN_THRESHOLD = 240;
+
+// Tab Item Spacing
+export const TAB_GAP_MIN = 0;
+export const TAB_GAP_MAX = 16;
+export const TAB_GAP_DEFAULT = 8;
+export const TAB_GAP_STEP = 1;
+
+export const TAB_INDICATOR_GAP_MIN = 0;
+export const TAB_INDICATOR_GAP_MAX = 12;
+export const TAB_INDICATOR_GAP_DEFAULT = 4;
+export const TAB_INDICATOR_GAP_STEP = 1;
+
+export const TAB_FAVICON_MARGIN_LEFT_MIN = 0;
+export const TAB_FAVICON_MARGIN_LEFT_MAX = 16;
+export const TAB_FAVICON_MARGIN_LEFT_DEFAULT = 0;
+export const TAB_FAVICON_MARGIN_LEFT_STEP = 1;
+
+export const TAB_FAVICON_MARGIN_RIGHT_MIN = 0;
+export const TAB_FAVICON_MARGIN_RIGHT_MAX = 16;
+export const TAB_FAVICON_MARGIN_RIGHT_DEFAULT = 0;
+export const TAB_FAVICON_MARGIN_RIGHT_STEP = 1;

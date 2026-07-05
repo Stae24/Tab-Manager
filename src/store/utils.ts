@@ -41,7 +41,11 @@ import {
   DEFAULT_RESTORE_PINNED_STATE,
   DEFAULT_RESTORE_MUTED_STATE,
   DEFAULT_RESTORE_FROZEN_STATE,
-  LOCAL_UI_SETTINGS_KEY
+  LOCAL_UI_SETTINGS_KEY,
+  TAB_GAP_DEFAULT,
+  TAB_INDICATOR_GAP_DEFAULT,
+  TAB_FAVICON_MARGIN_LEFT_DEFAULT,
+  TAB_FAVICON_MARGIN_RIGHT_DEFAULT
 } from '../constants';
 
 export const VALID_THEMES = ['dark', 'light', 'system', 'dark-pro', 'ocean', 'forest', 'sunset', 'dracula', 'nord', 'monokai', 'solarized-light', 'solarized-dark', 'midnight', 'cyberpunk', 'coffee'] as const;
@@ -398,6 +402,10 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   sortGroupsByCount: true,
   sortVaultGroupsByCount: true,
   tabElementOrder: 'favicon-indicators-title',
+  tabGap: TAB_GAP_DEFAULT,
+  tabIndicatorGap: TAB_INDICATOR_GAP_DEFAULT,
+  tabFaviconMarginLeft: TAB_FAVICON_MARGIN_LEFT_DEFAULT,
+  tabFaviconMarginRight: TAB_FAVICON_MARGIN_RIGHT_DEFAULT,
   customButtonHoverSize: false,
   buttonHoverPaddingPx: 8,
   autoPinTabManager: true,

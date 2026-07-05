@@ -10,7 +10,7 @@ import { Favicon } from './Favicon';
 import { TabIndicators } from './TabIndicators';
 import { useScrollContainer } from '../contexts/ScrollContainerContext';
 import { ContextMenu } from './ContextMenu';
-import { INTERSECTION_OBSERVER_MARGIN_PX, TAB_LOAD_DELAY_BASE_MS, Z_INDEX_SCALE } from '../constants';
+import { INTERSECTION_OBSERVER_MARGIN_PX, TAB_LOAD_DELAY_BASE_MS, Z_INDEX_SCALE, TAB_GAP_DEFAULT, TAB_FAVICON_MARGIN_LEFT_DEFAULT, TAB_FAVICON_MARGIN_RIGHT_DEFAULT } from '../constants';
 import { logger } from '../utils/logger';
 import type { Tab } from '../types/index';
 
@@ -198,7 +198,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
         {...listeners}
         {...attributes}
         className={cn(
-          `group relative flex items-center gap-2 transition-all cursor-grab active:cursor-grabbing touch-none`,
+          `group relative flex items-center transition-all cursor-grab active:cursor-grabbing touch-none`,
           getBorderRadiusClass(appearanceSettings.borderRadius),
           densityClasses[appearanceSettings.tabDensity],
           'bg-gx-gray border border-gx-border',
@@ -208,6 +208,7 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
           !isOverlay && 'hover:border-gx-accent/30 hover:bg-gx-gray/80',
           isLoading && !isOverlay && 'border-gx-cyan/50 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse-glow cursor-not-allowed opacity-90'
         )}
+        style={{ gap: appearanceSettings.tabGap ?? TAB_GAP_DEFAULT }}
         onClick={(e) => {
           if (isDragging || isOverlay) return;
           onClick?.();
@@ -245,7 +246,13 @@ export const TabCard: React.FC<TabCardProps> = React.memo(({ tab, onClick, onClo
         )}
 
         {appearanceSettings.showFavicons && (
-          <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center relative z-10">
+          <div
+            className="w-4 h-4 flex-shrink-0 flex items-center justify-center relative z-10"
+            style={{
+              marginLeft: appearanceSettings.tabFaviconMarginLeft ?? TAB_FAVICON_MARGIN_LEFT_DEFAULT,
+              marginRight: appearanceSettings.tabFaviconMarginRight ?? TAB_FAVICON_MARGIN_RIGHT_DEFAULT,
+            }}
+          >
             {hasStartedLoading ? (
               <Favicon src={tab.favicon} url={tab.url} className="w-4 h-4 pointer-events-none" source={appearanceSettings.faviconSource} fallback={appearanceSettings.faviconFallback} size={appearanceSettings.faviconSize} />
             ) : (

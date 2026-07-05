@@ -192,6 +192,10 @@ export interface AppearanceSettings {
   sortVaultGroupsByCount: boolean;
 
   tabElementOrder: TabElementOrder;
+  tabGap?: number;
+  tabIndicatorGap?: number;
+  tabFaviconMarginLeft?: number;
+  tabFaviconMarginRight?: number;
   customButtonHoverSize: boolean;
   buttonHoverPaddingPx: number;
 

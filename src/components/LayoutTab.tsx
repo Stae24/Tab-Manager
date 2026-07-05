@@ -94,6 +94,22 @@ import {
     SETTINGS_SECTION_GAP_MAX,
     SETTINGS_SECTION_GAP_DEFAULT,
     SETTINGS_SECTION_GAP_STEP,
+    TAB_GAP_MIN,
+    TAB_GAP_MAX,
+    TAB_GAP_DEFAULT,
+    TAB_GAP_STEP,
+    TAB_INDICATOR_GAP_MIN,
+    TAB_INDICATOR_GAP_MAX,
+    TAB_INDICATOR_GAP_DEFAULT,
+    TAB_INDICATOR_GAP_STEP,
+    TAB_FAVICON_MARGIN_LEFT_MIN,
+    TAB_FAVICON_MARGIN_LEFT_MAX,
+    TAB_FAVICON_MARGIN_LEFT_DEFAULT,
+    TAB_FAVICON_MARGIN_LEFT_STEP,
+    TAB_FAVICON_MARGIN_RIGHT_MIN,
+    TAB_FAVICON_MARGIN_RIGHT_MAX,
+    TAB_FAVICON_MARGIN_RIGHT_DEFAULT,
+    TAB_FAVICON_MARGIN_RIGHT_STEP,
 } from '../constants';
 import type { AppearanceSettings, ButtonSize, SidebarLayoutMode, SidebarDockSide } from '../types';
 import type { SettingSection } from './AppearanceSettingsPanel';
@@ -116,6 +132,18 @@ export const SETTING_SECTIONS: SettingSection[] = [
         icon: Layout,
         controls: [
             { id: 'tab-density-options', label: 'Tab Density', keywords: ['tab', 'density', 'minified', 'compact', 'normal', 'spacious'] },
+        ],
+    },
+    {
+        id: 'tab-spacing',
+        title: 'Tab Spacing',
+        category: 'layout',
+        icon: SlidersHorizontal,
+        controls: [
+            { id: 'tab-element-gap', label: 'Element Gap', keywords: ['tab', 'gap', 'spacing', 'element'] },
+            { id: 'tab-indicator-gap', label: 'Indicator Gap', keywords: ['tab', 'indicator', 'gap', 'spacing'] },
+            { id: 'tab-favicon-margin-left', label: 'Favicon Margin Left', keywords: ['tab', 'favicon', 'margin', 'left', 'spacing'] },
+            { id: 'tab-favicon-margin-right', label: 'Favicon Margin Right', keywords: ['tab', 'favicon', 'margin', 'right', 'spacing'] },
         ],
     },
     {
@@ -304,6 +332,53 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                             </span>
                         </button>
                     ))}
+                </div>
+            </CollapsibleSection>
+
+            <CollapsibleSection
+                id="tab-spacing"
+                title="Tab Spacing"
+                icon={SpacingIcon}
+                isExpanded={expandedSections.has('tab-spacing')}
+                onToggle={() => toggleSection('tab-spacing')}
+            >
+                <div className="space-y-4">
+                    <Slider
+                        value={appearanceSettings.tabGap ?? TAB_GAP_DEFAULT}
+                        onChange={(value) => setAppearanceSettings({ tabGap: value })}
+                        min={TAB_GAP_MIN}
+                        max={TAB_GAP_MAX}
+                        step={TAB_GAP_STEP}
+                        label="Element Gap"
+                        displayValue={`${appearanceSettings.tabGap ?? TAB_GAP_DEFAULT}px`}
+                    />
+                    <Slider
+                        value={appearanceSettings.tabIndicatorGap ?? TAB_INDICATOR_GAP_DEFAULT}
+                        onChange={(value) => setAppearanceSettings({ tabIndicatorGap: value })}
+                        min={TAB_INDICATOR_GAP_MIN}
+                        max={TAB_INDICATOR_GAP_MAX}
+                        step={TAB_INDICATOR_GAP_STEP}
+                        label="Indicator Gap"
+                        displayValue={`${appearanceSettings.tabIndicatorGap ?? TAB_INDICATOR_GAP_DEFAULT}px`}
+                    />
+                    <Slider
+                        value={appearanceSettings.tabFaviconMarginLeft ?? TAB_FAVICON_MARGIN_LEFT_DEFAULT}
+                        onChange={(value) => setAppearanceSettings({ tabFaviconMarginLeft: value })}
+                        min={TAB_FAVICON_MARGIN_LEFT_MIN}
+                        max={TAB_FAVICON_MARGIN_LEFT_MAX}
+                        step={TAB_FAVICON_MARGIN_LEFT_STEP}
+                        label="Favicon Margin Left"
+                        displayValue={`${appearanceSettings.tabFaviconMarginLeft ?? TAB_FAVICON_MARGIN_LEFT_DEFAULT}px`}
+                    />
+                    <Slider
+                        value={appearanceSettings.tabFaviconMarginRight ?? TAB_FAVICON_MARGIN_RIGHT_DEFAULT}
+                        onChange={(value) => setAppearanceSettings({ tabFaviconMarginRight: value })}
+                        min={TAB_FAVICON_MARGIN_RIGHT_MIN}
+                        max={TAB_FAVICON_MARGIN_RIGHT_MAX}
+                        step={TAB_FAVICON_MARGIN_RIGHT_STEP}
+                        label="Favicon Margin Right"
+                        displayValue={`${appearanceSettings.tabFaviconMarginRight ?? TAB_FAVICON_MARGIN_RIGHT_DEFAULT}px`}
+                    />
                 </div>
             </CollapsibleSection>
 
