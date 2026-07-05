@@ -38,10 +38,8 @@ export const SEARCH_DEBOUNCE_MIN = 50;
 export const SEARCH_DEBOUNCE_MAX = 500;
 export const SEARCH_DEBOUNCE_STEP = 10;
 export const TAB_ACTION_RETRY_DELAY_BASE = 100;
-export const PANEL_CLOSE_DELAY_MS = 200;
 export const REFRESH_UI_DELAY_MS = 100;
 export const ISLAND_CREATION_REFRESH_DELAY_MS = 400;
-export const POST_ISLAND_CREATION_DELAY_MS = 300;
 export const REFRESH_TABS_DEBOUNCE_MS = 200;
 
 export const VIRTUAL_ROW_ESTIMATE_SIZE = 40;
@@ -51,10 +49,9 @@ export const VIRTUAL_ROW_GAP_PX = 8;
 // Proximity gap threshold constants
 export const PROXIMITY_THRESHOLD_UP_REM = 1;
 export const PROXIMITY_THRESHOLD_DOWN_REM = 3;
-export const CLEANUP_ANIMATION_DELAY_MS = 500;
 export const NO_TABS_ICON_SIZE = 48;
 export const INTERSECTION_OBSERVER_MARGIN_PX = 500;
-export const TAB_LOAD_DELAY_BASE_MS = 50;
+export const TAB_LOAD_DELAY_BASE_MS = 0;
 
 export const Z_INDEX_SCALE = {
   base: 0,
@@ -69,6 +66,10 @@ export const Z_INDEX_SCALE = {
 } as const;
 
 export const DEFAULT_DRAG_OPACITY = 0.5;
+export const DROP_ANIMATION_DURATION_DEFAULT_MS = 250;
+export const DROP_ANIMATION_DURATION_MIN = 0;
+export const DROP_ANIMATION_DURATION_MAX = 1000;
+export const DROP_ANIMATION_DURATION_STEP = 50;
 
 export const DEFAULT_RESTORE_PINNED_STATE = true;
 export const DEFAULT_RESTORE_MUTED_STATE = true;

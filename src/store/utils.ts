@@ -5,6 +5,7 @@ import {
   DEBOUNCE_DEFAULT_MS,
   CHROME_32BIT_INT_MAX,
   DEFAULT_DRAG_OPACITY,
+  DROP_ANIMATION_DURATION_DEFAULT_MS,
   MAX_SYNC_RETRIES,
   INITIAL_SYNC_BACKOFF,
   SYNC_SETTINGS_DEBOUNCE_MS,
@@ -231,6 +232,7 @@ export const isAppearanceSettings = (settings: unknown): settings is AppearanceS
     !!s.buttonSize && ['small', 'medium', 'large'].includes(s.buttonSize) &&
     !!s.iconPack && ['gx', 'default', 'minimal'].includes(s.iconPack) &&
     typeof s.dragOpacity === 'number' &&
+    (typeof s.dropAnimationDuration === 'number' || s.dropAnimationDuration === undefined) &&
     !!s.loadingSpinnerStyle && ['pulse', 'dots', 'bars', 'ring'].includes(s.loadingSpinnerStyle) &&
     !!s.menuPosition && ['left', 'center', 'right'].includes(s.menuPosition) &&
     typeof s.vaultSyncEnabled === 'boolean' &&
@@ -386,6 +388,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   iconPack: 'gx',
   customFontFamily: undefined,
   dragOpacity: DEFAULT_DRAG_OPACITY,
+  dropAnimationDuration: DROP_ANIMATION_DURATION_DEFAULT_MS,
   loadingSpinnerStyle: 'pulse',
   menuPosition: 'left',
   vaultSyncEnabled: true,

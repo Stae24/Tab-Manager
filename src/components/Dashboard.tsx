@@ -43,7 +43,7 @@ import {
   DND_ACTIVATION_DISTANCE,
   DIVIDER_POSITION_MIN,
   DIVIDER_POSITION_MAX,
-  POST_ISLAND_CREATION_DELAY_MS
+  DROP_ANIMATION_DURATION_DEFAULT_MS
 } from '../constants';
 
 type DragData =
@@ -58,6 +58,22 @@ const DragOverlayContent = React.memo(({ activeItem }: { activeItem: DragData })
 });
 
 const BOTTOM_ZONES = ['live-bottom', 'vault-bottom'];
+
+function waitForNextRefresh(timeoutMs = 1000): Promise<void> {
+  return new Promise((resolve) => {
+    const handler = (message: { type: string }) => {
+      if (message.type === 'REFRESH_TABS') {
+        chrome.runtime.onMessage.removeListener(handler);
+        resolve();
+      }
+    };
+    chrome.runtime.onMessage.addListener(handler);
+    setTimeout(() => {
+      chrome.runtime.onMessage.removeListener(handler);
+      resolve();
+    }, timeoutMs);
+  });
+}
 
 export const Dashboard: React.FC = () => {
   const isDarkMode = useStore(state => state.isDarkMode);
@@ -418,7 +434,7 @@ export const Dashboard: React.FC = () => {
           await chrome.runtime.sendMessage({ type: 'END_ISLAND_CREATION' });
         }
 
-        await new Promise(r => setTimeout(r, POST_ISLAND_CREATION_DELAY_MS));
+        await waitForNextRefresh();
       } catch (e) {
         logger.error('Dashboard', 'Island creation failed:', e);
       } finally {
@@ -609,7 +625,7 @@ export const Dashboard: React.FC = () => {
                 </>
               )}
             </div>
-            <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: String(appearanceSettings.dragOpacity) } } }) }}>
+            <DragOverlay dropAnimation={{ duration: appearanceSettings.dropAnimationDuration ?? DROP_ANIMATION_DURATION_DEFAULT_MS, sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: String(appearanceSettings.dragOpacity) } } }) }}>
               {activeItem ? <DragOverlayContent activeItem={activeItem} /> : null}
             </DragOverlay>
           </PointerPositionProvider>

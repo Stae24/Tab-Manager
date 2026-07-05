@@ -15,7 +15,6 @@ import {
 import { cn } from '../utils/cn';
 import { useStore, defaultAppearanceSettings } from '../store/useStore';
 import {
-  PANEL_CLOSE_DELAY_MS,
   SETTINGS_PANEL_MIN_WIDTH,
   SETTINGS_PANEL_MAX_WIDTH,
   SETTINGS_PANEL_WINDOW_GAP,

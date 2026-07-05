@@ -14,7 +14,6 @@ import { Island as IslandType, Tab as TabType, UniversalId, DashboardRow } from 
 import {
   VIRTUAL_ROW_ESTIMATE_SIZE,
   VIRTUAL_ROW_OVERSCAN,
-  CLEANUP_ANIMATION_DELAY_MS,
   SEARCH_DEBOUNCE_MS,
   SIDEBAR_PANEL_PADDING_DEFAULT,
   MANAGER_PANEL_PADDING_DEFAULT,
@@ -109,6 +108,7 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const setParsedQuery = useStore((s) => s.setParsedQuery);
 
   const syncLiveTabs = useStore((s) => s.syncLiveTabs);
+  const animationIntensity = useStore((s) => s.appearanceSettings.animationIntensity);
   const searchDebounce = useStore((s) => s.appearanceSettings.searchDebounce);
   const sidebarPanelPadding = useStore((s) => s.appearanceSettings.sidebarPanelPadding);
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
@@ -305,7 +305,8 @@ export const LivePanel: React.FC<LivePanelProps> = ({
   const handleDeleteDuplicates = async () => {
     setIsCleaning(true);
     await deleteDuplicateTabs();
-    setTimeout(() => setIsCleaning(false), CLEANUP_ANIMATION_DELAY_MS);
+    const cleanupDelay = animationIntensity === 'off' ? 0 : animationIntensity === 'subtle' ? 200 : 500;
+    setTimeout(() => setIsCleaning(false), cleanupDelay);
   };
 
   const handleGroupResults = async () => {

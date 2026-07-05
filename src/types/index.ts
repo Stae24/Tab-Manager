@@ -178,6 +178,7 @@ export interface AppearanceSettings {
 
   customFontFamily?: string;
   dragOpacity: number;
+  dropAnimationDuration?: number;
   loadingSpinnerStyle: LoadingSpinnerStyle;
   menuPosition: MenuPosition;
 

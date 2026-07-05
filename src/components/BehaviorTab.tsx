@@ -8,6 +8,10 @@ import {
     DRAG_OPACITY_MIN,
     DRAG_OPACITY_MAX,
     DRAG_OPACITY_STEP,
+    DROP_ANIMATION_DURATION_MIN,
+    DROP_ANIMATION_DURATION_MAX,
+    DROP_ANIMATION_DURATION_STEP,
+    DROP_ANIMATION_DURATION_DEFAULT_MS,
     SEARCH_DEBOUNCE_MIN,
     SEARCH_DEBOUNCE_MAX,
     SEARCH_DEBOUNCE_STEP,
@@ -26,6 +30,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
         icon: MousePointer,
         controls: [
             { id: 'dragged-opacity', label: 'Dragged Item Opacity', keywords: ['drag', 'opacity', 'dragged'] },
+            { id: 'drop-animation-duration', label: 'Drop Animation Duration', keywords: ['drop', 'animation', 'duration', 'delay', 'overlay'] },
         ],
     },
     {
@@ -122,6 +127,15 @@ export const BehaviorTab: React.FC<BehaviorTabProps> = ({
                     step={DRAG_OPACITY_STEP}
                     label="Dragged Item Opacity"
                     displayValue={`${Math.round(appearanceSettings.dragOpacity * 100)}%`}
+                />
+                <Slider
+                    value={appearanceSettings.dropAnimationDuration ?? DROP_ANIMATION_DURATION_DEFAULT_MS}
+                    onChange={(value) => setAppearanceSettings({ dropAnimationDuration: value })}
+                    min={DROP_ANIMATION_DURATION_MIN}
+                    max={DROP_ANIMATION_DURATION_MAX}
+                    step={DROP_ANIMATION_DURATION_STEP}
+                    label="Drop Animation Duration"
+                    displayValue={`${appearanceSettings.dropAnimationDuration ?? DROP_ANIMATION_DURATION_DEFAULT_MS}ms`}
                 />
             </CollapsibleSection>
 

@@ -14,7 +14,7 @@ import { logger } from '../utils/logger';
 import { detectSidebarContext } from '../utils/browser';
 import { useStore } from '../store/useStore';
 import { VaultItem, Island as IslandType, Tab as TabType, UniversalId, VaultQuotaInfo, DashboardRow, CompressionTier } from '../types';
-import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, CLEANUP_ANIMATION_DELAY_MS, SIDEBAR_PANEL_PADDING_DEFAULT, MANAGER_PANEL_PADDING_DEFAULT, PANEL_HEADER_PADDING_TOP_DEFAULT, PANEL_HEADER_PADDING_BOTTOM_DEFAULT, PANEL_HEADER_PADDING_LEFT_DEFAULT, PANEL_HEADER_PADDING_RIGHT_DEFAULT, PANEL_HEADER_ICON_TITLE_GAP_DEFAULT, PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT, PANEL_HEADER_ACTION_GAP_DEFAULT, PANEL_LIST_GAP_DEFAULT, PANEL_LIST_PADDING_TOP_DEFAULT, PANEL_LIST_PADDING_BOTTOM_DEFAULT } from '../constants';
+import { VIRTUAL_ROW_ESTIMATE_SIZE, VIRTUAL_ROW_OVERSCAN, VIRTUAL_ROW_GAP_PX, SIDEBAR_PANEL_PADDING_DEFAULT, MANAGER_PANEL_PADDING_DEFAULT, PANEL_HEADER_PADDING_TOP_DEFAULT, PANEL_HEADER_PADDING_BOTTOM_DEFAULT, PANEL_HEADER_PADDING_LEFT_DEFAULT, PANEL_HEADER_PADDING_RIGHT_DEFAULT, PANEL_HEADER_ICON_TITLE_GAP_DEFAULT, PANEL_HEADER_TITLE_ACTION_GAP_DEFAULT, PANEL_HEADER_ACTION_GAP_DEFAULT, PANEL_LIST_GAP_DEFAULT, PANEL_LIST_PADDING_TOP_DEFAULT, PANEL_LIST_PADDING_BOTTOM_DEFAULT } from '../constants';
 
 interface VaultPanelProps {
   dividerPosition: number;
@@ -86,6 +86,7 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
   const [bottomNode, setBottomNode] = useState<HTMLElement | null>(null);
   const [dropzoneRect, setDropzoneRect] = useState<DOMRect | null>(null);
 
+  const animationIntensity = useStore((s) => s.appearanceSettings.animationIntensity);
   const sidebarPanelPadding = useStore((s) => s.appearanceSettings.sidebarPanelPadding);
   const managerPanelPadding = useStore((s) => s.appearanceSettings.managerPanelPadding);
   const showPanelName = useStore((s) => s.appearanceSettings.showPanelName);
@@ -116,7 +117,8 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
     try {
       await deleteVaultDuplicates();
     } finally {
-      setTimeout(() => setCleaningAction(null), CLEANUP_ANIMATION_DELAY_MS);
+      const cleanupDelay = animationIntensity === 'off' ? 0 : animationIntensity === 'subtle' ? 200 : 500;
+      setTimeout(() => setCleaningAction(null), cleanupDelay);
     }
   };
 
@@ -125,7 +127,8 @@ export const VaultPanel: React.FC<VaultPanelProps> = ({
     try {
       await deleteEmptyVaultGroups();
     } finally {
-      setTimeout(() => setCleaningAction(null), CLEANUP_ANIMATION_DELAY_MS);
+      const cleanupDelay = animationIntensity === 'off' ? 0 : animationIntensity === 'subtle' ? 200 : 500;
+      setTimeout(() => setCleaningAction(null), cleanupDelay);
     }
   };
 
