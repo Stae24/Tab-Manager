@@ -38,3 +38,4 @@ npm-debug.log*
 # Legacy Reference (Project Specific)
 /TidyTabGroups
 /%TMP%
+.opencode/package-lock.json
