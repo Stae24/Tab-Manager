@@ -5,6 +5,8 @@ import {
   getBrowserCapabilities,
   getCachedCapabilities,
   resetCapabilitiesCache,
+  resetSidebarApiCache,
+  detectSidebarApi,
   needsCompanionTabForSingleTabGroup,
 } from '../browser';
 
@@ -99,6 +101,41 @@ describe('browser utilities', () => {
     });
   });
 
+  describe('detectSidebarApi', () => {
+    const originalChrome = global.chrome;
+
+    afterEach(() => {
+      global.chrome = originalChrome;
+      resetSidebarApiCache();
+    });
+
+    it('should return chrome when sidePanel.open is available', () => {
+      resetSidebarApiCache();
+      expect(detectSidebarApi()).toBe('chrome');
+    });
+
+    it('should return opera when only sidebarAction is available', () => {
+      resetSidebarApiCache();
+      global.chrome = { ...(originalChrome as any), sidePanel: undefined, sidebarAction: {} } as any;
+      expect(detectSidebarApi()).toBe('opera');
+    });
+
+    it('should return none when neither API is available', () => {
+      resetSidebarApiCache();
+      global.chrome = { ...(originalChrome as any), sidePanel: undefined, sidebarAction: undefined } as any;
+      expect(detectSidebarApi()).toBe('none');
+    });
+
+    it('should cache the detected value', () => {
+      resetSidebarApiCache();
+      global.chrome = { ...(originalChrome as any), sidePanel: undefined, sidebarAction: {} } as any;
+      expect(detectSidebarApi()).toBe('opera');
+      // Changing the global chrome must NOT change the cached result
+      global.chrome = { ...(originalChrome as any) } as any;
+      expect(detectSidebarApi()).toBe('opera');
+    });
+  });
+
   describe('initBrowserCapabilities', () => {
     const mockUserAgent = (ua: string) => {
       Object.defineProperty(navigator, 'userAgent', {
@@ -148,6 +185,15 @@ describe('browser utilities', () => {
       const caps = getCachedCapabilities();
 
       expect(caps?.supportsSingleTabGroups).toBe(true);
+    });
+
+    it('should include sidebarApi in capabilities', async () => {
+      mockUserAgent('Mozilla/5.0 Chrome/120.0.0.0');
+
+      await initBrowserCapabilities();
+      const caps = getCachedCapabilities();
+
+      expect(caps?.sidebarApi).toBe('chrome');
     });
 
     it('should log Brave detection', async () => {

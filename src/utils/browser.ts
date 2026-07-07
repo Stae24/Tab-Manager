@@ -8,13 +8,55 @@ interface NavigatorWithBrave extends Navigator {
 
 export type BrowserVendor = 'brave' | 'chrome' | 'opera' | 'edge' | 'firefox' | 'unknown';
 
+export type SidebarApi = 'chrome' | 'opera' | 'none';
+
 interface BrowserCapabilities {
   vendor: BrowserVendor;
   supportsGroupCollapse: boolean | null;
   supportsSingleTabGroups: boolean | null;
+  sidebarApi: SidebarApi;
 }
 
 let cachedCapabilities: BrowserCapabilities | null = null;
+
+let cachedSidebarApi: SidebarApi | null = null;
+
+/**
+ * Feature-detects which sidebar API is available. Feature detection (not UA
+ * sniffing) is used because some Chromium-based browsers (e.g. Arc) report as
+ * Chrome-like but lack chrome.sidePanel, while Opera implements its own
+ * chrome.sidebarAction instead of chrome.sidePanel.
+ *
+ * Note: Opera's sidebarAction has NO programmatic open/close — the panel is
+ * shown when the user clicks the extension's icon in Opera's native sidebar.
+ */
+export function detectSidebarApi(): SidebarApi {
+  if (cachedSidebarApi !== null) return cachedSidebarApi;
+  try {
+    const chromeNs = chrome as unknown as {
+      sidePanel?: { open?: unknown };
+      sidebarAction?: unknown;
+    };
+    if (typeof chromeNs.sidePanel?.open === 'function') {
+      cachedSidebarApi = 'chrome';
+    } else if (typeof chromeNs.sidebarAction !== 'undefined') {
+      cachedSidebarApi = 'opera';
+    } else {
+      cachedSidebarApi = 'none';
+    }
+  } catch {
+    cachedSidebarApi = 'none';
+  }
+  return cachedSidebarApi;
+}
+
+export function getCachedSidebarApi(): SidebarApi | null {
+  return cachedSidebarApi;
+}
+
+export function resetSidebarApiCache(): void {
+  cachedSidebarApi = null;
+}
 
 export async function detectBrowser(): Promise<BrowserVendor> {
   const nav = navigator as NavigatorWithBrave;
@@ -51,7 +93,8 @@ export async function initBrowserCapabilities(): Promise<boolean> {
   cachedCapabilities = {
     vendor: browser,
     supportsGroupCollapse: supported,
-    supportsSingleTabGroups: browser !== 'opera'
+    supportsSingleTabGroups: browser !== 'opera',
+    sidebarApi: detectSidebarApi()
   };
 
   if (browser === 'brave') {

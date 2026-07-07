@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { sidebarService, setupSidebarMessageListener } from '../sidebarService';
+import { resetSidebarApiCache } from '../../utils/browser';
 
 const { defaultAppearanceSettings: defaultSettings } = vi.hoisted(() => ({
     defaultAppearanceSettings: {
@@ -260,6 +261,93 @@ describe('sidebarService', () => {
             expect(sidebarService.isManagerPage(managerUrl)).toBe(true);
             expect(sidebarService.isManagerPage(managerUrl + '?query=1')).toBe(true);
             expect(sidebarService.isManagerPage('https://google.com')).toBe(false);
+        });
+    });
+
+    describe('sidebar API branching', () => {
+        const originalChrome = global.chrome;
+
+        const setChromeApi = (api: 'chrome' | 'opera' | 'none') => {
+            resetSidebarApiCache();
+            const custom = { ...(originalChrome as any) } as any;
+            if (api === 'chrome') {
+                custom.sidePanel = {
+                    open: vi.fn().mockResolvedValue(undefined),
+                    setOptions: vi.fn().mockResolvedValue(undefined)
+                };
+                custom.sidebarAction = undefined;
+            } else if (api === 'opera') {
+                custom.sidePanel = undefined;
+                custom.sidebarAction = {};
+            } else {
+                custom.sidePanel = undefined;
+                custom.sidebarAction = undefined;
+            }
+            global.chrome = custom;
+        };
+
+        afterEach(() => {
+            global.chrome = originalChrome;
+            resetSidebarApiCache();
+        });
+
+        it('should open sidePanel when API is chrome', async () => {
+            setChromeApi('chrome');
+
+            const isOpen = await sidebarService.toggleSidePanel(10);
+
+            expect(isOpen).toBe(true);
+            expect((global.chrome as any).sidePanel.open).toHaveBeenCalledWith({ windowId: 10 });
+        });
+
+        it('should fall back to manager page when API is opera', async () => {
+            setChromeApi('opera');
+            (global.chrome as any).tabs.query = vi.fn().mockResolvedValue([]);
+            (global.chrome as any).tabs.create = vi.fn().mockResolvedValue({ id: 5 });
+
+            const isOpen = await sidebarService.toggleSidePanel(10);
+
+            expect(isOpen).toBe(true);
+            expect((global.chrome as any).tabs.create).toHaveBeenCalled();
+            expect((global.chrome as any).sidePanel?.open).not.toBeDefined();
+        });
+
+        it('should fall back to manager page when API is none', async () => {
+            setChromeApi('none');
+            (global.chrome as any).tabs.query = vi.fn().mockResolvedValue([]);
+            (global.chrome as any).tabs.create = vi.fn().mockResolvedValue({ id: 6 });
+
+            const isOpen = await sidebarService.toggleSidePanel(10);
+
+            expect(isOpen).toBe(true);
+            expect((global.chrome as any).tabs.create).toHaveBeenCalled();
+        });
+
+        it('should fall back to manager page from context menu when API is not chrome', async () => {
+            setChromeApi('opera');
+            (global.chrome as any).tabs.query = vi.fn().mockResolvedValue([]);
+            (global.chrome as any).tabs.create = vi.fn().mockResolvedValue({ id: 7 });
+
+            await sidebarService.handleContextMenuClick({ menuItemId: 'toggle-sidebar' }, { windowId: 10 } as any);
+
+            expect((global.chrome as any).tabs.create).toHaveBeenCalled();
+        });
+
+        it('should open sidePanel from context menu when API is chrome', async () => {
+            setChromeApi('chrome');
+
+            await sidebarService.handleContextMenuClick({ menuItemId: 'toggle-sidebar' }, { windowId: 10 } as any);
+
+            expect((global.chrome as any).sidePanel.open).toHaveBeenCalledWith({ windowId: 10 });
+        });
+
+        it('should return false when sidePanel.open throws', async () => {
+            setChromeApi('chrome');
+            (global.chrome as any).sidePanel.open.mockRejectedValue(new Error('not allowed'));
+
+            const isOpen = await sidebarService.toggleSidePanel(10);
+
+            expect(isOpen).toBe(false);
         });
     });
 });

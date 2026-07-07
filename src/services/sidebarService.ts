@@ -1,5 +1,7 @@
 import { logger } from '../utils/logger';
 import { mergeAppearanceSettings, defaultAppearanceSettings } from '../store/utils';
+import { detectSidebarApi, getCachedSidebarApi } from '../utils/browser';
+import type { SidebarApi } from '../utils/browser';
 import { ToolbarClickAction } from '../types/index';
 
 const SIDEBAR_STICKY_STATE_KEY = 'sidebarStickyState';
@@ -13,6 +15,10 @@ const SIDEBAR_STICKY_STATE_KEY = 'sidebarStickyState';
 const sidePanelOpenWindows = new Set<number>();
 let cachedToolbarClickAction: ToolbarClickAction = 'toggle-sidebar';
 let storageListenerRegistered = false;
+
+function resolveSidebarApi(): SidebarApi {
+  return getCachedSidebarApi() ?? detectSidebarApi();
+}
 
 const getStickyStateStorage = async (): Promise<Record<number, boolean>> => {
   try {
@@ -81,17 +87,35 @@ export const sidebarService = {
     await this.toggleSidePanel(windowId);
   },
 
-  async toggleSidePanel(windowId: number): Promise<void> {
-    if (sidePanelOpenWindows.has(windowId)) {
-      logger.info('SidebarService', 'Closing side panel for window', windowId);
-      await chrome.sidePanel.setOptions({ enabled: false });
-      sidePanelOpenWindows.delete(windowId);
-      await chrome.sidePanel.setOptions({ enabled: true });
-    } else {
-      logger.info('SidebarService', 'Opening side panel for window', windowId);
-      await chrome.sidePanel.open({ windowId });
-      sidePanelOpenWindows.add(windowId);
+  async toggleSidePanel(windowId: number): Promise<boolean> {
+    const api = resolveSidebarApi();
+
+    if (api === 'chrome') {
+      try {
+        if (sidePanelOpenWindows.has(windowId)) {
+          logger.info('SidebarService', 'Closing side panel for window', windowId);
+          await chrome.sidePanel.setOptions({ enabled: false });
+          sidePanelOpenWindows.delete(windowId);
+          await chrome.sidePanel.setOptions({ enabled: true });
+          return false;
+        }
+        logger.info('SidebarService', 'Opening side panel for window', windowId);
+        await chrome.sidePanel.open({ windowId });
+        sidePanelOpenWindows.add(windowId);
+        return true;
+      } catch (err) {
+        logger.error('SidebarService', 'Failed to toggle sidePanel:', err);
+        return false;
+      }
     }
+
+    // Opera (sidebarAction) and other browsers have no programmatic open/close.
+    // Opera renders the panel via its native sidebar when the user clicks the
+    // extension icon; for the toolbar/context-menu toggle we fall back to the
+    // manager page so the UI is still reachable.
+    logger.info('SidebarService', `Sidebar API '${api}' cannot be toggled programmatically; opening manager page`);
+    await this.openManagerPage();
+    return true;
   },
 
   async openManagerPage(): Promise<void> {
@@ -218,13 +242,7 @@ export const sidebarService = {
 
     switch (info.menuItemId) {
       case 'toggle-sidebar':
-        try {
-          await chrome.sidePanel.open({ windowId }).catch((err) => {
-            logger.error('SidebarService', 'Failed to open sidePanel from context menu:', err);
-          });
-        } catch (err) {
-          logger.error('SidebarService', 'Failed to open sidePanel from context menu:', err);
-        }
+        await this.toggleSidePanel(windowId);
         break;
 
       case 'open-manager-page':
@@ -292,8 +310,7 @@ export const setupSidebarMessageListener = (
   if (message.type === 'SIDEBAR_TOGGLE_WINDOW') {
     const windowId = message.windowId ?? _sender.tab?.windowId;
     if (windowId !== undefined) {
-      sidebarService.toggleSidePanel(windowId).then(() => {
-        const isOpen = sidePanelOpenWindows.has(windowId);
+      sidebarService.toggleSidePanel(windowId).then((isOpen) => {
         sendResponse({ success: true, isOpen });
       }).catch((err: unknown) => {
         logger.error('SidebarService', 'Failed to toggle sidePanel:', err);
@@ -307,6 +324,9 @@ export const setupSidebarMessageListener = (
     if (message.windowId !== undefined) {
       sidebarService.setWindowStickyState(message.windowId, true).then(() => {
         sendResponse({ success: true, isOpen: true });
+      }).catch((err: unknown) => {
+        logger.error('SidebarService', 'Failed to set window sticky state:', err);
+        sendResponse({ success: false, isOpen: false, error: 'Failed to set sticky state' });
       });
       return true;
     }
@@ -316,6 +336,9 @@ export const setupSidebarMessageListener = (
     if (message.windowId !== undefined) {
       sidebarService.getWindowStickyState(message.windowId).then((isOpen) => {
         sendResponse({ success: true, isOpen });
+      }).catch((err: unknown) => {
+        logger.error('SidebarService', 'Failed to get sticky state:', err);
+        sendResponse({ success: false, isOpen: false, error: 'Failed to get sticky state' });
       });
       return true;
     }
@@ -324,6 +347,9 @@ export const setupSidebarMessageListener = (
   if (message.type === 'OPEN_MANAGER_PAGE') {
     sidebarService.openManagerPage().then(() => {
       sendResponse({ success: true });
+    }).catch((err: unknown) => {
+      logger.error('SidebarService', 'Failed to open manager page:', err);
+      sendResponse({ success: false, error: 'Failed to open manager page' });
     });
     return true;
   }
@@ -332,6 +358,9 @@ export const setupSidebarMessageListener = (
     if (message.windowId !== undefined) {
       sidebarService.getWindowStickyState(message.windowId).then((isSticky) => {
         sendResponse({ success: true, isSticky });
+      }).catch((err: unknown) => {
+        logger.error('SidebarService', 'Failed to get sticky state:', err);
+        sendResponse({ success: false, isSticky: false, error: 'Failed to get sticky state' });
       });
       return true;
     }
@@ -339,6 +368,9 @@ export const setupSidebarMessageListener = (
       const activeWindowId = window.id ?? chrome.windows.WINDOW_ID_CURRENT;
       sidebarService.getWindowStickyState(activeWindowId).then((isSticky) => {
         sendResponse({ success: true, isSticky });
+      }).catch((err: unknown) => {
+        logger.error('SidebarService', 'Failed to get sticky state:', err);
+        sendResponse({ success: false, isSticky: false, error: 'Failed to get sticky state' });
       });
     }).catch(() => {
       sendResponse({ success: false, isSticky: false, error: 'Failed to get focused window' });

@@ -181,22 +181,6 @@ export function messageListener(
     return true;
   }
 
-  if (message.type === 'SIDEBAR_TOGGLE_WINDOW') {
-    // Handled by setupSidebarMessageListener in sidebarService
-    const windowId = message.windowId ?? sender.tab?.windowId;
-    if (windowId !== undefined) {
-      chrome.sidePanel.open({ windowId }).then(() => {
-        sendResponse({ success: true, isOpen: true });
-      }).catch((err) => {
-        logger.error('Background', 'Failed to open sidePanel:', err);
-        sendResponse({ success: false });
-      });
-      return true;
-    }
-    sendResponse({ success: false });
-    return false;
-  }
-
   if (message.type === 'SIDEBAR_SETTINGS_UPDATE' && message.settings) {
     (async () => {
       try {
