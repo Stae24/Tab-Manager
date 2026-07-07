@@ -10,7 +10,7 @@
     "coverage": "vitest run --coverage --coverage.provider=istanbul",
     "bench": "vitest bench",
     "bench:search": "vitest bench src/search/__tests__/benchmark",
-    "test:memory": "node --expose-gc ./node_modules/.bin/vitest run src/search/__tests__/benchmark/memory.test.ts",
+    "test:memory": "NODE_OPTIONS=--expose-gc node --expose-gc ./node_modules/.bin/vitest run src/search/__tests__/benchmark/memory.test.ts",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"
